@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./BuildPlanner.css";
 
 import CharacterTab from "./CharacterTab";
@@ -21,11 +21,18 @@ import {
   rangerFavouredEnemySkills,
 } from "../data/bg3CharacterData";
 
+import { bg3Spells } from "../data/bg3Spells";
+
 import {
   getRaceExpertise,
   getRaceSkills,
   unique,
 } from "../logic/proficiencyLogic";
+
+import {
+  cleanSelectedSpellIds,
+  getAvailableSpellIdsForBuild,
+} from "../logic/spellSelectionLogic";
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "character", label: "Character" },
@@ -55,7 +62,12 @@ function BuildPlanner() {
   const [rangerNaturalExplorer, setRangerNaturalExplorer] = useState<RangerNaturalExplorer | "">("");
   const [selectedWarlockInvocations, setSelectedWarlockInvocations] = useState<WarlockInvocation[]>([]);
 
-  const lockedBackgroundSkills: Skill[] = selectedBackground ? backgroundSkills[selectedBackground] : [];
+  const [selectedSpellIds, setSelectedSpellIds] = useState<string[]>([]);
+
+  const lockedBackgroundSkills: Skill[] = selectedBackground
+    ? backgroundSkills[selectedBackground]
+    : [];
+
   const lockedRaceSkills: Skill[] = getRaceSkills(selectedRace, selectedSubrace);
 
   const rangerEnemySkill: Skill | undefined =
@@ -99,6 +111,20 @@ function BuildPlanner() {
 
   const allExpertise: Skill[] = unique([...directExpertise, ...proficiencyBasedExpertise]);
 
+  const availableSpellIds = getAvailableSpellIdsForBuild(
+    bg3Spells,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedWarlockInvocations
+  );
+
+  useEffect(() => {
+    setSelectedSpellIds((current) =>
+      cleanSelectedSpellIds(current, availableSpellIds)
+    );
+  }, [availableSpellIds.join("|")]);
+
   function handleRaceChange(value: string) {
     const race = value as RaceName | "";
     setSelectedRace(race);
@@ -117,6 +143,7 @@ function BuildPlanner() {
     setRangerFavouredEnemy("");
     setRangerNaturalExplorer("");
     setSelectedWarlockInvocations([]);
+    setSelectedSpellIds([]);
   }
 
   return (
@@ -164,6 +191,11 @@ function BuildPlanner() {
             <div className="summary-row">
               <span>Level</span>
               <strong>{selectedLevel}</strong>
+            </div>
+
+            <div className="summary-row">
+              <span>Spells</span>
+              <strong>{selectedSpellIds.length}</strong>
             </div>
           </aside>
 
@@ -218,7 +250,16 @@ function BuildPlanner() {
               />
             )}
 
-            {activeTab === "spellsAbilities" && <SpellsAbilitiesTab />}
+            {activeTab === "spellsAbilities" && (
+              <SpellsAbilitiesTab
+                selectedClass={selectedClass}
+                selectedSubclass={selectedSubclass}
+                selectedLevel={selectedLevel}
+                selectedWarlockInvocations={selectedWarlockInvocations}
+                selectedSpellIds={selectedSpellIds}
+                setSelectedSpellIds={setSelectedSpellIds}
+              />
+            )}
           </section>
 
           <aside className="info-card">
