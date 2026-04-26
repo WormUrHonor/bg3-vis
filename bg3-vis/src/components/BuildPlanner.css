@@ -461,3 +461,8 @@ body,
 .spell-icon-button:hover .spell-tooltip {
   display: flex;
 }
+.spell-description {
+  color: #cbbda7;
+  line-height: 1.4;
+   font-style: italic;
+}

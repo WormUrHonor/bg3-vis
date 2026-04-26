@@ -36,6 +36,11 @@ function SpellsAbilitiesTab() {
 
                       <span className="spell-tooltip">
                         <strong>{spell.name}</strong>
+                        {spell.description && (
+  <span className="spell-description">
+    {spell.description}
+  </span>
+)}
 
                         {spell.range && (
                           <span>
