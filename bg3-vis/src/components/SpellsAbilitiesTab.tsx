@@ -3,7 +3,7 @@ import { bg3Spells } from "../data/bg3Spells";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 import { toggleSpellSelection } from "../logic/spellSelectionLogic";
 import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
-import placeholderSpellIcon from "../assets/Damage Types/Radiant_Damage_Icon.png";
+import { getSpellIcon } from "../logic/spellIconLogic";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -83,10 +83,10 @@ function SpellsAbilitiesTab({
                       }
                     >
                       <img
-                        src={placeholderSpellIcon}
-                        alt={spell.name}
-                        className="spell-icon-image"
-                      />
+  src={getSpellIcon(spell)}
+  alt={spell.name}
+  className="spell-icon-image"
+/>
 
                       <span className="spell-rank-badge">{spell.rank}</span>
 
