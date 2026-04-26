@@ -37,28 +37,28 @@ function SpellsAbilitiesTab() {
                       <span className="spell-tooltip">
                         <strong>{spell.name}</strong>
 
-                        <span>
-                          <b>Range:</b> {spell.range.label}
-                        </span>
+                        {spell.range && (
+                          <span>
+                            <b>Range:</b> {spell.range.label}
+                          </span>
+                        )}
+                        {spell.roles.length > 0 && (
+                          <span>
+                            <b>Role:</b> {spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+                          </span>
+                        )}
+                        {spell.damageTypes.length > 0 && (
+                          <span>
+                            <b>Damage:</b> {spell.damageTypes.join(", ")}
+                          </span>
+                        )}
 
-                        <span>
-                          <b>Role:</b>{" "}
-                          {spell.roles.length > 0
-                            ? spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")
-                            : "None"}
-                        </span>
-
-                        <span>
-                          <b>Damage:</b>{" "}
-                          {spell.damageTypes.length > 0 ? spell.damageTypes.join(", ") : "None"}
-                        </span>
-
-                        <span>
-                          <b>Cost:</b> {spell.costs.actions.join(", ")}
-                          {spell.costs.resources.length > 0
-                            ? ` + ${spell.costs.resources.join(", ")}`
-                            : ""}
-                        </span>
+                        {(spell.costs.actions.length > 0 || spell.costs.resources.length > 0) && (
+                          <span>
+                            <b>Cost:</b>{" "}
+                            {[...spell.costs.actions, ...spell.costs.resources].join(", ")}
+                          </span>
+                        )}
 
                         {spell.costs.requiresConcentration && <span>Requires concentration</span>}
                       </span>
