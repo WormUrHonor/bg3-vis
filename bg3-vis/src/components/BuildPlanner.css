@@ -301,3 +301,60 @@ select {
   border-color: rgba(190, 150, 255, 0.5);
   color: #efe4ff;
 }
+.planner-page {
+  height: 100vh;
+  overflow: hidden;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.planner-page {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.planner-shell {
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.planner-header {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.tab-bar {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.planner-layout {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.summary-card,
+.info-card,
+.main-panel {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.main-panel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
