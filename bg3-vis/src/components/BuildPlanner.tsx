@@ -265,8 +265,7 @@ function BuildPlanner() {
           <aside className="info-card">
             <h2>Selection Details</h2>
             <p>
-              This panel can later show details for the currently selected race, class,
-              background, skill, feat, spell, or ability.
+              WIP.
             </p>
           </aside>
         </div>

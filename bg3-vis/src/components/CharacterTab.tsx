@@ -101,7 +101,7 @@ function CharacterTab({
           <input
             value={buildName}
             onChange={(e) => setBuildName(e.target.value)}
-            placeholder="e.g. Radiant Frontliner"
+            placeholder="e.g. Poison Wizard"
           />
         </label>
 

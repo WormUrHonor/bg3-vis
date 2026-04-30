@@ -1,53 +1,245 @@
 import type { BG3Spell } from "../data/bg3Spells";
 
-// optional fallback
-import fallbackIcon from "../assets/Spell Icons/Spell_Evocation_Fireball.png";
+const spellIconModules = import.meta.glob("../assets/Spell Icons/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 
-// normalize "Animal Friendship" → "AnimalFriendship"
-function normalizeName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9 ]/g, "")
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join("");
-}
-
-// extract school from filename patterns you downloaded
-// if you want strict matching later, you can store this in the data instead
-function guessSchool(spell: BG3Spell): string {
-  // quick heuristic fallback
-  if (spell.damageTypes.includes("Fire")) return "Evocation";
-  if (spell.damageTypes.includes("Necrotic")) return "Necromancy";
-  if (spell.roles.includes("control")) return "Enchantment";
-  return "Evocation"; // safe default
-}
-
-export function getSpellIcon(spell: BG3Spell): string {
-  const override = iconOverrides[spell.id];
-
-  if (override) {
-    return new URL(
-      `../assets/Spell Icons/${override}`,
-      import.meta.url
-    ).href;
-  }
-
-  try {
-    const normalized = normalizeName(spell.name);
-    const school = guessSchool(spell);
-
-    return new URL(
-      `../assets/Spell Icons/Spell_${school}_${normalized}.png`,
-      import.meta.url
-    ).href;
-  } catch {
-    return fallbackIcon;
-  }
-}
-const iconOverrides: Record<string, string> = {
+const spellIconFileById: Record<string, string> = {
+  "animal-friendship": "Spell_Enchantment_AnimalFriendship.png",
+  "armour-of-agathys": "Spell_Abjuration_ArmorOfAgathys.png",
+  "arms-of-hadar": "Spell_Conjuration_ArmsOfHadar.png",
+  bane: "Spell_Enchantment_Bane.png",
+  "invocation-bane": "Spell_Enchantment_Bane.png",
+  bless: "Spell_Enchantment_Bless.png",
+  "burning-hands": "Spell_Evocation_BurningHands.png",
+  "charm-person": "Spell_Enchantment_CharmPerson.png",
+  "chromatic-orb": "Spell_Evocation_ChromaticOrb.png",
+  "invocation-chromatic-orb": "Spell_Evocation_ChromaticOrb.png",
+  "colour-spray": "Spell_Illusion_ColorSpray.png",
+  command: "Spell_Enchantment_CommandHalt.png",
+  "compelled-duel": "Spell_Enchantment_CompelledDuel.png",
   "create-or-destroy-water": "Spell_Transmutation_CreateWater.png",
-  "command": "Spell_Enchantment_CommandHalt.png",
-  "branding-smite": "Spell_Evocation_BrandingSmite_Melee.png",
+  "cure-wounds": "Spell_Evocation_CureWounds.png",
+  "disguise-self": "Spell_Illusion_DisguiseSelf.png",
+  "invocation-disguise-self": "Spell_Illusion_DisguiseSelf.png",
+  "dissonant-whispers": "Spell_Enchantment_DissonantWhispers.png",
+  "divine-favour": "Spell_Evocation_DivineFavor.png",
+  "enhance-leap": "Spell_Transmutation_LongJump.png",
+  "invocation-enhance-leap": "Spell_Transmutation_LongJump.png",
   "ensnaring-strike-melee": "Spell_Conjuration_EnsnaringStrikeMelee.png",
   "ensnaring-strike-ranged": "Spell_Conjuration_EnsnaringStrikeRanged.png",
+  entangle: "Spell_Conjuration_Entangled.png",
+  "expeditious-retreat": "Spell_Divination_ExpeditiousRetreat.png",
+  "faerie-fire": "Spell_Evocation_FaerieFire.png",
+  "false-life": "Spell_Necromancy_FalseLife.png",
+  "invocation-false-life": "Spell_Necromancy_FalseLife.png",
+  "feather-fall": "Spell_Transmutation_FeatherFall.png",
+  "find-familiar": "Spell_Conjuration_FindFamiliar.png",
+  "find-familiar-imp": "Spell_Conjuration_FindFamiliar.png",
+  "find-familiar-quasit": "Spell_Conjuration_FindFamiliar.png",
+  "find-familiar-cheeky-quasit": "Spell_Conjuration_FindFamiliar.png",
+  "fog-cloud": "Spell_Conjuration_FogCloud.png",
+  goodberry: "Spell_Transmutation_Goodberry.png",
+  "guiding-bolt": "Spell_Evocation_GuidingBolt.png",
+  grease: "Spell_Conjuration_Grease.png",
+  "hail-of-thorns": "Spell_Conjuration_HailOfThorns.png",
+  "healing-word": "Spell_Evocation_HealingWord.png",
+  "hellish-rebuke": "Spell_HellishRebuke.png",
+  heroism: "Spell_Enchantment_Heroism.png",
+  hex: "Spell_Enchantment_Hex.png",
+  "hunters-mark": "Spell_Divination_HuntersMark.png",
+  "ice-knife": "Spell_Conjuration_IceKnife.png",
+  "inflict-wounds": "Spell_Necromancy_InflictWounds.png",
+  longstrider: "Spell_Transmutation_Longstrider.png",
+  "mage-armour": "Spell_Abjuration_MageArmor.png",
+  "invocation-mage-armour": "Spell_Abjuration_MageArmor.png",
+  "magic-missile": "Spell_Evocation_MagicMissile.png",
+  "protection-from-evil-and-good": "Spell_Abjuration_ProtectionFromEvilAndGood.png",
+  "ray-of-sickness": "Spell_Necromancy_RayOfSickness.png",
+  "invocation-ray-of-sickness": "Spell_Necromancy_RayOfSickness.png",
+  sanctuary: "Spell_Abjuration_Sanctuary.png",
+  "searing-smite": "Spell_Evocation_SearingSmite.png",
+  shield: "Spell_Shield.png",
+  "shield-of-faith": "Spell_Abjuration_ShieldOfFaith.png",
+  sleep: "Spell_Enchantment_Sleep.png",
+  "speak-with-animals": "Spell_Divination_SpeakWithAnimals.png",
+  "invocation-speak-with-animals": "Spell_Divination_SpeakWithAnimals.png",
+  "tashas-hideous-laughter": "Spell_Enchantment_Tasha'sHideousLaughter.png",
+  "thunderous-smite": "Spell_Evocation_ThunderousSmite.png",
+  thunderwave: "Spell_Evocation_Thunderwave.png",
+  "witch-bolt": "Spell_Evocation_WitchBolt.png",
+  "wrathful-smite": "Spell_Evocation_WrathfulSmite.png",
+
+  aid: "Spell_Abjuration_Aid.png",
+  "arcane-lock": "Spell_Abjuration_ArcaneLock.png",
+  barkskin: "Spell_Transmutation_Barkskin.png",
+  blindness: "Spell_Necromancy_Blindness.png",
+  blur: "Spell_Illusion_Blur.png",
+  "branding-smite": "Spell_Evocation_BrandingSmite_Melee.png",
+  "calm-emotions": "Spell_Enchantment_CalmEmotions.png",
+  "cloud-of-daggers": "Spell_Conjuration_CloudOfDaggers.png",
+  "crown-of-madness": "Spell_Enchantment_CrownOfMadness.png",
+  darkness: "Spell_Evocation_Darkness.png",
+  darkvision: "Spell_Evocation_Darkvision.png",
+  "detect-thoughts": "Spell_Divination_DetectThoughts.png",
+  "enhance-ability": "Spell_Transmutation_EnhanceAbility.png",
+  "enlarge-reduce": "Spell_Transmutation_EnlargeReduce.png",
+  enthrall: "Spell_Enchantment_Enthrall.png",
+  "flame-blade": "Spell_Evocation_FlameBlade.png",
+  "flaming-sphere": "Spell_Conjuration_FlamingSphere.png",
+  "gust-of-wind": "Spell_Evocation_GustOfWind.png",
+  "heat-metal": "Spell_Transmutation_HeatMetal.png",
+  "hold-person": "Spell_Enchantment_HoldPerson.png",
+  invisibility: "Spell_Illusion_Invisibility.png",
+  knock: "Spell_Transmutation_Knock.png",
+  "lesser-restoration": "Spell_Abjuration_LesserRestoration.png",
+  "magic-weapon": "Spell_Transmutation_MagicWeapon.png",
+  "melfs-acid-arrow": "MelfsAcidArrow.png",
+  "mirror-image": "Spell_Illusion_MirrorImage.png",
+  "misty-step": "Spell_Conjuration_MistyStep.png",
+  moonbeam: "Spell_Evocation_Moonbeam.png",
+  "pass-without-trace": "Spell_Abjuration_PassWithoutTrace.png",
+  "phantasmal-force": "Spell_Illusion_PhantasmalForce.png",
+  "prayer-of-healing": "Spell_Evocation_PrayerOfHealing.png",
+  "protection-from-poison": "Spell_Abjuration_ProtectionFromPoison.png",
+  "ray-of-enfeeblement": "Spell_Necromancy_RayOfInfeeblement.png",
+  "scorching-ray": "Spell_Evocation_ScorchingRay.png",
+  "see-invisibility": "Spell_Divination_SeeInvisibility.png",
+  shatter: "Spell_Evocation_Shatter.png",
+  silence: "Spell_Illusion_Silence.png",
+  "invocation-silence": "Spell_Illusion_Silence.png",
+  "shadow-blade": "wiki_300px-Shadow_Blade.webp_48px.png",
+  "spike-growth": "Spell_Transmutation_SpikeGrowth.png",
+  "spiritual-weapon": "Spell_Evocation_SpiritualWeapon.png",
+  "warding-bond": "Spell_Abjuration_WardingBond.png",
+  web: "Spell_Conjuration_Web.png",
+
+  "animate-dead": "Spell_Necromancy_AnimateDead_Skeleton.png",
+  "beacon-of-hope": "Spell_Abjuration_BeaconOfHope.png",
+  "bestow-curse": "Spell_Necromancy_BestowCurse.png",
+  "invocation-bestow-curse": "Spell_Necromancy_BestowCurse.png",
+  "blinding-smite": "Spell_Evocation_BlindingSmite.png",
+  blink: "Spell_Transmutation_Blink.png",
+  "call-lightning": "Spell_Conjuration_CallLightning.png",
+  "conjure-barrage": "Spell_Conjuration_ConjureBarrage.png",
+  counterspell: "Spell_Abjuration_Counterspell.png",
+  "crusaders-mantle": "Spell_Evocation_CrusadersMantle.png",
+  daylight: "Spell_Evocation_Daylight.png",
+  "elemental-weapon": "Spell_Transmutation_ElementalWeapon.png",
+  fear: "Spell_Illusion_Fear.png",
+  "feign-death": "Spell_Necromancy_FeignDeath.png",
+  fireball: "Spell_Evocation_Fireball.png",
+  "grant-flight": "Spell_Transmutation_Fly.png",
+  "gaseous-form": "Spell_Transmutation_GaseousForm.png",
+  "glyph-of-warding": "Spell_Abjuration_GlyphOfWarding_ExplosiveRunes.png",
+  haste: "Spell_Transmutation_Haste.png",
+  "hunger-of-hadar": "Spell_Conjuration_HungerOfHadar.png",
+  "hypnotic-pattern": "Spell_Illusion_HypnoticPattern.png",
+  "lightning-arrow": "Spell_Transmutation_LightningArrow.png",
+  "lightning-bolt": "Spell_Evocation_LightningBolt.png",
+  "mass-healing-word": "Spell_Evocation_MassHealingWord.png",
+  "plant-growth": "Spell_Transmutation_PlantGrowth.png",
+  "protection-from-energy": "Spell_Abjuration_ProtectionFromEnergy.png",
+  "remove-curse": "Spell_Abjuration_RemoveCurse.png",
+  revivify: "Spell_Necromancy_Revivify.png",
+  "sleet-storm": "Spell_Conjuration_SleetStorm.png",
+  slow: "Spell_Transmutation_Slow.png",
+  "invocation-slow": "Spell_Transmutation_Slow.png",
+  "speak-with-dead": "Spell_Necromancy_SpeakWithDead.png",
+  "invocation-speak-with-dead": "Spell_Necromancy_SpeakWithDead.png",
+  "spirit-guardians": "Spell_Conjuration_SpiritGuardians.png",
+  "stinking-cloud": "Spell_Conjuration_StinkingCloud.png",
+  "vampiric-touch": "Spell_Necromancy_VampiricTouch.png",
+  "warden-of-vitality": "Spell_Evocation_AuraOfVitality.png",
+
+  banishment: "Spell_Abjuration_Banishment.png",
+  blight: "Spell_Necromancy_Blight.png",
+  confusion: "Spell_Enchantment_Confusion.png",
+  "invocation-confusion": "Spell_Enchantment_Confusion.png",
+  "conjure-minor-elemental": "Spell_Conjuration_ConjureMinorElementals.png",
+  "conjure-woodland-being": "Spell_Conjuration_ConjureWoodlandBeings.png",
+  "death-ward": "Spell_Abjuration_DeathWard.png",
+  "dimension-door": "Spell_Conjuration_DimensionDoor.png",
+  "dominate-beast": "Spell_Enchantment_DominateBeast.png",
+  "evards-black-tentacles": "Spell_Evocation_EvardsBlackTentacles.png",
+  "fire-shield": "Spell_Evocation_FireShield.png",
+  "freedom-of-movement": "Spell_Abjuration_FreedomOfMovement.png",
+  "greater-invisibility": "Spell_Illusion_GreaterInvisibility.png",
+  "guardian-of-faith": "Spell_Conjuration_GuardianOfFaith.png",
+  "ice-storm": "Spell_Evocation_IceStorm.png",
+  "otilukes-resilient-sphere": "Spell_Evocation_OtilukesResilientSphere.png",
+  "phantasmal-killer": "Spell_Illusion_PhantasmalKiller.png",
+  polymorph: "Spell_Transmutation_Polymorph.png",
+  "invocation-polymorph": "Spell_Transmutation_Polymorph.png",
+  stoneskin: "Spell_Abjuration_Stoneskin.png",
+  "wall-of-fire": "Spell_Evocation_WallOfFire.png",
+
+  "artistry-of-war": "Spell_CurriculumOfStrategy_ArtistryOfWar.png",
+  "banishing-smite": "Spell_Abjuration_BanishingSmite_Melee.png",
+  "banishing-smite-ranged": "wiki_380px-Banishing_Smite_Ranged.webp_48px.png",
+  cloudkill: "Spell_Conjuration_Cloudkill.png",
+  "cone-of-cold": "Spell_Evocation_ConeOfCold.png",
+  "conjure-elemental": "Spell_Conjuration_ConjureElemental.png",
+  "invocation-conjure-elemental": "Spell_Conjuration_ConjureElemental.png",
+  contagion: "Spell_Necromancy_Contagion_FilthFever.png",
+  "destructive-wave": "Spell_Evocation_DestructiveWave.png",
+  dethrone: "Spell_Dethrone.png",
+  "dispel-evil-and-good": "Spell_Abjuration_DispelEvilAndGood.png",
+  "dominate-person": "Spell_Enchantment_DominatePerson.png",
+  "flame-strike": "Spell_Evocation_FlameStrike.png",
+  "grasping-vine": "Spell_Conjuration_GraspingVine.png",
+  "greater-restoration": "Spell_Abjuration_GreaterRestoration.png",
+  "hold-monster": "Spell_Enchantment_HoldMonster.png",
+  "insect-plague": "Spell_Conjuration_InsectPlague.png",
+  "mass-cure-wounds": "Spell_Evocation_MassCureWounds.png",
+  "planar-binding": "Spell_Abjuration_PlanarBinding.png",
+  seeming: "Spell_Illusion_Seeming.png",
+  "staggering-smite": "wiki_380px-Staggering_Smite.webp_48px.png",
+  telekinesis: "Spell_Transmutation_Telekinesis.png",
+  "wall-of-stone": "Spell_WallOfStone.png",
+
+  "arcane-gate": "Spell_Abjuration_ArcaneGate.png",
+  "blade-barrier": "Spell_Evocation_BladeBarrier.png",
+  "chain-lightning": "Spell_Evocation_ChainLightning.png",
+  "circle-of-death": "Spell_CircleOfDeath.png",
+  "create-undead": "Spell_Necromancy_CreateUndead.png",
+  disintegrate: "Spell_Transmutation_Disintegrate.png",
+  eyebite: "Spell_Eyebite_Panicked.png",
+  "flesh-to-stone": "Spell_Transmutation_FleshToStone.png",
+  "globe-of-invulnerability": "Spell_Abjuration_GlobeOfInvulnerability.png",
+  harm: "Spell_Necromancy_Harm.png",
+  heal: "Spell_Evocation_Heal.png",
+  "heroes-feast": "Spell_Conjuration_HeroesFeast.png",
+  "otilukes-freezing-sphere": "Spell_Evocation_OtilukesFreezingSphere_CreateGlobe.png",
+  "ottos-irresistible-dance": "Spell_OttosIrresistibleDance.png",
+  "planar-ally": "Spell_Conjuration_PlanarAlly.png",
+  "sights-of-the-seelie-summon-deva": "Spell_Conjuration_PlanarAlly.png",
+  sunbeam: "Spell_Evocation_Sunbeam.png",
+  "wall-of-ice": "Spell_Evocation_WallOfIce.png",
+  "wall-of-thorns": "Spell_WallOfThorns.png",
+  "wind-walk": "Spell_Transmutation_WindWalk.png",
 };
+
+const fallbackIcon =
+  spellIconModules["../assets/Spell Icons/Spell_Evocation_MagicMissile.png"];
+
+export function getSpellIcon(spell: BG3Spell): string {
+  const fileName = spellIconFileById[spell.id];
+
+  if (!fileName) {
+    console.warn(`Missing spell icon mapping for: ${spell.id} (${spell.name})`);
+    return fallbackIcon;
+  }
+
+  const moduleKey = `../assets/Spell Icons/${fileName}`;
+  const icon = spellIconModules[moduleKey];
+
+  if (!icon) {
+    console.warn(`Mapped icon file not found: ${fileName} for ${spell.id}`);
+    return fallbackIcon;
+  }
+
+  return icon;
+}

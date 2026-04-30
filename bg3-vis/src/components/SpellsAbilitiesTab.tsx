@@ -14,6 +14,19 @@ type SpellsAbilitiesTabProps = {
   setSelectedSpellIds: Dispatch<SetStateAction<string[]>>;
 };
 
+function toRoman(value: number): string {
+  const romanByNumber: Record<number, string> = {
+    1: "I",
+    2: "II",
+    3: "III",
+    4: "IV",
+    5: "V",
+    6: "VI",
+  };
+
+  return romanByNumber[value] ?? String(value);
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -38,8 +51,7 @@ function SpellsAbilitiesTab({
     <div className="tab-content">
       <h2>Spells & Abilities</h2>
       <p className="panel-intro">
-        Spells are shown as compact BG3-style icons. Hover over an icon to inspect its range,
-        role, damage type, and resource requirements.
+        ...
       </p>
 
       {!selectedClass && (
@@ -65,7 +77,7 @@ function SpellsAbilitiesTab({
 
             return (
               <section key={rank} className="spell-rank-section">
-                <h4>Level {rank}</h4>
+                <h4>Level {toRoman(rank)}</h4>
 
                 <div className="spell-icon-grid">
                   {spellsForRank.map((spell) => (
@@ -88,7 +100,7 @@ function SpellsAbilitiesTab({
   className="spell-icon-image"
 />
 
-                      <span className="spell-rank-badge">{spell.rank}</span>
+                      <span className="spell-rank-badge">{toRoman(spell.rank)}</span>
 
                       {spell.costs.requiresConcentration && (
                         <span className="spell-concentration-badge">C</span>
@@ -166,8 +178,7 @@ function SpellsAbilitiesTab({
       <div className="section-block">
         <h3>Class abilities and passives</h3>
         <div className="placeholder-box">
-          Class and subclass abilities can be shown here once the selected class and level are connected
-          to the ability data.
+          WIP. Needs to be connected. Here will be shown abilities and spells and stuff that's part of the class by default. Where you dont need to choose.
         </div>
       </div>
     </div>

@@ -151,7 +151,7 @@ function ClassScoresTab({
     <div className="tab-content">
       <h2>Class & Ability Scores</h2>
       <p className="panel-intro">
-        Core BG3 build choices. Multiclassing is intentionally excluded.
+        ....
       </p>
 
       <div className="form-grid">
