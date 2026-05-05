@@ -4,6 +4,7 @@ import "./BuildPlanner.css";
 import CharacterTab from "./CharacterTab";
 import ClassScoresTab from "./ClassScoresTab";
 import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
+import DataCircle from "./DataCircle";
 
 import type {
   Background,
@@ -147,9 +148,9 @@ function BuildPlanner() {
   }
 
   return (
-    <main className="planner-page">
-      <section className="planner-shell">
-        <header className="planner-header">
+    <main className="workspace-page">
+      <section className="workspace-half planner-half">
+        <header className="workspace-header">
           <div>
             <p className="eyebrow">BG3 Build Planner</p>
             <h1>Build Creation</h1>
@@ -169,7 +170,7 @@ function BuildPlanner() {
           ))}
         </nav>
 
-        <div className="planner-layout">
+        <div className="planner-content-layout">
           <aside className="summary-card">
             <h2>Current Build</h2>
 
@@ -261,13 +262,26 @@ function BuildPlanner() {
               />
             )}
           </section>
+        </div>
+      </section>
 
-          <aside className="info-card">
-            <h2>Selection Details</h2>
-            <p>
-              WIP.
-            </p>
-          </aside>
+      <section className="workspace-half visualisation-half">
+        <header className="workspace-header visualisation-header">
+          <div>
+            <p className="eyebrow">Performance Overview</p>
+            <h1>Data Circle</h1>
+          </div>
+        </header>
+
+        <div className="visualisation-panel">
+          <DataCircle
+            buildName={buildName}
+            characterName={characterName}
+            selectedClass={selectedClass}
+            selectedSubclass={selectedSubclass}
+            selectedLevel={selectedLevel}
+            selectedSpellIds={selectedSpellIds}
+          />
         </div>
       </section>
     </main>
