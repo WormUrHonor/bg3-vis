@@ -6,6 +6,7 @@ import {
   type BG3Spell,
 } from "../data/bg3Spells";
 import { mockDataCircleBuild, mockSelectedSpellIds } from "../data/mockDataCircle";
+import "./DataCircle.css";
 
 type DataCircleProps = {
   buildName: string;
@@ -53,16 +54,25 @@ type ResourceSectorKey =
   | "long-rest"
   | "class-resource";
 
-const CX = 360;
-const CY = 360;
+const CX = 500;
+const CY = 500;
 
-const RANGE_BANDS: { key: RangeBandKey; label: string; distance: string; radius: number }[] = [
-  { key: "self", label: "Self", distance: "0m", radius: 116 },
-  { key: "melee", label: "Melee", distance: "1.5–3m", radius: 138 },
-  { key: "close", label: "Close", distance: "6–9m", radius: 160 },
-  { key: "mid", label: "Mid", distance: "12–18m", radius: 182 },
-  { key: "long", label: "Long", distance: "18–27m", radius: 204 },
+const RANGE_BANDS: {
+  key: RangeBandKey;
+  label: string;
+  innerRadius: number;
+  outerRadius: number;
+  labelRadius: number;
+}[] = [
+  { key: "self", label: "Self", innerRadius: 106, outerRadius: 128, labelRadius: 117 },
+  { key: "melee", label: "Melee", innerRadius: 134, outerRadius: 156, labelRadius: 145 },
+  { key: "close", label: "Close-range", innerRadius: 162, outerRadius: 184, labelRadius: 173 },
+  { key: "mid", label: "Mid-range", innerRadius: 190, outerRadius: 212, labelRadius: 201 },
+  { key: "long", label: "Long-range", innerRadius: 218, outerRadius: 240, labelRadius: 229 },
 ];
+
+const RANGE_LABEL_ARC_START = -36;
+const RANGE_LABEL_ARC_END = 36;
 
 const DAMAGE_ROLE_KEYS: AbilityRole[] = ["single-target-damage", "area-damage"];
 
@@ -77,19 +87,6 @@ const UTILITY_ROLE_KEYS: AbilityRole[] = [
   "summon",
 ];
 
-const ROLE_LABELS: Record<AbilityRole, { short: string; label: string }> = {
-  "single-target-damage": { short: "ST", label: "Single-target damage" },
-  "area-damage": { short: "AOE", label: "Area damage" },
-  control: { short: "CTL", label: "Control" },
-  "support-buff": { short: "SUP", label: "Support / buffing" },
-  "defense-protection": { short: "DEF", label: "Defense / protection" },
-  healing: { short: "HEAL", label: "Healing" },
-  "mobility-positioning": { short: "MOB", label: "Mobility / positioning" },
-  "narrative-interaction": { short: "NAR", label: "Narrative / interaction utility" },
-  "investigation-world-interaction": { short: "INV", label: "Investigation / world interaction utility" },
-  summon: { short: "SUM", label: "Summon" },
-};
-
 const DAMAGE_TYPES: {
   key: DamageRingKey;
   short: string;
@@ -100,7 +97,7 @@ const DAMAGE_TYPES: {
   { key: "Piercing", short: "PRC", label: "Piercing", color: "#b39c77" },
   { key: "Slashing", short: "SLS", label: "Slashing", color: "#c7a77b" },
   { key: "Physical", short: "PHY", label: "Physical / Weapon", color: "#d3b58b" },
-  { key: "Acid", short: "ACD", label: "Acid", color: "#6da85c" },
+  { key: "Acid", short: "ACD", label: "Acid", color: "#76a855" },
   { key: "Cold", short: "CLD", label: "Cold", color: "#74a9d8" },
   { key: "Fire", short: "FIR", label: "Fire", color: "#d06a47" },
   { key: "Force", short: "FRC", label: "Force", color: "#9f86d1" },
@@ -120,16 +117,16 @@ const RESOURCE_SECTORS: {
   color: string;
 }[] = [
   { key: "action", short: "A", label: "Action", color: "#b8863b" },
-  { key: "bonus-action", short: "BA", label: "Bonus Action", color: "#ca9451" },
+  { key: "bonus-action", short: "BA", label: "Bonus Action", color: "#c89452" },
   { key: "reaction", short: "R", label: "Reaction", color: "#d7aa65" },
   { key: "concentration", short: "CON", label: "Concentration", color: "#7c65ae" },
   { key: "cantrip", short: "CAN", label: "Cantrip use", color: "#5e9bb2" },
-  { key: "slot-1", short: "S1", label: "Spell slot level 1", color: "#8d4f57" },
-  { key: "slot-2", short: "S2", label: "Spell slot level 2", color: "#a55b63" },
-  { key: "slot-3", short: "S3", label: "Spell slot level 3", color: "#b76870" },
-  { key: "slot-4", short: "S4", label: "Spell slot level 4", color: "#c6787f" },
-  { key: "slot-5", short: "S5", label: "Spell slot level 5", color: "#d28a8f" },
-  { key: "slot-6", short: "S6", label: "Spell slot level 6", color: "#df9ca0" },
+  { key: "slot-1", short: "I", label: "Spell slot level 1", color: "#8d4f57" },
+  { key: "slot-2", short: "II", label: "Spell slot level 2", color: "#a55b63" },
+  { key: "slot-3", short: "III", label: "Spell slot level 3", color: "#b76870" },
+  { key: "slot-4", short: "IV", label: "Spell slot level 4", color: "#c6787f" },
+  { key: "slot-5", short: "V", label: "Spell slot level 5", color: "#d28a8f" },
+  { key: "slot-6", short: "VI", label: "Spell slot level 6", color: "#df9ca0" },
   { key: "pact", short: "PACT", label: "Pact Magic slot use", color: "#9357a2" },
   { key: "short-rest", short: "SR", label: "Short-rest reliance", color: "#4f9d88" },
   { key: "long-rest", short: "LR", label: "Long-rest reliance", color: "#67a36c" },
@@ -139,6 +136,7 @@ const RESOURCE_SECTORS: {
 
 function polarToCartesian(cx: number, cy: number, radius: number, angleInDegrees: number) {
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+
   return {
     x: cx + radius * Math.cos(angleInRadians),
     y: cy + radius * Math.sin(angleInRadians),
@@ -153,7 +151,8 @@ function describeDonutSegment(
   startAngle: number,
   endAngle: number
 ) {
-  const safeEndAngle = endAngle - startAngle >= 360 ? startAngle + 359.999 : endAngle;
+  const safeEndAngle =
+    endAngle - startAngle >= 360 ? startAngle + 359.999 : endAngle;
 
   const outerStart = polarToCartesian(cx, cy, outerRadius, safeEndAngle);
   const outerEnd = polarToCartesian(cx, cy, outerRadius, startAngle);
@@ -188,6 +187,33 @@ function describeDonutSegment(
   ].join(" ");
 }
 
+function describeTextArc(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number
+) {
+  const start = polarToCartesian(cx, cy, radius, startAngle);
+  const end = polarToCartesian(cx, cy, radius, endAngle);
+  const largeArcFlag = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+  const sweepFlag = endAngle > startAngle ? 1 : 0;
+
+  return [
+    "M",
+    start.x,
+    start.y,
+    "A",
+    radius,
+    radius,
+    0,
+    largeArcFlag,
+    sweepFlag,
+    end.x,
+    end.y,
+  ].join(" ");
+}
+
 function getOpacity(value: number, maxValue: number, minOpacity = 0.08, maxOpacity = 0.96) {
   if (value <= 0 || maxValue <= 0) return minOpacity;
   return minOpacity + (value / maxValue) * (maxOpacity - minOpacity);
@@ -199,15 +225,15 @@ function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
     .filter((spell): spell is BG3Spell => Boolean(spell));
 }
 
-function sortEntriesDescending<T extends string>(record: Record<T, number>): Array<[T, number]> {
-  return (Object.entries(record) as Array<[T, number]>)
-    .sort((a, b) => b[1] - a[1])
-    .filter(([, value]) => value > 0);
-}
+function getRangeDotAngles(value: number) {
+  if (value <= 0) return [];
+  if (value === 1) return [0];
+  if (value === 2) return [0, 180];
 
-function formatPercent(value: number, total: number) {
-  if (total <= 0) return "0%";
-  return `${Math.round((value / total) * 100)}%`;
+  const step = 360 / value;
+  const offset = step / 3;
+
+  return Array.from({ length: value }, (_, index) => offset + step * index);
 }
 
 export default function DataCircle({
@@ -222,12 +248,19 @@ export default function DataCircle({
   const displaySpellIds = isUsingMockData ? mockSelectedSpellIds : selectedSpellIds;
 
   const displayBuildName = isUsingMockData ? mockDataCircleBuild.buildName : buildName;
-  const displayCharacterName = isUsingMockData ? mockDataCircleBuild.characterName : characterName;
+  const displayCharacterName = isUsingMockData
+    ? mockDataCircleBuild.characterName
+    : characterName;
   const displayClass = isUsingMockData ? mockDataCircleBuild.selectedClass : selectedClass;
-  const displaySubclass = isUsingMockData ? mockDataCircleBuild.selectedSubclass : selectedSubclass;
+  const displaySubclass = isUsingMockData
+    ? mockDataCircleBuild.selectedSubclass
+    : selectedSubclass;
   const displayLevel = isUsingMockData ? mockDataCircleBuild.selectedLevel : selectedLevel;
 
-  const selectedSpells = useMemo(() => getSelectedSpells(displaySpellIds), [displaySpellIds]);
+  const selectedSpells = useMemo(
+    () => getSelectedSpells(displaySpellIds),
+    [displaySpellIds]
+  );
 
   const buildLabel = displayBuildName.trim() || "Untitled Build";
   const characterLabel = displayCharacterName.trim();
@@ -353,12 +386,18 @@ export default function DataCircle({
       if (spell.costs.actions.includes("action")) counts.action += 1;
       if (spell.costs.actions.includes("bonus-action")) counts["bonus-action"] += 1;
       if (spell.costs.actions.includes("reaction")) counts.reaction += 1;
-      if (spell.costs.actions.includes("passive") || spell.costs.actions.includes("conditional")) {
+
+      if (
+        spell.costs.actions.includes("passive") ||
+        spell.costs.actions.includes("conditional")
+      ) {
         counts["passive-conditional"] += 1;
       }
 
       if (spell.costs.requiresConcentration) counts.concentration += 1;
-      if (spell.rank === 0 || spell.costs.resources.includes("cantrip")) counts.cantrip += 1;
+      if (spell.rank === 0 || spell.costs.resources.includes("cantrip")) {
+        counts.cantrip += 1;
+      }
 
       if (
         spell.costs.resources.includes("spell-slot") &&
@@ -381,440 +420,437 @@ export default function DataCircle({
   const maxRangeCount = Math.max(...Object.values(rangeCounts), 1);
   const maxResourceCount = Math.max(...Object.values(resourceCounts), 1);
 
-  const damageAngle = roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
+  const damageAngle =
+    roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
+
   const roleStartAngle = -90;
   const clampedDamageAngle = Math.max(0.001, Math.min(359.999, damageAngle));
   const utilityStartAngle = roleStartAngle + clampedDamageAngle;
 
-  const damageTypeTotal = Object.values(damageTypeCounts).reduce((sum, value) => sum + value, 0);
-  const topDamageTypes = sortEntriesDescending(damageTypeCounts).slice(0, 5);
-  const activeResources = sortEntriesDescending(resourceCounts).slice(0, 6);
-
-  const rangeDotAngles = Array.from({ length: 28 }, (_, index) => (360 / 28) * index);
+  const damageTypeTotal = Object.values(damageTypeCounts).reduce(
+    (sum, value) => sum + value,
+    0
+  );
 
   return (
     <div className="data-circle-panel">
-      <div className="data-circle-hero">
-        <div className="data-circle-frame">
-          <svg
-            viewBox="0 0 720 720"
-            className="data-circle-svg"
-            role="img"
-            aria-label="Overview Data Circle visualization"
-          >
-            <defs>
-              <radialGradient id="sealGradient" cx="50%" cy="42%" r="68%">
-                <stop offset="0%" stopColor="#72542f" />
-                <stop offset="58%" stopColor="#332516" />
-                <stop offset="100%" stopColor="#13100c" />
-              </radialGradient>
+      <div className="data-circle-stage">
+        <svg
+          viewBox="0 0 1000 1000"
+          className="data-circle-svg"
+          role="img"
+          aria-label="Overview Data Circle visualization"
+        >
+          <defs>
+            <radialGradient id="sealGradient" cx="50%" cy="42%" r="70%">
+              <stop offset="0%" stopColor="#d9b562" />
+              <stop offset="62%" stopColor="#7b5525" />
+              <stop offset="100%" stopColor="#21170e" />
+            </radialGradient>
 
-              <radialGradient id="circleGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(216,178,104,0.16)" />
-                <stop offset="48%" stopColor="rgba(216,178,104,0.04)" />
-                <stop offset="100%" stopColor="rgba(216,178,104,0)" />
-              </radialGradient>
+            <radialGradient id="circleBackground" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(216,178,104,0.18)" />
+              <stop offset="48%" stopColor="rgba(18,14,10,0.55)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </radialGradient>
 
-              <filter id="softGlow">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
+            <filter id="dataCircleGlow">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
 
-            <circle cx={CX} cy={CY} r={346} fill="url(#circleGlow)" />
-            <circle cx={CX} cy={CY} r={332} fill="none" stroke="rgba(216,178,104,0.2)" strokeWidth="1.5" />
-            <circle cx={CX} cy={CY} r={304} fill="none" stroke="rgba(216,178,104,0.08)" />
-            <circle cx={CX} cy={CY} r={258} fill="none" stroke="rgba(216,178,104,0.08)" />
-            <circle cx={CX} cy={CY} r={214} fill="none" stroke="rgba(216,178,104,0.08)" />
-            <circle cx={CX} cy={CY} r={108} fill="none" stroke="rgba(216,178,104,0.1)" />
+            {RANGE_BANDS.map((band) => (
+              <path
+                key={`range-label-path-${band.key}`}
+                id={`rangeLabelPath-${band.key}`}
+                d={describeTextArc(
+                  CX,
+                  CY,
+                  band.labelRadius,
+                  RANGE_LABEL_ARC_START,
+                  RANGE_LABEL_ARC_END
+                )}
+              />
+            ))}
 
-            <text x="58" y="354" className="data-circle-layer-label">C2 RANGE RADAR</text>
-            <text x="58" y="214" className="data-circle-layer-label">C3 ROLE</text>
-            <text x="58" y="118" className="data-circle-layer-label">C4 DAMAGE TYPE</text>
-            <text x="58" y="72" className="data-circle-layer-label">C5 RESOURCES</text>
+            <path id="rangeTitlePath" d={describeTextArc(CX, CY, 266, -50, 50)} />
+            <path id="roleTitlePath" d={describeTextArc(CX, CY, 326, -50, 50)} />
+            <path id="damageTitlePath" d={describeTextArc(CX, CY, 392, -52, 52)} />
+            <path
+              id="resourceTitlePath"
+              d={describeTextArc(CX, CY, 450, -56, 56)}
+            />
+          </defs>
 
+          <circle cx={CX} cy={CY} r={480} fill="url(#circleBackground)" />
+
+          {Array.from({ length: 18 }, (_, index) => (
             <circle
+              key={`outer-guide-${index}`}
               cx={CX}
               cy={CY}
-              r={88}
-              fill="url(#sealGradient)"
-              stroke="rgba(216,178,104,0.78)"
-              strokeWidth="3"
-              filter="url(#softGlow)"
+              r={340 + index * 8}
+              fill="none"
+              stroke="rgba(216,178,104,0.055)"
+              strokeWidth="1"
             />
-            <circle cx={CX} cy={CY} r={73} fill="none" stroke="rgba(216,178,104,0.28)" strokeWidth="2" />
-            <circle cx={CX} cy={CY} r={58} fill="none" stroke="rgba(255,255,255,0.08)" />
+          ))}
 
-            {characterLabel ? (
-              <text x={CX} y={326} className="data-circle-character-name">
-                {characterLabel}
-              </text>
-            ) : null}
+          <circle
+            cx={CX}
+            cy={CY}
+            r={470}
+            fill="none"
+            stroke="rgba(216,178,104,0.18)"
+            strokeWidth="1.5"
+          />
+          <circle cx={CX} cy={CY} r={452} fill="none" stroke="rgba(216,178,104,0.08)" />
+          <circle cx={CX} cy={CY} r={420} fill="none" stroke="rgba(216,178,104,0.12)" />
+          <circle cx={CX} cy={CY} r={388} fill="none" stroke="rgba(216,178,104,0.11)" />
+          <circle cx={CX} cy={CY} r={356} fill="none" stroke="rgba(216,178,104,0.11)" />
+          <circle cx={CX} cy={CY} r={324} fill="none" stroke="rgba(216,178,104,0.11)" />
+          <circle cx={CX} cy={CY} r={292} fill="none" stroke="rgba(216,178,104,0.11)" />
+          <circle cx={CX} cy={CY} r={260} fill="none" stroke="rgba(216,178,104,0.11)" />
 
-            <text x={CX} y={354} className="data-circle-build-name">
-              {buildLabel.length > 22 ? `${buildLabel.slice(0, 22)}…` : buildLabel}
-            </text>
+          <text className="data-circle-curved-title">
+            <textPath href="#rangeTitlePath" startOffset="50%" textAnchor="middle">
+              COMBAT RANGE PROFILE
+            </textPath>
+          </text>
 
-            <text x={CX} y={378} className="data-circle-archetype">
-              {archetypeLabel.length > 24 ? `${archetypeLabel.slice(0, 24)}…` : archetypeLabel}
-            </text>
+          <text className="data-circle-curved-title">
+            <textPath href="#roleTitlePath" startOffset="50%" textAnchor="middle">
+              ABILITY ROLE DISTRIBUTION
+            </textPath>
+          </text>
 
-            <rect
-              x={285}
-              y={398}
-              width={150}
-              height={34}
-              rx={17}
-              fill="rgba(10, 8, 6, 0.82)"
-              stroke="rgba(216,178,104,0.5)"
-            />
-            <text x={CX} y={420} className="data-circle-plate-text">
-              L{displayLevel} · {spellCount} abilities
-            </text>
+          <text className="data-circle-curved-title">
+            <textPath href="#damageTitlePath" startOffset="50%" textAnchor="middle">
+              DAMAGE TYPE DISTRIBUTION
+            </textPath>
+          </text>
 
-            {RANGE_BANDS.map((band) => {
-              const value = rangeCounts[band.key];
-              const activeDots = value <= 0 ? 0 : Math.max(2, Math.round((value / maxRangeCount) * rangeDotAngles.length));
-              const opacity = getOpacity(value, maxRangeCount, 0.08, 0.9);
+          <text className="data-circle-curved-title">
+            <textPath href="#resourceTitlePath" startOffset="50%" textAnchor="middle">
+              ACTION RESOURCES AND REQUIREMENTS
+            </textPath>
+          </text>
 
-              return (
-                <g key={band.key}>
-                  <circle
-                    cx={CX}
-                    cy={CY}
-                    r={band.radius}
-                    fill="none"
-                    stroke="rgba(216,178,104,0.18)"
-                    strokeWidth="1.2"
-                  />
+          {RESOURCE_SECTORS.map((sector, index) => {
+            const sectorAngle = 360 / RESOURCE_SECTORS.length;
+            const angle = -180 + index * sectorAngle + sectorAngle / 2;
+            const value = resourceCounts[sector.key];
+            const height = value <= 0 ? 14 : 22 + (value / maxResourceCount) * 76;
+            const width = 20;
+            const baseRadius = 444;
+            const center = polarToCartesian(CX, CY, baseRadius + height / 2, angle);
 
-                  {rangeDotAngles.map((angle, index) => {
-                    const { x, y } = polarToCartesian(CX, CY, band.radius, angle);
-                    const active = index < activeDots;
-
-                    return (
-                      <circle
-                        key={`${band.key}-${angle}`}
-                        cx={x}
-                        cy={y}
-                        r={active ? 4.1 : 2.2}
-                        fill="#d6ad63"
-                        fillOpacity={active ? opacity : 0.08}
-                      />
-                    );
-                  })}
-
-                  <text
-                    x={CX + band.radius + 18}
-                    y={CY + 4}
-                    className="data-circle-range-label"
-                    opacity={band.key === "long" ? 1 : 0}
-                  >
-                    {band.distance}
-                  </text>
-                </g>
-              );
-            })}
-
-            {roleData.damageTotal > 0 && (
-              <path
-                d={describeDonutSegment(CX, CY, 220, 258, roleStartAngle, roleStartAngle + clampedDamageAngle)}
-                fill="#914f43"
-                fillOpacity="0.9"
-                stroke="rgba(12,10,8,0.75)"
-                strokeWidth="2"
-              />
-            )}
-
-            {roleData.utilityTotal > 0 && (
-              <path
-                d={describeDonutSegment(CX, CY, 220, 258, utilityStartAngle, roleStartAngle + 360)}
-                fill="#4e756c"
-                fillOpacity="0.9"
-                stroke="rgba(12,10,8,0.75)"
-                strokeWidth="2"
-              />
-            )}
-
-            {roleData.total === 0 && (
-              <>
-                <path
-                  d={describeDonutSegment(CX, CY, 220, 258, -90, 90)}
-                  fill="#914f43"
-                  fillOpacity="0.18"
-                  stroke="rgba(255,255,255,0.05)"
+            return (
+              <g
+                key={sector.key}
+                transform={`translate(${center.x} ${center.y}) rotate(${angle})`}
+              >
+                <rect
+                  x={-width / 2}
+                  y={-height / 2}
+                  width={width}
+                  height={height}
+                  rx="2"
+                  fill={sector.color}
+                  fillOpacity={getOpacity(value, maxResourceCount, 0.13, 0.95)}
+                  stroke="rgba(8,6,4,0.72)"
+                  strokeWidth="1"
                 />
-                <path
-                  d={describeDonutSegment(CX, CY, 220, 258, 90, 270)}
-                  fill="#4e756c"
-                  fillOpacity="0.18"
-                  stroke="rgba(255,255,255,0.05)"
-                />
-              </>
-            )}
-
-            {(() => {
-              const damageTotal = roleData.damageTotal || 1;
-              let currentAngle = roleStartAngle;
-
-              return DAMAGE_ROLE_KEYS.map((role, index) => {
-                const count = roleData.counts[role];
-                const sliceAngle = (count / damageTotal) * clampedDamageAngle;
-                currentAngle += sliceAngle;
-
-                if (index === DAMAGE_ROLE_KEYS.length - 1 || count <= 0) return null;
-
-                const innerPoint = polarToCartesian(CX, CY, 220, currentAngle);
-                const outerPoint = polarToCartesian(CX, CY, 258, currentAngle);
-
-                return (
-                  <line
-                    key={`damage-divider-${role}`}
-                    x1={innerPoint.x}
-                    y1={innerPoint.y}
-                    x2={outerPoint.x}
-                    y2={outerPoint.y}
-                    stroke="rgba(255,255,255,0.32)"
-                    strokeWidth="1.2"
+                {value > 0 ? (
+                  <rect
+                    x={-width / 2}
+                    y={-height / 2}
+                    width={width}
+                    height={Math.max(5, height * 0.18)}
+                    rx="2"
+                    fill="rgba(255,135,45,0.55)"
                   />
-                );
-              });
-            })()}
+                ) : null}
+              </g>
+            );
+          })}
 
-            {(() => {
-              const utilityTotal = roleData.utilityTotal || 1;
-              let currentAngle = utilityStartAngle;
-              const utilitySweep = 360 - clampedDamageAngle;
+          {damageTypeTotal > 0 ? (
+            (() => {
+              let currentAngle = -90;
 
-              return UTILITY_ROLE_KEYS.map((role, index) => {
-                const count = roleData.counts[role];
-                const sliceAngle = (count / utilityTotal) * utilitySweep;
-                currentAngle += sliceAngle;
+              return DAMAGE_TYPES.map((type) => {
+                const value = damageTypeCounts[type.key];
 
-                if (index === UTILITY_ROLE_KEYS.length - 1 || count <= 0) return null;
+                if (value <= 0) {
+                  return null;
+                }
 
-                const innerPoint = polarToCartesian(CX, CY, 220, currentAngle);
-                const outerPoint = polarToCartesian(CX, CY, 258, currentAngle);
-
-                return (
-                  <line
-                    key={`utility-divider-${role}`}
-                    x1={innerPoint.x}
-                    y1={innerPoint.y}
-                    x2={outerPoint.x}
-                    y2={outerPoint.y}
-                    stroke="rgba(255,255,255,0.16)"
-                    strokeWidth="1"
-                  />
-                );
-              });
-            })()}
-
-            {(() => {
-              const damageMidAngle = roleStartAngle + clampedDamageAngle / 2;
-              const utilityMidAngle = utilityStartAngle + (360 - clampedDamageAngle) / 2;
-              const damageLabelPos = polarToCartesian(CX, CY, 276, damageMidAngle);
-              const utilityLabelPos = polarToCartesian(CX, CY, 276, utilityMidAngle);
-
-              return (
-                <>
-                  <text x={damageLabelPos.x} y={damageLabelPos.y} className="data-circle-ring-label">
-                    DAMAGE
-                  </text>
-                  <text x={utilityLabelPos.x} y={utilityLabelPos.y} className="data-circle-ring-label">
-                    UTILITY
-                  </text>
-                </>
-              );
-            })()}
-
-            {damageTypeTotal > 0 ? (
-              (() => {
-                let currentAngle = -90;
-
-                return DAMAGE_TYPES.map((type) => {
-                  const value = damageTypeCounts[type.key];
-                  if (value <= 0) return null;
-
-                  const sweep = Math.max(4, (value / damageTypeTotal) * 360);
-                  const startAngle = currentAngle;
-                  const endAngle = currentAngle + sweep;
-                  currentAngle = endAngle;
-
-                  return (
-                    <path
-                      key={type.key}
-                      d={describeDonutSegment(CX, CY, 272, 308, startAngle, endAngle)}
-                      fill={type.color}
-                      fillOpacity="0.88"
-                      stroke="rgba(12,10,8,0.8)"
-                      strokeWidth="2"
-                    />
-                  );
-                });
-              })()
-            ) : (
-              DAMAGE_TYPES.map((type, index) => {
-                const startAngle = -90 + index * (360 / DAMAGE_TYPES.length);
-                const endAngle = startAngle + 360 / DAMAGE_TYPES.length;
+                const sweep = (value / damageTypeTotal) * 360;
+                const startAngle = currentAngle;
+                const endAngle = currentAngle + sweep;
+                currentAngle = endAngle;
 
                 return (
                   <path
                     key={type.key}
-                    d={describeDonutSegment(CX, CY, 272, 308, startAngle, endAngle)}
+                    d={describeDonutSegment(CX, CY, 350, 380, startAngle, endAngle)}
                     fill={type.color}
-                    fillOpacity="0.08"
-                    stroke="rgba(12,10,8,0.45)"
-                    strokeWidth="1"
+                    fillOpacity="0.78"
+                    stroke="rgba(0,0,0,0.82)"
+                    strokeWidth="3"
                   />
                 );
-              })
-            )}
+              });
+            })()
+          ) : (
+            <circle
+              cx={CX}
+              cy={CY}
+              r={365}
+              fill="none"
+              stroke="rgba(216,178,104,0.08)"
+              strokeWidth="30"
+            />
+          )}
 
-            {RESOURCE_SECTORS.map((sector, index) => {
-              const startAngle = -90 + index * (360 / RESOURCE_SECTORS.length);
-              const endAngle = startAngle + 360 / RESOURCE_SECTORS.length;
-              const value = resourceCounts[sector.key];
-              const opacity = getOpacity(value, maxResourceCount, 0.08, 0.95);
-              const labelPoint = polarToCartesian(CX, CY, 334, startAngle + (endAngle - startAngle) / 2);
+          {roleData.damageTotal > 0 && (
+            <path
+              d={describeDonutSegment(
+                CX,
+                CY,
+                286,
+                318,
+                roleStartAngle,
+                roleStartAngle + clampedDamageAngle
+              )}
+              fill="#ff980d"
+              fillOpacity="0.95"
+              stroke="rgba(0,0,0,0.85)"
+              strokeWidth="3"
+            />
+          )}
+
+          {roleData.utilityTotal > 0 && (
+            <path
+              d={describeDonutSegment(
+                CX,
+                CY,
+                286,
+                318,
+                utilityStartAngle,
+                roleStartAngle + 360
+              )}
+              fill="#00d4b8"
+              fillOpacity="0.9"
+              stroke="rgba(0,0,0,0.85)"
+              strokeWidth="3"
+            />
+          )}
+
+          {roleData.total === 0 ? (
+            <>
+              <path
+                d={describeDonutSegment(CX, CY, 286, 318, -90, 90)}
+                fill="#ff980d"
+                fillOpacity="0.2"
+                stroke="rgba(0,0,0,0.85)"
+                strokeWidth="3"
+              />
+              <path
+                d={describeDonutSegment(CX, CY, 286, 318, 90, 270)}
+                fill="#00d4b8"
+                fillOpacity="0.2"
+                stroke="rgba(0,0,0,0.85)"
+                strokeWidth="3"
+              />
+            </>
+          ) : null}
+
+          {(() => {
+            const damageTotal = roleData.damageTotal || 1;
+            let currentAngle = roleStartAngle;
+
+            return DAMAGE_ROLE_KEYS.map((role, index) => {
+              const count = roleData.counts[role];
+              const sliceAngle = (count / damageTotal) * clampedDamageAngle;
+              currentAngle += sliceAngle;
+
+              if (index === DAMAGE_ROLE_KEYS.length - 1 || count <= 0) {
+                return null;
+              }
+
+              const innerPoint = polarToCartesian(CX, CY, 286, currentAngle);
+              const outerPoint = polarToCartesian(CX, CY, 318, currentAngle);
 
               return (
-                <g key={sector.key}>
-                  <path
-                    d={describeDonutSegment(CX, CY, 318, 346, startAngle, endAngle)}
-                    fill={sector.color}
-                    fillOpacity={opacity}
-                    stroke="rgba(12,10,8,0.9)"
-                    strokeWidth="2"
-                  />
-                  <text x={labelPoint.x} y={labelPoint.y} className="data-circle-micro-label">
-                    {sector.short}
-                  </text>
-                </g>
+                <line
+                  key={`damage-role-divider-${role}`}
+                  x1={innerPoint.x}
+                  y1={innerPoint.y}
+                  x2={outerPoint.x}
+                  y2={outerPoint.y}
+                  stroke="rgba(0,0,0,0.45)"
+                  strokeWidth="2"
+                />
               );
-            })}
-          </svg>
-        </div>
+            });
+          })()}
 
-        <aside className="data-circle-side-readout">
-          <div className="data-circle-readout-card">
-            <span>C2</span>
-            <strong>Range profile</strong>
-            <p>Dot density across fixed distance bands.</p>
-          </div>
+          {(() => {
+            const utilityTotal = roleData.utilityTotal || 1;
+            let currentAngle = utilityStartAngle;
+            const utilitySweep = 360 - clampedDamageAngle;
 
-          <div className="data-circle-readout-card">
-            <span>C3</span>
-            <strong>{formatPercent(roleData.damageTotal, roleData.total)} Damage</strong>
-            <p>{formatPercent(roleData.utilityTotal, roleData.total)} Utility</p>
-          </div>
+            return UTILITY_ROLE_KEYS.map((role, index) => {
+              const count = roleData.counts[role];
+              const sliceAngle = (count / utilityTotal) * utilitySweep;
+              currentAngle += sliceAngle;
 
-          <div className="data-circle-readout-card">
-            <span>C4</span>
-            <strong>Damage types</strong>
-            <p>{topDamageTypes.map(([key]) => DAMAGE_TYPES.find((type) => type.key === key)?.short).filter(Boolean).join(" · ") || "No damage types"}</p>
-          </div>
+              if (index === UTILITY_ROLE_KEYS.length - 1 || count <= 0) {
+                return null;
+              }
 
-          <div className="data-circle-readout-card">
-            <span>C5</span>
-            <strong>Resources</strong>
-            <p>{activeResources.map(([key]) => RESOURCE_SECTORS.find((sector) => sector.key === key)?.short).filter(Boolean).join(" · ") || "No resources"}</p>
-          </div>
-        </aside>
+              const innerPoint = polarToCartesian(CX, CY, 286, currentAngle);
+              const outerPoint = polarToCartesian(CX, CY, 318, currentAngle);
+
+              return (
+                <line
+                  key={`utility-role-divider-${role}`}
+                  x1={innerPoint.x}
+                  y1={innerPoint.y}
+                  x2={outerPoint.x}
+                  y2={outerPoint.y}
+                  stroke="rgba(0,0,0,0.35)"
+                  strokeWidth="2"
+                />
+              );
+            });
+          })()}
+
+          {RANGE_BANDS.map((band) => {
+            const value = rangeCounts[band.key];
+            const middleRadius = (band.innerRadius + band.outerRadius) / 2;
+            const bandWidth = band.outerRadius - band.innerRadius;
+            const angles = getRangeDotAngles(value);
+            const opacity = getOpacity(value, maxRangeCount, 0.35, 0.95);
+
+            return (
+              <g key={band.key}>
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={middleRadius}
+                  fill="none"
+                  stroke="rgba(74,55,136,0.15)"
+                  strokeWidth={bandWidth}
+                />
+
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={band.innerRadius}
+                  fill="none"
+                  stroke="rgba(91,79,210,0.28)"
+                  strokeWidth="1"
+                />
+
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={band.outerRadius}
+                  fill="none"
+                  stroke="rgba(91,79,210,0.28)"
+                  strokeWidth="1"
+                />
+
+                <text className="data-circle-range-band-label">
+                  <textPath
+                    href={`#rangeLabelPath-${band.key}`}
+                    startOffset="50%"
+                    textAnchor="middle"
+                  >
+                    {band.label}
+                  </textPath>
+                </text>
+
+                {angles.map((angle, index) => {
+                  const { x, y } = polarToCartesian(CX, CY, middleRadius, angle);
+
+                  return (
+                    <circle
+                      key={`${band.key}-dot-${index}`}
+                      cx={x}
+                      cy={y}
+                      r={5}
+                      fill="#7d49d8"
+                      fillOpacity={opacity}
+                    />
+                  );
+                })}
+              </g>
+            );
+          })}
+
+          <circle
+            cx={CX}
+            cy={CY}
+            r="88"
+            fill="url(#sealGradient)"
+            stroke="rgba(216,178,104,0.84)"
+            strokeWidth="3"
+            filter="url(#dataCircleGlow)"
+          />
+
+          {Array.from({ length: 12 }, (_, index) => {
+            const angle = index * 30;
+            const end = polarToCartesian(CX, CY, 88, angle);
+
+            return (
+              <line
+                key={`seal-line-${index}`}
+                x1={CX}
+                y1={CY}
+                x2={end.x}
+                y2={end.y}
+                stroke="rgba(0,0,0,0.28)"
+                strokeWidth="1"
+              />
+            );
+          })}
+
+          {characterLabel ? (
+            <text x={CX} y="462" className="data-circle-character-name">
+              {characterLabel.length > 18
+                ? `${characterLabel.slice(0, 18)}…`
+                : characterLabel}
+            </text>
+          ) : null}
+
+          <text x={CX} y="488" className="data-circle-build-name">
+            {buildLabel.length > 20 ? `${buildLabel.slice(0, 20)}…` : buildLabel}
+          </text>
+
+          <text x={CX} y="513" className="data-circle-archetype">
+            {archetypeLabel.length > 22
+              ? `${archetypeLabel.slice(0, 22)}…`
+              : archetypeLabel}
+          </text>
+
+          <text x={CX} y="540" className="data-circle-plate-text">
+            L{displayLevel} · {spellCount} abilities
+          </text>
+        </svg>
       </div>
 
       {isUsingMockData ? (
         <p className="data-circle-empty">
-          Mock data is shown until spells are selected. The overview structure remains fixed for build-to-build comparison.
+          Mock data is shown until spells are selected.
         </p>
       ) : null}
-
-      <div className="data-circle-legend-grid compact">
-        <section className="data-circle-legend-block">
-          <h3>Combat Range</h3>
-          <div className="data-circle-legend-list">
-            {RANGE_BANDS.map((band) => (
-              <div key={band.key} className="data-circle-legend-item">
-                <div className="data-circle-legend-main">
-                  <span className="data-circle-legend-name">{band.label}</span>
-                  <span className="data-circle-legend-meta">{band.distance}</span>
-                </div>
-                <strong>{rangeCounts[band.key]}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="data-circle-legend-block">
-          <h3>Role Split</h3>
-          <div className="data-circle-role-summary">
-            <div className="data-circle-role-pill damage">
-              Damage {formatPercent(roleData.damageTotal, roleData.total)}
-            </div>
-            <div className="data-circle-role-pill utility">
-              Utility {formatPercent(roleData.utilityTotal, roleData.total)}
-            </div>
-          </div>
-          <div className="data-circle-legend-list">
-            {[...DAMAGE_ROLE_KEYS, ...UTILITY_ROLE_KEYS].map((role) => (
-              <div key={role} className="data-circle-legend-item">
-                <div className="data-circle-legend-main">
-                  <span className="data-circle-legend-name">{ROLE_LABELS[role].label}</span>
-                  <span className="data-circle-legend-meta">{ROLE_LABELS[role].short}</span>
-                </div>
-                <strong>{roleData.counts[role]}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="data-circle-legend-block">
-          <h3>Damage Types</h3>
-          <div className="data-circle-legend-list">
-            {topDamageTypes.length > 0 ? (
-              topDamageTypes.map(([key, value]) => {
-                const type = DAMAGE_TYPES.find((entry) => entry.key === key)!;
-                return (
-                  <div key={key} className="data-circle-legend-item">
-                    <div className="data-circle-legend-main">
-                      <span className="data-circle-swatch" style={{ background: type.color }} />
-                      <span className="data-circle-legend-name">{type.label}</span>
-                    </div>
-                    <strong>{value}</strong>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="data-circle-muted">No damaging ability types selected yet.</p>
-            )}
-          </div>
-        </section>
-
-        <section className="data-circle-legend-block">
-          <h3>Action / Resource Profile</h3>
-          <div className="data-circle-legend-list">
-            {activeResources.length > 0 ? (
-              activeResources.map(([key, value]) => {
-                const entry = RESOURCE_SECTORS.find((sector) => sector.key === key)!;
-                return (
-                  <div key={key} className="data-circle-legend-item">
-                    <div className="data-circle-legend-main">
-                      <span className="data-circle-swatch" style={{ background: entry.color }} />
-                      <span className="data-circle-legend-name">{entry.label}</span>
-                    </div>
-                    <strong>{value}</strong>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="data-circle-muted">No action or resource dependencies available yet.</p>
-            )}
-          </div>
-        </section>
-      </div>
     </div>
   );
 }
