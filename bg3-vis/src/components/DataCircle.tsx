@@ -228,7 +228,7 @@ function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
 function getRangeDotAngles(count: number) {
   if (count <= 0) return [];
 
-  const blockedArc = 72;
+  const blockedArc = 82;
   const availableSweep = 360 - blockedArc;
   const startAngle = blockedArc / 2;
   const step = availableSweep / count;
@@ -237,6 +237,33 @@ function getRangeDotAngles(count: number) {
     const angle = startAngle + step * index + step / 2;
     return angle % 360;
   });
+}
+
+function getRangeBandIntensity(value: number, maxValue: number) {
+  if (value <= 0 || maxValue <= 0) {
+    return {
+      bandOpacity: 0.025,
+      rimOpacity: 0.11,
+      auraOpacity: 0,
+      scanOpacity: 0.035,
+      dotOpacity: 0,
+      dotGlowOpacity: 0,
+      dotRadius: 0,
+    };
+  }
+
+  const ratio = Math.min(1, value / maxValue);
+  const eased = Math.sqrt(ratio);
+
+  return {
+    bandOpacity: 0.045 + eased * 0.09,
+    rimOpacity: 0.17 + eased * 0.22,
+    auraOpacity: 0.03 + eased * 0.09,
+    scanOpacity: 0.06 + eased * 0.1,
+    dotOpacity: 0.72 + eased * 0.2,
+    dotGlowOpacity: 0.1 + eased * 0.2,
+    dotRadius: 3.9 + eased * 0.75,
+  };
 }
 
 export default function DataCircle({
@@ -452,10 +479,31 @@ export default function DataCircle({
             </radialGradient>
 
             <radialGradient id="circleBackground" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(216,178,104,0.18)" />
-              <stop offset="48%" stopColor="rgba(18,14,10,0.55)" />
+              <stop offset="0%" stopColor="rgba(116,91,170,0.16)" />
+              <stop offset="28%" stopColor="rgba(20,20,34,0.66)" />
+              <stop offset="68%" stopColor="rgba(5,7,13,0.9)" />
               <stop offset="100%" stopColor="rgba(0,0,0,0)" />
             </radialGradient>
+
+            <radialGradient id="radarCoreGradient" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(114,94,190,0.2)" />
+              <stop offset="42%" stopColor="rgba(40,36,68,0.42)" />
+              <stop offset="78%" stopColor="rgba(8,10,20,0.72)" />
+              <stop offset="100%" stopColor="rgba(4,6,12,0.92)" />
+            </radialGradient>
+
+            <radialGradient id="rangeDotGradient" cx="35%" cy="30%" r="70%">
+              <stop offset="0%" stopColor="#f7fbff" />
+              <stop offset="34%" stopColor="#b9dcff" />
+              <stop offset="68%" stopColor="#8e7cff" />
+              <stop offset="100%" stopColor="#4d3bba" />
+            </radialGradient>
+
+            <linearGradient id="radarSweepGradient" x1="500" y1="500" x2="500" y2="252">
+              <stop offset="0%" stopColor="rgba(138,117,255,0.22)" />
+              <stop offset="56%" stopColor="rgba(112,91,220,0.08)" />
+              <stop offset="100%" stopColor="rgba(112,91,220,0)" />
+            </linearGradient>
 
             <filter id="dataCircleGlow">
               <feGaussianBlur stdDeviation="4" result="blur" />
@@ -464,6 +512,70 @@ export default function DataCircle({
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+
+            <filter id="rangeBandGlow">
+              <feGaussianBlur stdDeviation="3.2" result="blur" />
+              <feColorMatrix
+                in="blur"
+                type="matrix"
+                values="
+                  0.45 0 0 0 0.04
+                  0 0.54 0 0 0.05
+                  0 0 1.00 0 0.28
+                  0 0 0 0.48 0
+                "
+                result="softRadarGlow"
+              />
+              <feMerge>
+                <feMergeNode in="softRadarGlow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            <filter id="rangeDotGlow">
+              <feGaussianBlur stdDeviation="4.4" result="blur" />
+              <feColorMatrix
+                in="blur"
+                type="matrix"
+                values="
+                  0.60 0 0 0 0.10
+                  0 0.70 0 0 0.15
+                  0 0 1.00 0 0.46
+                  0 0 0 0.7 0
+                "
+                result="dotGlow"
+              />
+              <feMerge>
+                <feMergeNode in="dotGlow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            <filter id="subtleRadarNoise">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="1.15"
+                numOctaves="2"
+                seed="17"
+                result="noise"
+              />
+              <feColorMatrix
+                in="noise"
+                type="matrix"
+                values="
+                  0 0 0 0 0.25
+                  0 0 0 0 0.25
+                  0 0 0 0 0.42
+                  0 0 0 0.11 0
+                "
+                result="softNoise"
+              />
+              <feBlend in="SourceGraphic" in2="softNoise" mode="screen" />
+            </filter>
+
+            <clipPath id="radarClip">
+              <circle cx={CX} cy={CY} r="247" />
+            </clipPath>
 
             {RANGE_BANDS.map((band) => (
               <path
@@ -497,7 +609,7 @@ export default function DataCircle({
               cy={CY}
               r={340 + index * 8}
               fill="none"
-              stroke="rgba(216,178,104,0.055)"
+              stroke="rgba(216,178,104,0.035)"
               strokeWidth="1"
             />
           ))}
@@ -507,16 +619,16 @@ export default function DataCircle({
             cy={CY}
             r={470}
             fill="none"
-            stroke="rgba(216,178,104,0.18)"
+            stroke="rgba(216,178,104,0.16)"
             strokeWidth="1.5"
           />
-          <circle cx={CX} cy={CY} r={452} fill="none" stroke="rgba(216,178,104,0.08)" />
-          <circle cx={CX} cy={CY} r={420} fill="none" stroke="rgba(216,178,104,0.12)" />
-          <circle cx={CX} cy={CY} r={388} fill="none" stroke="rgba(216,178,104,0.11)" />
-          <circle cx={CX} cy={CY} r={356} fill="none" stroke="rgba(216,178,104,0.11)" />
-          <circle cx={CX} cy={CY} r={324} fill="none" stroke="rgba(216,178,104,0.11)" />
-          <circle cx={CX} cy={CY} r={292} fill="none" stroke="rgba(216,178,104,0.11)" />
-          <circle cx={CX} cy={CY} r={260} fill="none" stroke="rgba(216,178,104,0.11)" />
+          <circle cx={CX} cy={CY} r={452} fill="none" stroke="rgba(216,178,104,0.065)" />
+          <circle cx={CX} cy={CY} r={420} fill="none" stroke="rgba(216,178,104,0.09)" />
+          <circle cx={CX} cy={CY} r={388} fill="none" stroke="rgba(216,178,104,0.09)" />
+          <circle cx={CX} cy={CY} r={356} fill="none" stroke="rgba(216,178,104,0.09)" />
+          <circle cx={CX} cy={CY} r={324} fill="none" stroke="rgba(216,178,104,0.09)" />
+          <circle cx={CX} cy={CY} r={292} fill="none" stroke="rgba(216,178,104,0.09)" />
+          <circle cx={CX} cy={CY} r={260} fill="none" stroke="rgba(216,178,104,0.09)" />
 
           <text className="data-circle-curved-title">
             <textPath href="#rangeTitlePath" startOffset="50%" textAnchor="middle">
@@ -734,12 +846,63 @@ export default function DataCircle({
             });
           })()}
 
+          <g clipPath="url(#radarClip)">
+            <circle
+              cx={CX}
+              cy={CY}
+              r="247"
+              fill="url(#radarCoreGradient)"
+              filter="url(#subtleRadarNoise)"
+            />
+
+            <path
+              d={describeDonutSegment(CX, CY, 0, 247, -16, 24)}
+              fill="url(#radarSweepGradient)"
+              fillOpacity="0.62"
+            />
+
+            {Array.from({ length: 12 }, (_, index) => {
+              const angle = index * 30;
+              const start = polarToCartesian(CX, CY, 92, angle);
+              const end = polarToCartesian(CX, CY, 247, angle);
+
+              return (
+                <line
+                  key={`radar-spoke-${index}`}
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="rgba(137, 128, 210, 0.075)"
+                  strokeWidth="1"
+                />
+              );
+            })}
+
+            {Array.from({ length: 6 }, (_, index) => {
+              const radius = 104 + index * 24;
+
+              return (
+                <circle
+                  key={`radar-subring-${index}`}
+                  cx={CX}
+                  cy={CY}
+                  r={radius}
+                  fill="none"
+                  stroke="rgba(148, 137, 220, 0.055)"
+                  strokeWidth="0.8"
+                  strokeDasharray="1.5 7"
+                />
+              );
+            })}
+          </g>
+
           {RANGE_BANDS.map((band) => {
             const value = rangeCounts[band.key];
             const middleRadius = (band.innerRadius + band.outerRadius) / 2;
             const bandWidth = band.outerRadius - band.innerRadius;
             const angles = getRangeDotAngles(value);
-            const opacity = getOpacity(value, maxRangeCount, 0.35, 0.95);
+            const intensity = getRangeBandIntensity(value, maxRangeCount);
 
             return (
               <g key={band.key}>
@@ -748,8 +911,31 @@ export default function DataCircle({
                   cy={CY}
                   r={middleRadius}
                   fill="none"
-                  stroke="rgba(74,55,136,0.15)"
+                  stroke="#7988ff"
+                  strokeOpacity={intensity.auraOpacity}
+                  strokeWidth={bandWidth + 6}
+                  filter={value > 0 ? "url(#rangeBandGlow)" : undefined}
+                />
+
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={middleRadius}
+                  fill="none"
+                  stroke="#4e5cba"
+                  strokeOpacity={intensity.bandOpacity}
                   strokeWidth={bandWidth}
+                />
+
+                <circle
+                  cx={CX}
+                  cy={CY}
+                  r={middleRadius}
+                  fill="none"
+                  stroke="#9ca8ff"
+                  strokeOpacity={intensity.scanOpacity}
+                  strokeWidth="0.8"
+                  strokeDasharray="2 10"
                 />
 
                 <circle
@@ -757,8 +943,9 @@ export default function DataCircle({
                   cy={CY}
                   r={band.innerRadius}
                   fill="none"
-                  stroke="rgba(91,79,210,0.28)"
-                  strokeWidth="1"
+                  stroke="#8390ff"
+                  strokeOpacity={intensity.rimOpacity}
+                  strokeWidth="0.85"
                 />
 
                 <circle
@@ -766,8 +953,9 @@ export default function DataCircle({
                   cy={CY}
                   r={band.outerRadius}
                   fill="none"
-                  stroke="rgba(91,79,210,0.28)"
-                  strokeWidth="1"
+                  stroke="#8390ff"
+                  strokeOpacity={intensity.rimOpacity}
+                  strokeWidth="0.85"
                 />
 
                 <text className="data-circle-range-band-label">
@@ -782,16 +970,42 @@ export default function DataCircle({
 
                 {angles.map((angle, index) => {
                   const { x, y } = polarToCartesian(CX, CY, middleRadius, angle);
+                  const dotKey = `${band.key}-dot-${index}`;
 
                   return (
-                    <circle
-                      key={`${band.key}-dot-${index}`}
-                      cx={x}
-                      cy={y}
-                      r={5}
-                      fill="#7d49d8"
-                      fillOpacity={opacity}
-                    />
+                    <g key={dotKey}>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={intensity.dotRadius + 5.8}
+                        fill="#7f8dff"
+                        fillOpacity={intensity.dotGlowOpacity}
+                        filter="url(#rangeDotGlow)"
+                      />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={intensity.dotRadius + 2}
+                        fill="none"
+                        stroke="rgba(178, 190, 255, 0.26)"
+                        strokeWidth="1"
+                      />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={intensity.dotRadius}
+                        fill="url(#rangeDotGradient)"
+                        fillOpacity={intensity.dotOpacity}
+                        stroke="rgba(236, 242, 255, 0.58)"
+                        strokeWidth="0.7"
+                      />
+                      <circle
+                        cx={x - 1.3}
+                        cy={y - 1.4}
+                        r="1.05"
+                        fill="rgba(255,255,255,0.74)"
+                      />
+                    </g>
                   );
                 })}
               </g>
