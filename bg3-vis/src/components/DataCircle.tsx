@@ -225,15 +225,18 @@ function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
     .filter((spell): spell is BG3Spell => Boolean(spell));
 }
 
-function getRangeDotAngles(value: number) {
-  if (value <= 0) return [];
-  if (value === 1) return [0];
-  if (value === 2) return [0, 180];
+function getRangeDotAngles(count: number) {
+  if (count <= 0) return [];
 
-  const step = 360 / value;
-  const offset = step / 3;
+  const blockedArc = 72;
+  const availableSweep = 360 - blockedArc;
+  const startAngle = blockedArc / 2;
+  const step = availableSweep / count;
 
-  return Array.from({ length: value }, (_, index) => offset + step * index);
+  return Array.from({ length: count }, (_, index) => {
+    const angle = startAngle + step * index + step / 2;
+    return angle % 360;
+  });
 }
 
 export default function DataCircle({
