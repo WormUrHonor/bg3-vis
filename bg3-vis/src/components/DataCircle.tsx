@@ -92,22 +92,129 @@ const DAMAGE_TYPES: {
   short: string;
   label: string;
   color: string;
+  darkColor: string;
+  lightColor: string;
 }[] = [
-  { key: "Bludgeoning", short: "BLD", label: "Bludgeoning", color: "#a58e78" },
-  { key: "Piercing", short: "PRC", label: "Piercing", color: "#b39c77" },
-  { key: "Slashing", short: "SLS", label: "Slashing", color: "#c7a77b" },
-  { key: "Physical", short: "PHY", label: "Physical / Weapon", color: "#d3b58b" },
-  { key: "Acid", short: "ACD", label: "Acid", color: "#76a855" },
-  { key: "Cold", short: "CLD", label: "Cold", color: "#74a9d8" },
-  { key: "Fire", short: "FIR", label: "Fire", color: "#d06a47" },
-  { key: "Force", short: "FRC", label: "Force", color: "#9f86d1" },
-  { key: "Lightning", short: "LGT", label: "Lightning", color: "#d9c14e" },
-  { key: "Necrotic", short: "NEC", label: "Necrotic", color: "#7d5f8c" },
-  { key: "Poison", short: "POI", label: "Poison", color: "#5b8c4d" },
-  { key: "Psychic", short: "PSY", label: "Psychic", color: "#b86bb8" },
-  { key: "Radiant", short: "RAD", label: "Radiant", color: "#e0cf86" },
-  { key: "Thunder", short: "THN", label: "Thunder", color: "#6b87c7" },
-  { key: "Variable", short: "VAR", label: "Variable", color: "#8b8b8b" },
+  {
+    key: "Bludgeoning",
+    short: "BLD",
+    label: "Bludgeoning",
+    color: "#9b8068",
+    darkColor: "#3f3128",
+    lightColor: "#d2b89a",
+  },
+  {
+    key: "Piercing",
+    short: "PRC",
+    label: "Piercing",
+    color: "#aa8e68",
+    darkColor: "#463623",
+    lightColor: "#e0c38f",
+  },
+  {
+    key: "Slashing",
+    short: "SLS",
+    label: "Slashing",
+    color: "#bf9b6d",
+    darkColor: "#4a3422",
+    lightColor: "#e7c591",
+  },
+  {
+    key: "Physical",
+    short: "PHY",
+    label: "Physical / Weapon",
+    color: "#c5aa82",
+    darkColor: "#4d3b2b",
+    lightColor: "#f0d6a5",
+  },
+  {
+    key: "Acid",
+    short: "ACD",
+    label: "Acid",
+    color: "#7e9f55",
+    darkColor: "#28351e",
+    lightColor: "#b9d17b",
+  },
+  {
+    key: "Cold",
+    short: "CLD",
+    label: "Cold",
+    color: "#83a8bd",
+    darkColor: "#243645",
+    lightColor: "#c8e3eb",
+  },
+  {
+    key: "Fire",
+    short: "FIR",
+    label: "Fire",
+    color: "#c6673d",
+    darkColor: "#471c12",
+    lightColor: "#f0a05e",
+  },
+  {
+    key: "Force",
+    short: "FRC",
+    label: "Force",
+    color: "#9a7dcc",
+    darkColor: "#33274d",
+    lightColor: "#d7bfff",
+  },
+  {
+    key: "Lightning",
+    short: "LGT",
+    label: "Lightning",
+    color: "#d0b94e",
+    darkColor: "#473a14",
+    lightColor: "#f3e483",
+  },
+  {
+    key: "Necrotic",
+    short: "NEC",
+    label: "Necrotic",
+    color: "#775984",
+    darkColor: "#201522",
+    lightColor: "#b58bbd",
+  },
+  {
+    key: "Poison",
+    short: "POI",
+    label: "Poison",
+    color: "#648b4d",
+    darkColor: "#1d2b17",
+    lightColor: "#a7c77d",
+  },
+  {
+    key: "Psychic",
+    short: "PSY",
+    label: "Psychic",
+    color: "#a864a8",
+    darkColor: "#341f36",
+    lightColor: "#e1a5df",
+  },
+  {
+    key: "Radiant",
+    short: "RAD",
+    label: "Radiant",
+    color: "#d9c778",
+    darkColor: "#53461b",
+    lightColor: "#fff0aa",
+  },
+  {
+    key: "Thunder",
+    short: "THN",
+    label: "Thunder",
+    color: "#687eb8",
+    darkColor: "#1c263f",
+    lightColor: "#aebff0",
+  },
+  {
+    key: "Variable",
+    short: "VAR",
+    label: "Variable",
+    color: "#85817a",
+    darkColor: "#2a2927",
+    lightColor: "#c8c2b8",
+  },
 ];
 
 const RESOURCE_SECTORS: {
@@ -116,22 +223,22 @@ const RESOURCE_SECTORS: {
   label: string;
   color: string;
 }[] = [
-  { key: "action", short: "A", label: "Action", color: "#b8863b" },
-  { key: "bonus-action", short: "BA", label: "Bonus Action", color: "#c89452" },
-  { key: "reaction", short: "R", label: "Reaction", color: "#d7aa65" },
-  { key: "concentration", short: "CON", label: "Concentration", color: "#7c65ae" },
-  { key: "cantrip", short: "CAN", label: "Cantrip use", color: "#5e9bb2" },
-  { key: "slot-1", short: "I", label: "Spell slot level 1", color: "#8d4f57" },
-  { key: "slot-2", short: "II", label: "Spell slot level 2", color: "#a55b63" },
-  { key: "slot-3", short: "III", label: "Spell slot level 3", color: "#b76870" },
-  { key: "slot-4", short: "IV", label: "Spell slot level 4", color: "#c6787f" },
-  { key: "slot-5", short: "V", label: "Spell slot level 5", color: "#d28a8f" },
-  { key: "slot-6", short: "VI", label: "Spell slot level 6", color: "#df9ca0" },
-  { key: "pact", short: "PACT", label: "Pact Magic slot use", color: "#9357a2" },
-  { key: "short-rest", short: "SR", label: "Short-rest reliance", color: "#4f9d88" },
-  { key: "long-rest", short: "LR", label: "Long-rest reliance", color: "#67a36c" },
-  { key: "class-resource", short: "CLS", label: "Class-specific pool reliance", color: "#4c7da6" },
-  { key: "passive-conditional", short: "P/C", label: "Passive / conditional", color: "#a07e4f" },
+  { key: "action", short: "A", label: "Action", color: "#c18a45" },
+  { key: "bonus-action", short: "BA", label: "Bonus Action", color: "#d19a5b" },
+  { key: "reaction", short: "R", label: "Reaction", color: "#d7b06a" },
+  { key: "concentration", short: "CON", label: "Concentration", color: "#8f72bd" },
+  { key: "cantrip", short: "CAN", label: "Cantrip use", color: "#6fa4ad" },
+  { key: "slot-1", short: "I", label: "Spell slot level 1", color: "#955760" },
+  { key: "slot-2", short: "II", label: "Spell slot level 2", color: "#a8656b" },
+  { key: "slot-3", short: "III", label: "Spell slot level 3", color: "#b87678" },
+  { key: "slot-4", short: "IV", label: "Spell slot level 4", color: "#c78987" },
+  { key: "slot-5", short: "V", label: "Spell slot level 5", color: "#d39b97" },
+  { key: "slot-6", short: "VI", label: "Spell slot level 6", color: "#dfada8" },
+  { key: "pact", short: "PACT", label: "Pact Magic slot use", color: "#9b63a7" },
+  { key: "short-rest", short: "SR", label: "Short-rest reliance", color: "#5da891" },
+  { key: "long-rest", short: "LR", label: "Long-rest reliance", color: "#7bad72" },
+  { key: "class-resource", short: "CLS", label: "Class-specific pool reliance", color: "#5a86a8" },
+  { key: "passive-conditional", short: "P/C", label: "Passive / conditional", color: "#a88354" },
 ];
 
 function polarToCartesian(cx: number, cy: number, radius: number, angleInDegrees: number) {
@@ -242,13 +349,12 @@ function getRangeDotAngles(count: number) {
 function getRangeBandIntensity(value: number, maxValue: number) {
   if (value <= 0 || maxValue <= 0) {
     return {
-      bandOpacity: 0.025,
-      rimOpacity: 0.11,
-      auraOpacity: 0,
-      scanOpacity: 0.035,
-      dotOpacity: 0,
-      dotGlowOpacity: 0,
-      dotRadius: 0,
+      smokeOpacity: 0.035,
+      inlayOpacity: 0.06,
+      rimOpacity: 0.14,
+      moteOpacity: 0,
+      moteGlowOpacity: 0,
+      moteRadius: 0,
     };
   }
 
@@ -256,13 +362,33 @@ function getRangeBandIntensity(value: number, maxValue: number) {
   const eased = Math.sqrt(ratio);
 
   return {
-    bandOpacity: 0.045 + eased * 0.09,
-    rimOpacity: 0.17 + eased * 0.22,
-    auraOpacity: 0.03 + eased * 0.09,
-    scanOpacity: 0.06 + eased * 0.1,
-    dotOpacity: 0.72 + eased * 0.2,
-    dotGlowOpacity: 0.1 + eased * 0.2,
-    dotRadius: 3.9 + eased * 0.75,
+    smokeOpacity: 0.05 + eased * 0.08,
+    inlayOpacity: 0.1 + eased * 0.13,
+    rimOpacity: 0.2 + eased * 0.22,
+    moteOpacity: 0.74 + eased * 0.18,
+    moteGlowOpacity: 0.1 + eased * 0.2,
+    moteRadius: 3.9 + eased * 0.8,
+  };
+}
+
+function getDamageTypeIntensity(value: number, maxValue: number) {
+  if (value <= 0 || maxValue <= 0) {
+    return {
+      glowOpacity: 0,
+      fillOpacity: 0,
+      labelOpacity: 0,
+      highlightOpacity: 0,
+    };
+  }
+
+  const ratio = Math.min(1, value / maxValue);
+  const eased = Math.sqrt(ratio);
+
+  return {
+    glowOpacity: 0.06 + eased * 0.13,
+    fillOpacity: 0.58 + eased * 0.25,
+    labelOpacity: 0.48 + eased * 0.36,
+    highlightOpacity: 0.09 + eased * 0.14,
   };
 }
 
@@ -449,6 +575,7 @@ export default function DataCircle({
 
   const maxRangeCount = Math.max(...Object.values(rangeCounts), 1);
   const maxResourceCount = Math.max(...Object.values(resourceCounts), 1);
+  const maxDamageTypeCount = Math.max(...Object.values(damageTypeCounts), 1);
 
   const damageAngle =
     roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
@@ -472,109 +599,141 @@ export default function DataCircle({
           aria-label="Overview Data Circle visualization"
         >
           <defs>
-            <radialGradient id="sealGradient" cx="50%" cy="42%" r="70%">
-              <stop offset="0%" stopColor="#d9b562" />
-              <stop offset="62%" stopColor="#7b5525" />
-              <stop offset="100%" stopColor="#21170e" />
-            </radialGradient>
-
-            <radialGradient id="circleBackground" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(116,91,170,0.16)" />
-              <stop offset="28%" stopColor="rgba(20,20,34,0.66)" />
-              <stop offset="68%" stopColor="rgba(5,7,13,0.9)" />
+            <radialGradient id="arcaneBackground" cx="50%" cy="50%" r="58%">
+              <stop offset="0%" stopColor="rgba(132,92,170,0.16)" />
+              <stop offset="36%" stopColor="rgba(34,25,43,0.72)" />
+              <stop offset="74%" stopColor="rgba(12,9,12,0.94)" />
               <stop offset="100%" stopColor="rgba(0,0,0,0)" />
             </radialGradient>
 
-            <radialGradient id="radarCoreGradient" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(114,94,190,0.2)" />
-              <stop offset="42%" stopColor="rgba(40,36,68,0.42)" />
-              <stop offset="78%" stopColor="rgba(8,10,20,0.72)" />
-              <stop offset="100%" stopColor="rgba(4,6,12,0.92)" />
+            <radialGradient id="innerVellumGradient" cx="50%" cy="44%" r="58%">
+              <stop offset="0%" stopColor="rgba(87,58,92,0.34)" />
+              <stop offset="58%" stopColor="rgba(25,18,28,0.86)" />
+              <stop offset="100%" stopColor="rgba(7,5,8,0.98)" />
             </radialGradient>
 
-            <radialGradient id="rangeDotGradient" cx="35%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#f7fbff" />
-              <stop offset="34%" stopColor="#b9dcff" />
-              <stop offset="68%" stopColor="#8e7cff" />
-              <stop offset="100%" stopColor="#4d3bba" />
+            <radialGradient id="sealGradient" cx="50%" cy="42%" r="70%">
+              <stop offset="0%" stopColor="#f0cd76" />
+              <stop offset="42%" stopColor="#9b672d" />
+              <stop offset="78%" stopColor="#3b2613" />
+              <stop offset="100%" stopColor="#15100c" />
             </radialGradient>
 
-            <linearGradient id="radarSweepGradient" x1="500" y1="500" x2="500" y2="252">
-              <stop offset="0%" stopColor="rgba(138,117,255,0.22)" />
-              <stop offset="56%" stopColor="rgba(112,91,220,0.08)" />
-              <stop offset="100%" stopColor="rgba(112,91,220,0)" />
+            <radialGradient id="moteGradient" cx="35%" cy="30%" r="72%">
+              <stop offset="0%" stopColor="#fff9de" />
+              <stop offset="34%" stopColor="#f0cf7e" />
+              <stop offset="68%" stopColor="#b577da" />
+              <stop offset="100%" stopColor="#4a2d66" />
+            </radialGradient>
+
+            <linearGradient id="damageRoleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffd18a" />
+              <stop offset="52%" stopColor="#c56f38" />
+              <stop offset="100%" stopColor="#3a160d" />
             </linearGradient>
 
-            <filter id="dataCircleGlow">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
+            <linearGradient id="utilityRoleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#c5f0dc" />
+              <stop offset="50%" stopColor="#65a994" />
+              <stop offset="100%" stopColor="#15342f" />
+            </linearGradient>
 
-            <filter id="rangeBandGlow">
-              <feGaussianBlur stdDeviation="3.2" result="blur" />
+            {DAMAGE_TYPES.map((type) => (
+              <linearGradient
+                key={`damage-gradient-${type.key}`}
+                id={`damageGradient-${type.key}`}
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stopColor={type.lightColor} />
+                <stop offset="38%" stopColor={type.color} />
+                <stop offset="100%" stopColor={type.darkColor} />
+              </linearGradient>
+            ))}
+
+            <filter id="arcaneSoftGlow">
+              <feGaussianBlur stdDeviation="4.2" result="blur" />
               <feColorMatrix
                 in="blur"
                 type="matrix"
                 values="
-                  0.45 0 0 0 0.04
-                  0 0.54 0 0 0.05
-                  0 0 1.00 0 0.28
+                  0.95 0 0 0 0.12
+                  0 0.72 0 0 0.06
+                  0 0 0.85 0 0.16
                   0 0 0 0.48 0
                 "
-                result="softRadarGlow"
+                result="warmArcaneGlow"
               />
               <feMerge>
-                <feMergeNode in="softRadarGlow" />
+                <feMergeNode in="warmArcaneGlow" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
 
-            <filter id="rangeDotGlow">
-              <feGaussianBlur stdDeviation="4.4" result="blur" />
+            <filter id="moteGlow">
+              <feGaussianBlur stdDeviation="5" result="blur" />
               <feColorMatrix
                 in="blur"
                 type="matrix"
                 values="
-                  0.60 0 0 0 0.10
-                  0 0.70 0 0 0.15
-                  0 0 1.00 0 0.46
-                  0 0 0 0.7 0
+                  1.00 0 0 0 0.20
+                  0 0.72 0 0 0.10
+                  0 0 0.95 0 0.25
+                  0 0 0 0.68 0
                 "
-                result="dotGlow"
+                result="moteGlowColor"
               />
               <feMerge>
-                <feMergeNode in="dotGlow" />
+                <feMergeNode in="moteGlowColor" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
 
-            <filter id="subtleRadarNoise">
+            <filter id="damageEnamelGlow">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feColorMatrix
+                in="blur"
+                type="matrix"
+                values="
+                  0.92 0 0 0 0.10
+                  0 0.74 0 0 0.07
+                  0 0 0.58 0 0.04
+                  0 0 0 0.44 0
+                "
+                result="damageGlow"
+              />
+              <feMerge>
+                <feMergeNode in="damageGlow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            <filter id="engravedNoise">
               <feTurbulence
                 type="fractalNoise"
-                baseFrequency="1.15"
+                baseFrequency="0.92"
                 numOctaves="2"
-                seed="17"
+                seed="27"
                 result="noise"
               />
               <feColorMatrix
                 in="noise"
                 type="matrix"
                 values="
-                  0 0 0 0 0.25
-                  0 0 0 0 0.25
-                  0 0 0 0 0.42
-                  0 0 0 0.11 0
+                  0 0 0 0 0.68
+                  0 0 0 0 0.55
+                  0 0 0 0 0.82
+                  0 0 0 0.08 0
                 "
                 result="softNoise"
               />
               <feBlend in="SourceGraphic" in2="softNoise" mode="screen" />
             </filter>
 
-            <clipPath id="radarClip">
-              <circle cx={CX} cy={CY} r="247" />
+            <clipPath id="innerOrreryClip">
+              <circle cx={CX} cy={CY} r="248" />
             </clipPath>
 
             {RANGE_BANDS.map((band) => (
@@ -600,35 +759,43 @@ export default function DataCircle({
             />
           </defs>
 
-          <circle cx={CX} cy={CY} r={480} fill="url(#circleBackground)" />
-
-          {Array.from({ length: 18 }, (_, index) => (
-            <circle
-              key={`outer-guide-${index}`}
-              cx={CX}
-              cy={CY}
-              r={340 + index * 8}
-              fill="none"
-              stroke="rgba(216,178,104,0.035)"
-              strokeWidth="1"
-            />
-          ))}
+          <circle cx={CX} cy={CY} r={480} fill="url(#arcaneBackground)" />
 
           <circle
             cx={CX}
             cy={CY}
             r={470}
             fill="none"
-            stroke="rgba(216,178,104,0.16)"
-            strokeWidth="1.5"
+            stroke="rgba(214, 174, 103, 0.18)"
+            strokeWidth="1.6"
           />
-          <circle cx={CX} cy={CY} r={452} fill="none" stroke="rgba(216,178,104,0.065)" />
-          <circle cx={CX} cy={CY} r={420} fill="none" stroke="rgba(216,178,104,0.09)" />
-          <circle cx={CX} cy={CY} r={388} fill="none" stroke="rgba(216,178,104,0.09)" />
-          <circle cx={CX} cy={CY} r={356} fill="none" stroke="rgba(216,178,104,0.09)" />
-          <circle cx={CX} cy={CY} r={324} fill="none" stroke="rgba(216,178,104,0.09)" />
-          <circle cx={CX} cy={CY} r={292} fill="none" stroke="rgba(216,178,104,0.09)" />
-          <circle cx={CX} cy={CY} r={260} fill="none" stroke="rgba(216,178,104,0.09)" />
+
+          <circle
+            cx={CX}
+            cy={CY}
+            r={452}
+            fill="none"
+            stroke="rgba(214, 174, 103, 0.08)"
+            strokeWidth="1"
+          />
+
+          {Array.from({ length: 56 }, (_, index) => {
+            const angle = index * (360 / 56);
+            const outer = polarToCartesian(CX, CY, 468, angle);
+            const inner = polarToCartesian(CX, CY, index % 4 === 0 ? 458 : 462, angle);
+
+            return (
+              <line
+                key={`outer-rune-tick-${index}`}
+                x1={inner.x}
+                y1={inner.y}
+                x2={outer.x}
+                y2={outer.y}
+                stroke="rgba(218,178,104,0.18)"
+                strokeWidth={index % 4 === 0 ? 1.25 : 0.65}
+              />
+            );
+          })}
 
           <text className="data-circle-curved-title">
             <textPath href="#rangeTitlePath" startOffset="50%" textAnchor="middle">
@@ -658,10 +825,12 @@ export default function DataCircle({
             const sectorAngle = 360 / RESOURCE_SECTORS.length;
             const angle = -180 + index * sectorAngle + sectorAngle / 2;
             const value = resourceCounts[sector.key];
-            const height = value <= 0 ? 14 : 22 + (value / maxResourceCount) * 76;
-            const width = 20;
-            const baseRadius = 444;
+            const ratio = value <= 0 ? 0 : value / maxResourceCount;
+            const height = value <= 0 ? 17 : 24 + ratio * 66;
+            const width = 18;
+            const baseRadius = 438;
             const center = polarToCartesian(CX, CY, baseRadius + height / 2, angle);
+            const capOpacity = value <= 0 ? 0.16 : 0.44 + ratio * 0.34;
 
             return (
               <g
@@ -673,25 +842,52 @@ export default function DataCircle({
                   y={-height / 2}
                   width={width}
                   height={height}
-                  rx="2"
-                  fill={sector.color}
-                  fillOpacity={getOpacity(value, maxResourceCount, 0.13, 0.95)}
-                  stroke="rgba(8,6,4,0.72)"
+                  rx="4"
+                  fill="rgba(16, 12, 13, 0.88)"
+                  stroke="rgba(219, 178, 105, 0.25)"
                   strokeWidth="1"
                 />
-                {value > 0 ? (
-                  <rect
-                    x={-width / 2}
-                    y={-height / 2}
-                    width={width}
-                    height={Math.max(5, height * 0.18)}
-                    rx="2"
-                    fill="rgba(255,135,45,0.55)"
-                  />
-                ) : null}
+
+                <rect
+                  x={-width / 2 + 2}
+                  y={-height / 2 + 2}
+                  width={width - 4}
+                  height={height - 4}
+                  rx="3"
+                  fill={sector.color}
+                  fillOpacity={getOpacity(value, maxResourceCount, 0.12, 0.72)}
+                />
+
+                <rect
+                  x={-width / 2 + 2}
+                  y={-height / 2 + 2}
+                  width={width - 4}
+                  height={Math.max(4, height * 0.16)}
+                  rx="3"
+                  fill="rgba(255, 226, 165, 0.52)"
+                  fillOpacity={capOpacity}
+                />
               </g>
             );
           })}
+
+          <circle
+            cx={CX}
+            cy={CY}
+            r={365}
+            fill="none"
+            stroke="rgba(9, 7, 8, 0.96)"
+            strokeWidth="44"
+          />
+
+          <circle
+            cx={CX}
+            cy={CY}
+            r={365}
+            fill="none"
+            stroke="rgba(220, 178, 104, 0.11)"
+            strokeWidth="44"
+          />
 
           {damageTypeTotal > 0 ? (
             (() => {
@@ -709,28 +905,92 @@ export default function DataCircle({
                 const endAngle = currentAngle + sweep;
                 currentAngle = endAngle;
 
+                const pad = Math.min(1.4, sweep / 5);
+                const visualStartAngle = startAngle + pad;
+                const visualEndAngle = endAngle - pad;
+                const labelAngle = startAngle + sweep / 2;
+                const labelPoint = polarToCartesian(CX, CY, 365, labelAngle);
+                const showLabel = sweep >= 12;
+                const intensity = getDamageTypeIntensity(value, maxDamageTypeCount);
+
                 return (
-                  <path
-                    key={type.key}
-                    d={describeDonutSegment(CX, CY, 350, 380, startAngle, endAngle)}
-                    fill={type.color}
-                    fillOpacity="0.78"
-                    stroke="rgba(0,0,0,0.82)"
-                    strokeWidth="3"
-                  />
+                  <g key={type.key}>
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        340,
+                        390,
+                        visualStartAngle,
+                        visualEndAngle
+                      )}
+                      fill={type.color}
+                      fillOpacity={intensity.glowOpacity}
+                      filter="url(#damageEnamelGlow)"
+                    />
+
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        350,
+                        380,
+                        visualStartAngle,
+                        visualEndAngle
+                      )}
+                      fill={`url(#damageGradient-${type.key})`}
+                      fillOpacity={intensity.fillOpacity}
+                      stroke="rgba(4,3,4,0.92)"
+                      strokeWidth="2.3"
+                    />
+
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        376,
+                        380,
+                        visualStartAngle,
+                        visualEndAngle
+                      )}
+                      fill="rgba(255,246,218,0.25)"
+                      fillOpacity={intensity.highlightOpacity}
+                    />
+
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        350,
+                        353,
+                        visualStartAngle,
+                        visualEndAngle
+                      )}
+                      fill="rgba(0,0,0,0.45)"
+                    />
+
+                    {showLabel ? (
+                      <text
+                        x={labelPoint.x}
+                        y={labelPoint.y + 3}
+                        textAnchor="middle"
+                        fontSize="8"
+                        fontWeight="900"
+                        letterSpacing="0.08em"
+                        fill="rgba(247,238,211,0.86)"
+                        opacity={intensity.labelOpacity}
+                        paintOrder="stroke"
+                        stroke="rgba(0,0,0,0.76)"
+                        strokeWidth="2"
+                      >
+                        {type.short}
+                      </text>
+                    ) : null}
+                  </g>
                 );
               });
             })()
-          ) : (
-            <circle
-              cx={CX}
-              cy={CY}
-              r={365}
-              fill="none"
-              stroke="rgba(216,178,104,0.08)"
-              strokeWidth="30"
-            />
-          )}
+          ) : null}
 
           {roleData.damageTotal > 0 && (
             <path
@@ -742,9 +1002,9 @@ export default function DataCircle({
                 roleStartAngle,
                 roleStartAngle + clampedDamageAngle
               )}
-              fill="#ff980d"
-              fillOpacity="0.95"
-              stroke="rgba(0,0,0,0.85)"
+              fill="url(#damageRoleGradient)"
+              fillOpacity="0.9"
+              stroke="rgba(5,3,3,0.82)"
               strokeWidth="3"
             />
           )}
@@ -759,9 +1019,9 @@ export default function DataCircle({
                 utilityStartAngle,
                 roleStartAngle + 360
               )}
-              fill="#00d4b8"
-              fillOpacity="0.9"
-              stroke="rgba(0,0,0,0.85)"
+              fill="url(#utilityRoleGradient)"
+              fillOpacity="0.86"
+              stroke="rgba(5,3,3,0.82)"
               strokeWidth="3"
             />
           )}
@@ -770,16 +1030,16 @@ export default function DataCircle({
             <>
               <path
                 d={describeDonutSegment(CX, CY, 286, 318, -90, 90)}
-                fill="#ff980d"
-                fillOpacity="0.2"
-                stroke="rgba(0,0,0,0.85)"
+                fill="url(#damageRoleGradient)"
+                fillOpacity="0.16"
+                stroke="rgba(5,3,3,0.82)"
                 strokeWidth="3"
               />
               <path
                 d={describeDonutSegment(CX, CY, 286, 318, 90, 270)}
-                fill="#00d4b8"
-                fillOpacity="0.2"
-                stroke="rgba(0,0,0,0.85)"
+                fill="url(#utilityRoleGradient)"
+                fillOpacity="0.16"
+                stroke="rgba(5,3,3,0.82)"
                 strokeWidth="3"
               />
             </>
@@ -846,52 +1106,46 @@ export default function DataCircle({
             });
           })()}
 
-          <g clipPath="url(#radarClip)">
+          <g clipPath="url(#innerOrreryClip)">
             <circle
               cx={CX}
               cy={CY}
-              r="247"
-              fill="url(#radarCoreGradient)"
-              filter="url(#subtleRadarNoise)"
+              r="248"
+              fill="url(#innerVellumGradient)"
+              filter="url(#engravedNoise)"
             />
 
-            <path
-              d={describeDonutSegment(CX, CY, 0, 247, -16, 24)}
-              fill="url(#radarSweepGradient)"
-              fillOpacity="0.62"
-            />
-
-            {Array.from({ length: 12 }, (_, index) => {
-              const angle = index * 30;
+            {Array.from({ length: 16 }, (_, index) => {
+              const angle = index * 22.5;
               const start = polarToCartesian(CX, CY, 92, angle);
               const end = polarToCartesian(CX, CY, 247, angle);
 
               return (
                 <line
-                  key={`radar-spoke-${index}`}
+                  key={`constellation-spoke-${index}`}
                   x1={start.x}
                   y1={start.y}
                   x2={end.x}
                   y2={end.y}
-                  stroke="rgba(137, 128, 210, 0.075)"
-                  strokeWidth="1"
+                  stroke="rgba(219, 178, 105, 0.055)"
+                  strokeWidth={index % 2 === 0 ? 1 : 0.65}
                 />
               );
             })}
 
-            {Array.from({ length: 6 }, (_, index) => {
-              const radius = 104 + index * 24;
+            {Array.from({ length: 5 }, (_, index) => {
+              const radius = 116 + index * 28;
 
               return (
                 <circle
-                  key={`radar-subring-${index}`}
+                  key={`engraved-range-subring-${index}`}
                   cx={CX}
                   cy={CY}
                   r={radius}
                   fill="none"
-                  stroke="rgba(148, 137, 220, 0.055)"
-                  strokeWidth="0.8"
-                  strokeDasharray="1.5 7"
+                  stroke="rgba(218,178,104,0.055)"
+                  strokeWidth="0.9"
+                  strokeDasharray="2 9"
                 />
               );
             })}
@@ -911,10 +1165,10 @@ export default function DataCircle({
                   cy={CY}
                   r={middleRadius}
                   fill="none"
-                  stroke="#7988ff"
-                  strokeOpacity={intensity.auraOpacity}
-                  strokeWidth={bandWidth + 6}
-                  filter={value > 0 ? "url(#rangeBandGlow)" : undefined}
+                  stroke="#9b6fd0"
+                  strokeOpacity={intensity.smokeOpacity}
+                  strokeWidth={bandWidth + 7}
+                  filter={value > 0 ? "url(#arcaneSoftGlow)" : undefined}
                 />
 
                 <circle
@@ -922,20 +1176,9 @@ export default function DataCircle({
                   cy={CY}
                   r={middleRadius}
                   fill="none"
-                  stroke="#4e5cba"
-                  strokeOpacity={intensity.bandOpacity}
+                  stroke="#69496f"
+                  strokeOpacity={intensity.inlayOpacity}
                   strokeWidth={bandWidth}
-                />
-
-                <circle
-                  cx={CX}
-                  cy={CY}
-                  r={middleRadius}
-                  fill="none"
-                  stroke="#9ca8ff"
-                  strokeOpacity={intensity.scanOpacity}
-                  strokeWidth="0.8"
-                  strokeDasharray="2 10"
                 />
 
                 <circle
@@ -943,7 +1186,7 @@ export default function DataCircle({
                   cy={CY}
                   r={band.innerRadius}
                   fill="none"
-                  stroke="#8390ff"
+                  stroke="rgba(218,178,104,0.9)"
                   strokeOpacity={intensity.rimOpacity}
                   strokeWidth="0.85"
                 />
@@ -953,7 +1196,7 @@ export default function DataCircle({
                   cy={CY}
                   r={band.outerRadius}
                   fill="none"
-                  stroke="#8390ff"
+                  stroke="rgba(218,178,104,0.9)"
                   strokeOpacity={intensity.rimOpacity}
                   strokeWidth="0.85"
                 />
@@ -970,40 +1213,40 @@ export default function DataCircle({
 
                 {angles.map((angle, index) => {
                   const { x, y } = polarToCartesian(CX, CY, middleRadius, angle);
-                  const dotKey = `${band.key}-dot-${index}`;
+                  const dotKey = `${band.key}-mote-${index}`;
 
                   return (
                     <g key={dotKey}>
                       <circle
                         cx={x}
                         cy={y}
-                        r={intensity.dotRadius + 5.8}
-                        fill="#7f8dff"
-                        fillOpacity={intensity.dotGlowOpacity}
-                        filter="url(#rangeDotGlow)"
+                        r={intensity.moteRadius + 6}
+                        fill="#b077d6"
+                        fillOpacity={intensity.moteGlowOpacity}
+                        filter="url(#moteGlow)"
                       />
                       <circle
                         cx={x}
                         cy={y}
-                        r={intensity.dotRadius + 2}
-                        fill="none"
-                        stroke="rgba(178, 190, 255, 0.26)"
+                        r={intensity.moteRadius + 2.3}
+                        fill="rgba(10,7,10,0.84)"
+                        stroke="rgba(220,178,104,0.36)"
                         strokeWidth="1"
                       />
                       <circle
                         cx={x}
                         cy={y}
-                        r={intensity.dotRadius}
-                        fill="url(#rangeDotGradient)"
-                        fillOpacity={intensity.dotOpacity}
-                        stroke="rgba(236, 242, 255, 0.58)"
+                        r={intensity.moteRadius}
+                        fill="url(#moteGradient)"
+                        fillOpacity={intensity.moteOpacity}
+                        stroke="rgba(255,239,185,0.58)"
                         strokeWidth="0.7"
                       />
                       <circle
-                        cx={x - 1.3}
-                        cy={y - 1.4}
-                        r="1.05"
-                        fill="rgba(255,255,255,0.74)"
+                        cx={x - 1.25}
+                        cy={y - 1.35}
+                        r="1"
+                        fill="rgba(255,255,230,0.76)"
                       />
                     </g>
                   );
@@ -1017,9 +1260,19 @@ export default function DataCircle({
             cy={CY}
             r="88"
             fill="url(#sealGradient)"
-            stroke="rgba(216,178,104,0.84)"
+            stroke="rgba(230,190,112,0.88)"
             strokeWidth="3"
-            filter="url(#dataCircleGlow)"
+            filter="url(#arcaneSoftGlow)"
+          />
+
+          <circle
+            cx={CX}
+            cy={CY}
+            r="76"
+            fill="none"
+            stroke="rgba(22,13,5,0.65)"
+            strokeWidth="1.3"
+            strokeDasharray="3 8"
           />
 
           {Array.from({ length: 12 }, (_, index) => {
