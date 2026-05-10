@@ -90,19 +90,20 @@ const ROLE_VISUALS = {
   damage: {
     label: "Damage",
     shortLabel: "DMG",
-    gradientId: "roleDamageGradient",
+    color: "#c66a3d",
+    accentColor: "#ffb56f",
     glowColor: "#ff9a4f",
-    lineColor: "rgba(255,190,118,0.52)",
+    lineColor: "rgba(255,190,118,0.5)",
   },
   utility: {
     label: "Utility",
     shortLabel: "UTL",
-    gradientId: "roleUtilityGradient",
+    color: "#3f9f8a",
+    accentColor: "#8ae6c8",
     glowColor: "#7fe0c0",
     lineColor: "rgba(153,232,205,0.48)",
   },
 };
-
 
 const DAMAGE_TYPES: {
   key: DamageRingKey;
@@ -413,6 +414,191 @@ function getSubcategoryBoundaries(
 
     return [startAngle + (accumulated / total) * sweep];
   });
+}
+
+function renderDamageTextureMarks(
+  type: (typeof DAMAGE_TYPES)[number],
+  startAngle: number,
+  endAngle: number,
+  value: number
+) {
+  const sweep = Math.max(0, endAngle - startAngle);
+  const midAngle = startAngle + sweep / 2;
+  const safeCount = Math.min(6, Math.max(2, value + 1));
+  const sampleAngle = (index: number, count: number) =>
+    startAngle + sweep * ((index + 0.5) / count);
+
+  const threadLines = Array.from({ length: Math.min(3, safeCount) }, (_, index) => {
+    const angle = sampleAngle(index, Math.min(3, safeCount));
+    const inner = polarToCartesian(CX, CY, 300, angle);
+    const outer = polarToCartesian(CX, CY, 328, angle);
+
+    return (
+      <line
+        key={`${type.key}-thread-${index}`}
+        x1={inner.x}
+        y1={inner.y}
+        x2={outer.x}
+        y2={outer.y}
+        stroke={type.glowColor}
+        strokeOpacity="0.18"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+      />
+    );
+  });
+
+  if (type.key === "Poison" || type.key === "Acid") {
+    return (
+      <>
+        {threadLines}
+        {Array.from({ length: safeCount }, (_, index) => {
+          const angle = sampleAngle(index, safeCount);
+          const radius = index % 2 === 0 ? 304 : 324;
+          const point = polarToCartesian(CX, CY, radius, angle);
+
+          return (
+            <circle
+              key={`${type.key}-bubble-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r={1.8 + (index % 3) * 0.55}
+              fill="none"
+              stroke={type.glowColor}
+              strokeOpacity="0.52"
+              strokeWidth="1"
+            />
+          );
+        })}
+      </>
+    );
+  }
+
+  if (type.key === "Lightning" || type.key === "Thunder") {
+    return (
+      <>
+        {threadLines}
+        {Array.from({ length: Math.min(4, safeCount) }, (_, index) => {
+          const angle = sampleAngle(index, Math.min(4, safeCount));
+          const p1 = polarToCartesian(CX, CY, 300, angle - 1.2);
+          const p2 = polarToCartesian(CX, CY, 314, angle + 1.4);
+          const p3 = polarToCartesian(CX, CY, 328, angle - 0.8);
+
+          return (
+            <polyline
+              key={`${type.key}-bolt-${index}`}
+              points={`${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
+              fill="none"
+              stroke={type.glowColor}
+              strokeOpacity="0.55"
+              strokeWidth="1.15"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        })}
+      </>
+    );
+  }
+
+  if (type.key === "Cold" || type.key === "Radiant") {
+    return (
+      <>
+        {threadLines}
+        {Array.from({ length: Math.min(5, safeCount) }, (_, index) => {
+          const angle = sampleAngle(index, Math.min(5, safeCount));
+          const point = polarToCartesian(CX, CY, index % 2 === 0 ? 306 : 322, angle);
+
+          return (
+            <g
+              key={`${type.key}-star-${index}`}
+              transform={`translate(${point.x} ${point.y}) rotate(${angle})`}
+              opacity="0.52"
+            >
+              <line x1="-3" y1="0" x2="3" y2="0" stroke={type.glowColor} strokeWidth="0.9" strokeLinecap="round" />
+              <line x1="0" y1="-3" x2="0" y2="3" stroke={type.glowColor} strokeWidth="0.9" strokeLinecap="round" />
+            </g>
+          );
+        })}
+      </>
+    );
+  }
+
+  if (type.key === "Fire") {
+    return (
+      <>
+        {threadLines}
+        {Array.from({ length: Math.min(5, safeCount) }, (_, index) => {
+          const angle = sampleAngle(index, Math.min(5, safeCount));
+          const start = polarToCartesian(CX, CY, 302, angle - 0.9);
+          const end = polarToCartesian(CX, CY, 327, angle + 0.9);
+
+          return (
+            <path
+              key={`${type.key}-ember-${index}`}
+              d={`M ${start.x} ${start.y} Q ${CX} ${CY} ${end.x} ${end.y}`}
+              fill="none"
+              stroke={type.glowColor}
+              strokeOpacity="0.42"
+              strokeWidth="1.05"
+              strokeLinecap="round"
+            />
+          );
+        })}
+      </>
+    );
+  }
+
+  if (type.key === "Necrotic" || type.key === "Psychic" || type.key === "Force") {
+    return (
+      <>
+        {threadLines}
+        {Array.from({ length: Math.min(5, safeCount) }, (_, index) => {
+          const angle = sampleAngle(index, Math.min(5, safeCount));
+          const point = polarToCartesian(CX, CY, index % 2 === 0 ? 306 : 323, angle);
+
+          return (
+            <circle
+              key={`${type.key}-orb-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r="2.2"
+              fill={type.glowColor}
+              fillOpacity="0.34"
+              stroke={type.glowColor}
+              strokeOpacity="0.34"
+              strokeWidth="1.1"
+            />
+          );
+        })}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {threadLines}
+      {Array.from({ length: Math.min(4, safeCount) }, (_, index) => {
+        const angle = sampleAngle(index, Math.min(4, safeCount));
+        const inner = polarToCartesian(CX, CY, 302, angle - 1.8);
+        const outer = polarToCartesian(CX, CY, 326, angle + 1.8);
+
+        return (
+          <line
+            key={`${type.key}-physical-cut-${index}`}
+            x1={inner.x}
+            y1={inner.y}
+            x2={outer.x}
+            y2={outer.y}
+            stroke={type.glowColor}
+            strokeOpacity="0.38"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </>
+  );
 }
 
 export default function DataCircle({
@@ -778,55 +964,6 @@ export default function DataCircle({
               <feBlend in="SourceGraphic" in2="softNoise" mode="screen" />
             </filter>
 
-            <linearGradient id="roleDamageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(255,182,88,0.88)" />
-              <stop offset="48%" stopColor="rgba(177,78,43,0.74)" />
-              <stop offset="100%" stopColor="rgba(72,25,18,0.54)" />
-            </linearGradient>
-
-            <linearGradient id="roleUtilityGradient" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(132,231,199,0.82)" />
-              <stop offset="50%" stopColor="rgba(54,130,119,0.68)" />
-              <stop offset="100%" stopColor="rgba(24,57,66,0.56)" />
-            </linearGradient>
-
-            <filter id="elementalBloom" x="-26%" y="-26%" width="152%" height="152%">
-              <feGaussianBlur stdDeviation="3.8" result="blur" />
-              <feColorMatrix
-                in="blur"
-                type="matrix"
-                values="
-                  1 0 0 0 0.05
-                  0 0.88 0 0 0.04
-                  0 0 0.92 0 0.08
-                  0 0 0 0.44 0
-                "
-                result="bloom"
-              />
-              <feMerge>
-                <feMergeNode in="bloom" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-
-            <filter id="fineInkShadow">
-              <feDropShadow dx="0" dy="1" stdDeviation="1.6" floodColor="rgba(0,0,0,0.72)" />
-            </filter>
-
-            {DAMAGE_TYPES.map((type) => (
-              <linearGradient
-                key={`damage-gradient-${type.key}`}
-                id={`damageGradient-${type.key}`}
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="100%"
-              >
-                <stop offset="0%" stopColor={type.glowColor} stopOpacity="0.88" />
-                <stop offset="42%" stopColor={type.color} stopOpacity="0.68" />
-                <stop offset="100%" stopColor="rgba(12,8,10,0.92)" />
-              </linearGradient>
-            ))}
 
             <clipPath id="innerOrreryClip">
               <circle cx={CX} cy={CY} r="216" />
@@ -954,19 +1091,10 @@ export default function DataCircle({
             <circle
               cx={CX}
               cy={CY}
-              r={314}
-              fill="none"
-              stroke="rgba(230,188,112,0.08)"
-              strokeWidth="46"
-            />
-
-            <circle
-              cx={CX}
-              cy={CY}
               r={340}
               fill="none"
-              stroke="rgba(230,188,112,0.2)"
-              strokeWidth="1.15"
+              stroke="rgba(230,188,112,0.18)"
+              strokeWidth="1.1"
             />
 
             <circle
@@ -974,7 +1102,7 @@ export default function DataCircle({
               cy={CY}
               r={288}
               fill="none"
-              stroke="rgba(230,188,112,0.17)"
+              stroke="rgba(230,188,112,0.14)"
               strokeWidth="1"
             />
 
@@ -983,9 +1111,9 @@ export default function DataCircle({
               cy={CY}
               r={314}
               fill="none"
-              stroke="rgba(255,232,180,0.05)"
+              stroke="rgba(255,232,180,0.04)"
               strokeWidth="34"
-              strokeDasharray="1 10"
+              strokeDasharray="1 11"
             />
 
             {damageTypeTotal > 0
@@ -1004,10 +1132,9 @@ export default function DataCircle({
                     const endAngle = currentAngle + sweep;
                     currentAngle = endAngle;
 
-                    const segmentGap = Math.min(1.6, sweep * 0.12);
+                    const segmentGap = Math.min(1.8, sweep * 0.13);
                     const visualStartAngle = startAngle + segmentGap;
                     const visualEndAngle = endAngle - segmentGap;
-                    const visualSweep = Math.max(0, visualEndAngle - visualStartAngle);
                     const midAngle = startAngle + sweep / 2;
                     const labelMode = getDamageLabelMode(type.label, sweep);
                     const labelText =
@@ -1016,10 +1143,25 @@ export default function DataCircle({
                         : labelMode === "short"
                           ? type.short
                           : "";
-                    const moteCount = Math.min(4, Math.max(1, value));
 
                     return (
                       <g key={type.key}>
+                        <path
+                          d={describeTextArc(
+                            CX,
+                            CY,
+                            314,
+                            visualStartAngle,
+                            visualEndAngle
+                          )}
+                          fill="none"
+                          stroke={type.glowColor}
+                          strokeOpacity="0.16"
+                          strokeWidth="52"
+                          strokeLinecap="butt"
+                          filter="url(#elementalBloom)"
+                        />
+
                         <path
                           d={describeDonutSegment(
                             CX,
@@ -1029,79 +1171,55 @@ export default function DataCircle({
                             visualStartAngle,
                             visualEndAngle
                           )}
-                          fill={`url(#damageGradient-${type.key})`}
-                          fillOpacity="0.66"
+                          fill={type.color}
+                          fillOpacity="0.48"
                           stroke={type.glowColor}
-                          strokeOpacity="0.38"
-                          strokeWidth="1"
-                          filter="url(#elementalBloom)"
+                          strokeOpacity="0.42"
+                          strokeWidth="1.05"
                         />
 
                         <path
                           d={describeDonutSegment(
                             CX,
                             CY,
-                            301,
-                            327,
-                            visualStartAngle + 0.7,
-                            visualEndAngle - 0.7
+                            303,
+                            325,
+                            visualStartAngle + 0.8,
+                            visualEndAngle - 0.8
                           )}
-                          fill="rgba(7,5,8,0.2)"
-                          stroke="rgba(255,240,210,0.1)"
+                          fill="rgba(7,5,8,0.42)"
+                          stroke="rgba(255,242,213,0.1)"
                           strokeWidth="0.7"
                         />
 
-                        {[0.22, 0.5, 0.78].map((offset) => {
-                          const textureAngle = visualStartAngle + visualSweep * offset;
-                          const inner = polarToCartesian(CX, CY, 298, textureAngle);
-                          const outer = polarToCartesian(CX, CY, 330, textureAngle);
+                        <path
+                          d={describeTextArc(
+                            CX,
+                            CY,
+                            314,
+                            visualStartAngle + 1.2,
+                            visualEndAngle - 1.2
+                          )}
+                          fill="none"
+                          stroke={type.glowColor}
+                          strokeOpacity="0.3"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        />
 
-                          return (
-                            <line
-                              key={`${type.key}-elemental-line-${offset}`}
-                              x1={inner.x}
-                              y1={inner.y}
-                              x2={outer.x}
-                              y2={outer.y}
-                              stroke={type.glowColor}
-                              strokeOpacity="0.2"
-                              strokeWidth="0.75"
-                            />
-                          );
-                        })}
-
-                        {Array.from({ length: moteCount }, (_, moteIndex) => {
-                          const spread = Math.min(visualSweep * 0.34, 15);
-                          const offset = moteCount === 1 ? 0 : -spread / 2 + (spread / (moteCount - 1)) * moteIndex;
-                          const moteAngle = midAngle + offset;
-                          const moteRadius = moteIndex % 2 === 0 ? 304 : 324;
-                          const mote = polarToCartesian(CX, CY, moteRadius, moteAngle);
-
-                          return (
-                            <circle
-                              key={`${type.key}-elemental-mote-${moteIndex}`}
-                              cx={mote.x}
-                              cy={mote.y}
-                              r={1.6 + Math.min(1.4, value * 0.18)}
-                              fill={type.glowColor}
-                              fillOpacity="0.42"
-                              stroke="rgba(7,5,8,0.72)"
-                              strokeWidth="0.6"
-                            />
-                          );
-                        })}
+                        {renderDamageTextureMarks(type, visualStartAngle, visualEndAngle, value)}
 
                         {labelMode !== "hidden" ? (
                           <text
                             transform={getArcTextTransform(CX, CY, 314, midAngle)}
                             textAnchor="middle"
                             dominantBaseline="middle"
-                            fontSize={labelMode === "full" ? 7.5 : 8.4}
+                            fontSize={labelMode === "full" ? 7.4 : 8.3}
                             fontWeight="900"
                             letterSpacing={labelMode === "full" ? "0.08em" : "0.12em"}
-                            fill="rgba(255,244,218,0.9)"
+                            fill="rgba(255,244,218,0.92)"
                             paintOrder="stroke"
-                            stroke="rgba(4,3,5,0.88)"
+                            stroke="rgba(4,3,5,0.9)"
                             strokeWidth="2.4"
                             filter="url(#fineInkShadow)"
                           >
@@ -1138,18 +1256,9 @@ export default function DataCircle({
             <circle
               cx={CX}
               cy={CY}
-              r={252}
-              fill="none"
-              stroke="rgba(230,188,112,0.09)"
-              strokeWidth="38"
-            />
-
-            <circle
-              cx={CX}
-              cy={CY}
               r={274}
               fill="none"
-              stroke="rgba(230,188,112,0.2)"
+              stroke="rgba(230,188,112,0.18)"
               strokeWidth="1.1"
             />
 
@@ -1158,7 +1267,7 @@ export default function DataCircle({
               cy={CY}
               r={230}
               fill="none"
-              stroke="rgba(230,188,112,0.16)"
+              stroke="rgba(230,188,112,0.15)"
               strokeWidth="1"
             />
 
@@ -1169,8 +1278,8 @@ export default function DataCircle({
                 return null;
               }
 
-              const visualStartAngle = segment.startAngle + 1.2;
-              const visualEndAngle = segment.endAngle - 1.2;
+              const visualStartAngle = segment.startAngle + 1.25;
+              const visualEndAngle = segment.endAngle - 1.25;
               const midAngle = segment.startAngle + sweep / 2;
               const percentage = roleData.total > 0 ? Math.round((segment.value / roleData.total) * 100) : 50;
               const boundaries = getSubcategoryBoundaries(
@@ -1184,6 +1293,22 @@ export default function DataCircle({
               return (
                 <g key={segment.key}>
                   <path
+                    d={describeTextArc(
+                      CX,
+                      CY,
+                      252,
+                      visualStartAngle,
+                      visualEndAngle
+                    )}
+                    fill="none"
+                    stroke={segment.glowColor}
+                    strokeOpacity={roleData.total > 0 ? 0.13 : 0.05}
+                    strokeWidth="48"
+                    strokeLinecap="butt"
+                    filter="url(#elementalBloom)"
+                  />
+
+                  <path
                     d={describeDonutSegment(
                       CX,
                       CY,
@@ -1192,12 +1317,11 @@ export default function DataCircle({
                       visualStartAngle,
                       visualEndAngle
                     )}
-                    fill={`url(#${segment.gradientId})`}
-                    fillOpacity={roleData.total > 0 ? 0.76 : 0.22}
-                    stroke={segment.glowColor}
-                    strokeOpacity={roleData.total > 0 ? 0.34 : 0.14}
+                    fill={segment.color}
+                    fillOpacity={roleData.total > 0 ? 0.56 : 0.2}
+                    stroke={segment.accentColor}
+                    strokeOpacity={roleData.total > 0 ? 0.34 : 0.12}
                     strokeWidth="1"
-                    filter="url(#elementalBloom)"
                   />
 
                   <path
@@ -1209,9 +1333,24 @@ export default function DataCircle({
                       visualEndAngle - 1
                     )}
                     fill="none"
-                    stroke="rgba(255,238,199,0.12)"
-                    strokeWidth="18"
-                    strokeDasharray="1 11"
+                    stroke={segment.accentColor}
+                    strokeOpacity="0.24"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                  />
+
+                  <path
+                    d={describeTextArc(
+                      CX,
+                      CY,
+                      252,
+                      visualStartAngle + 2,
+                      visualEndAngle - 2
+                    )}
+                    fill="none"
+                    stroke="rgba(255,238,199,0.1)"
+                    strokeWidth="16"
+                    strokeDasharray="1 12"
                     strokeLinecap="round"
                   />
 
@@ -1227,8 +1366,25 @@ export default function DataCircle({
                         x2={outer.x}
                         y2={outer.y}
                         stroke={segment.lineColor}
-                        strokeOpacity="0.42"
-                        strokeWidth="1.1"
+                        strokeOpacity="0.5"
+                        strokeWidth="1.05"
+                      />
+                    );
+                  })}
+
+                  {boundaries.map((angle) => {
+                    const point = polarToCartesian(CX, CY, 252, angle);
+
+                    return (
+                      <circle
+                        key={`${segment.key}-subcategory-dot-${angle}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r="2.1"
+                        fill={segment.accentColor}
+                        fillOpacity="0.52"
+                        stroke="rgba(5,4,6,0.9)"
+                        strokeWidth="0.8"
                       />
                     );
                   })}
@@ -1240,9 +1396,9 @@ export default function DataCircle({
                       fontSize="8.6"
                       fontWeight="950"
                       letterSpacing="0.13em"
-                      fill="rgba(255,244,218,0.92)"
+                      fill="rgba(255,244,218,0.94)"
                       paintOrder="stroke"
-                      stroke="rgba(4,3,5,0.86)"
+                      stroke="rgba(4,3,5,0.88)"
                       strokeWidth="2.4"
                     >
                       {sweep > 35 ? segment.label.toUpperCase() : segment.shortLabel}
@@ -1255,9 +1411,9 @@ export default function DataCircle({
                       fontSize="6.8"
                       fontWeight="850"
                       letterSpacing="0.08em"
-                      fill="rgba(229,202,152,0.72)"
+                      fill="rgba(229,202,152,0.76)"
                       paintOrder="stroke"
-                      stroke="rgba(4,3,5,0.82)"
+                      stroke="rgba(4,3,5,0.84)"
                       strokeWidth="2"
                     >
                       {roleData.total > 0 ? `${percentage}% · ${segment.value}` : "NO DATA"}
@@ -1323,7 +1479,7 @@ export default function DataCircle({
             })}
 
             {Array.from({ length: 4 }, (_, index) => {
-              const radius = 112 + index * 28;
+              const radius = 112 + index * 24;
 
               return (
                 <circle
