@@ -10,12 +10,7 @@ type RangeProfileLayerProps = {
 function getRangeDotAngles(count: number) {
   if (count <= 0) return [];
 
-  /*
-    This value controls the protected label zone near the top of the circle.
-    It was 78. Reducing it to 66 lets the motes come closer to the curved
-    range labels while still avoiding direct overlap.
-  */
-  const blockedArc = 66;
+  const blockedArc = 25;
   const availableSweep = 360 - blockedArc;
   const startAngle = blockedArc / 2;
   const step = availableSweep / count;
@@ -26,11 +21,11 @@ function getRangeDotAngles(count: number) {
   });
 }
 
-function getRangeBandIntensity(value: number, _maxValue: number) {
+function getRangeBandIntensity(value: number, maxValue: number) {
   if (value <= 0) {
     return {
-      smokeOpacity: 0.022,
-      inlayOpacity: 0.035,
+      smokeOpacity: 0.018,
+      inlayOpacity: 0.026,
       rimOpacity: 0.09,
       moteOpacity: 0,
       moteGlowOpacity: 0,
@@ -38,8 +33,8 @@ function getRangeBandIntensity(value: number, _maxValue: number) {
     };
   }
 
-  const ratio = Math.min(1, value / 14);
-  const eased = Math.pow(ratio, 0.92);
+  const ratio = Math.min(1, value / Math.max(1, maxValue));
+  const eased = Math.pow(ratio, 0.72);
 
   return {
     smokeOpacity: 0.025 + eased * 0.07,
@@ -48,6 +43,7 @@ function getRangeBandIntensity(value: number, _maxValue: number) {
     moteOpacity: 0.38 + eased * 0.38,
     moteGlowOpacity: 0.035 + eased * 0.16,
     moteRadius: 3.25 + eased * 1.05,
+    colorPower: eased,
   };
 }
 

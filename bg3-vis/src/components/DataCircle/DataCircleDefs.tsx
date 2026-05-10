@@ -134,9 +134,9 @@ export function DataCircleDefs() {
         />
       ))}
 
-      <path id="rangeTitlePath" d={describeTextArc(CX, CY, 230, -50, 50)} />
-      <path id="roleTitlePath" d={describeTextArc(CX, CY, 284, -50, 50)} />
-      <path id="damageTitlePath" d={describeTextArc(CX, CY, 350, -52, 52)} />
+      <path id="rangeTitlePath" d={describeTextArc(CX, CY, 220, -50, 50)} />
+      <path id="roleTitlePath" d={describeTextArc(CX, CY, 277, -50, 50)} />
+      <path id="damageTitlePath" d={describeTextArc(CX, CY, 345, -52, 52)} />
       <path id="resourceTitlePath" d={describeTextArc(CX, CY, 406, -56, 56)} />
     </defs>
   );
