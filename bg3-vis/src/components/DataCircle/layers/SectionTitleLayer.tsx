@@ -1,9 +1,9 @@
 type SectionTitleLayerProps = {
-  showResourceTitle?: boolean;
+  outerTitle?: string;
 };
 
 export function SectionTitleLayer({
-  showResourceTitle = true,
+  outerTitle = "DPR BY ROUND",
 }: SectionTitleLayerProps) {
   return (
     <>
@@ -25,14 +25,14 @@ export function SectionTitleLayer({
         </textPath>
       </text>
 
-      {showResourceTitle ? (
+      {outerTitle ? (
         <text className="data-circle-curved-title">
           <textPath
             href="#resourceTitlePath"
             startOffset="50%"
             textAnchor="middle"
           >
-            ACTION RESOURCES AND REQUIREMENTS
+            {outerTitle}
           </textPath>
         </text>
       ) : null}

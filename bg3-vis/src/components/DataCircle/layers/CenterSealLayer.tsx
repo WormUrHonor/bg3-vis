@@ -6,7 +6,13 @@ type CenterSealLayerProps = {
   archetypeLabel: string;
   displayLevel: number;
   spellCount: number;
+  averageDpr?: number;
+  totalDamage?: number;
 };
+
+function truncateLabel(label: string, maxLength: number) {
+  return label.length > maxLength ? `${label.slice(0, maxLength)}…` : label;
+}
 
 export function CenterSealLayer({
   buildLabel,
@@ -14,67 +20,240 @@ export function CenterSealLayer({
   archetypeLabel,
   displayLevel,
   spellCount,
+  averageDpr,
+  totalDamage,
 }: CenterSealLayerProps) {
+  const hasDamageSummary =
+    typeof averageDpr === "number" && typeof totalDamage === "number";
+
   return (
-    <>
+    <g className="data-circle-center-seal">
       <circle
         cx={CX}
         cy={CY}
-        r="88"
-        fill="url(#sealGradient)"
-        stroke="rgba(230,190,112,0.88)"
-        strokeWidth="3"
+        r="92"
+        fill="rgba(9,6,8,0.96)"
+        stroke="rgba(230,190,112,0.42)"
+        strokeWidth="2.4"
         filter="url(#arcaneSoftGlow)"
       />
 
       <circle
         cx={CX}
         cy={CY}
-        r="76"
-        fill="none"
-        stroke="rgba(22,13,5,0.65)"
-        strokeWidth="1.3"
-        strokeDasharray="3 8"
+        r="82"
+        fill="url(#sealGradient)"
+        fillOpacity="0.34"
+        stroke="rgba(255,226,164,0.55)"
+        strokeWidth="1.4"
       />
 
-      {Array.from({ length: 12 }, (_, index) => {
-        const angle = index * 30;
-        const end = polarToCartesian(CX, CY, 88, angle);
+      <circle
+        cx={CX}
+        cy={CY}
+        r="72"
+        fill="none"
+        stroke="rgba(255,226,164,0.2)"
+        strokeWidth="1"
+        strokeDasharray="2 7"
+      />
+
+      <circle
+        cx={CX}
+        cy={CY}
+        r="56"
+        fill="rgba(5,4,6,0.42)"
+        stroke="rgba(255,226,164,0.16)"
+        strokeWidth="1"
+      />
+
+      {Array.from({ length: 16 }, (_, index) => {
+        const angle = index * 22.5;
+        const inner = polarToCartesian(CX, CY, 74, angle);
+        const outer = polarToCartesian(CX, CY, 90, angle);
 
         return (
           <line
-            key={`seal-line-${index}`}
-            x1={CX}
-            y1={CY}
-            x2={end.x}
-            y2={end.y}
-            stroke="rgba(0,0,0,0.28)"
-            strokeWidth="1"
+            key={`seal-outer-tick-${index}`}
+            x1={inner.x}
+            y1={inner.y}
+            x2={outer.x}
+            y2={outer.y}
+            stroke="rgba(255,226,164,0.22)"
+            strokeWidth={index % 2 === 0 ? 1.1 : 0.7}
+            strokeLinecap="round"
           />
         );
       })}
 
-      {characterLabel ? (
-        <text x={CX} y="462" className="data-circle-character-name">
-          {characterLabel.length > 18
-            ? `${characterLabel.slice(0, 18)}…`
-            : characterLabel}
-        </text>
-      ) : null}
+      {Array.from({ length: 8 }, (_, index) => {
+        const angle = index * 45;
+        const inner = polarToCartesian(CX, CY, 58, angle);
+        const outer = polarToCartesian(CX, CY, 70, angle);
 
-      <text x={CX} y="488" className="data-circle-build-name">
-        {buildLabel.length > 20 ? `${buildLabel.slice(0, 20)}…` : buildLabel}
+        return (
+          <line
+            key={`seal-inner-tick-${index}`}
+            x1={inner.x}
+            y1={inner.y}
+            x2={outer.x}
+            y2={outer.y}
+            stroke="rgba(255,226,164,0.16)"
+            strokeWidth="0.8"
+            strokeLinecap="round"
+          />
+        );
+      })}
+
+      {hasDamageSummary ? (
+        <>
+          <text
+            x={CX}
+            y={CY - 44}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="8.6"
+            fontWeight="900"
+            letterSpacing="0.15em"
+            fill="rgba(229,202,152,0.78)"
+            paintOrder="stroke"
+            stroke="rgba(4,3,5,0.9)"
+            strokeWidth="2"
+          >
+            AVG DPR
+          </text>
+
+          <text
+            x={CX}
+            y={CY - 14}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="31"
+            fontWeight="950"
+            letterSpacing="0.02em"
+            fill="rgba(255,248,226,0.98)"
+            paintOrder="stroke"
+            stroke="rgba(3,2,4,0.96)"
+            strokeWidth="4"
+            filter="url(#fineInkShadow)"
+          >
+            {averageDpr.toFixed(1)}
+          </text>
+
+          <text
+            x={CX}
+            y={CY + 13}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="8.2"
+            fontWeight="900"
+            letterSpacing="0.12em"
+            fill="rgba(229,202,152,0.72)"
+            paintOrder="stroke"
+            stroke="rgba(4,3,5,0.9)"
+            strokeWidth="1.8"
+          >
+            TOTAL DAMAGE
+          </text>
+
+          <text
+            x={CX}
+            y={CY + 34}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="16.5"
+            fontWeight="950"
+            letterSpacing="0.04em"
+            fill="rgba(255,226,164,0.92)"
+            paintOrder="stroke"
+            stroke="rgba(3,2,4,0.94)"
+            strokeWidth="3"
+            filter="url(#fineInkShadow)"
+          >
+            {Math.round(totalDamage)}
+          </text>
+        </>
+      ) : (
+        <>
+          <text
+            x={CX}
+            y={CY - 16}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="15"
+            fontWeight="950"
+            letterSpacing="0.04em"
+            fill="rgba(255,248,226,0.96)"
+            paintOrder="stroke"
+            stroke="rgba(3,2,4,0.96)"
+            strokeWidth="3"
+            filter="url(#fineInkShadow)"
+          >
+            {truncateLabel(buildLabel, 16)}
+          </text>
+
+          <text
+            x={CX}
+            y={CY + 13}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="10.5"
+            fontWeight="900"
+            letterSpacing="0.06em"
+            fill="rgba(229,202,152,0.82)"
+            paintOrder="stroke"
+            stroke="rgba(4,3,5,0.9)"
+            strokeWidth="2"
+          >
+            {truncateLabel(archetypeLabel, 18)}
+          </text>
+        </>
+      )}
+
+      <rect
+        x={CX - 58}
+        y={CY + 55}
+        width="116"
+        height="21"
+        rx="10.5"
+        fill="rgba(8,6,8,0.72)"
+        stroke="rgba(255,226,164,0.22)"
+        strokeWidth="1"
+      />
+
+      <text
+        x={CX}
+        y={CY + 66}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="8.6"
+        fontWeight="900"
+        letterSpacing="0.08em"
+        fill="rgba(255,238,199,0.86)"
+        paintOrder="stroke"
+        stroke="rgba(4,3,5,0.92)"
+        strokeWidth="1.8"
+      >
+        {`L${displayLevel} · ${spellCount} ABILITIES`}
       </text>
 
-      <text x={CX} y="513" className="data-circle-archetype">
-        {archetypeLabel.length > 22
-          ? `${archetypeLabel.slice(0, 22)}…`
-          : archetypeLabel}
+      <text
+        x={CX}
+        y={CY + 94}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="8"
+        fontWeight="850"
+        letterSpacing="0.08em"
+        fill="rgba(229,202,152,0.52)"
+        paintOrder="stroke"
+        stroke="rgba(4,3,5,0.84)"
+        strokeWidth="1.6"
+      >
+        {characterLabel
+          ? truncateLabel(characterLabel, 18).toUpperCase()
+          : truncateLabel(buildLabel, 18).toUpperCase()}
       </text>
-
-      <text x={CX} y="540" className="data-circle-plate-text">
-        L{displayLevel} · {spellCount} abilities
-      </text>
-    </>
+    </g>
   );
 }

@@ -1,19 +1,23 @@
 import { useMemo } from "react";
 import type { ClassName } from "../types/buildPlannerTypes";
 import { getSpellById, type BG3Spell } from "../data/bg3Spells";
-import { mockDataCircleBuild, mockSelectedSpellIds } from "../data/mockDataCircle";
+import {
+  mockAverageDpr,
+  mockDataCircleBuild,
+  mockDprByRound,
+  mockSelectedSpellIds,
+} from "../data/mockDataCircle";
 import { DataCircleDefs } from "./DataCircle/DataCircleDefs";
 import {
   getDamageTypeCounts,
   getRangeCounts,
-  getResourceCounts,
   getRoleData,
 } from "./DataCircle/dataCircleAggregation";
 import { BackgroundLayer } from "./DataCircle/layers/BackgroundLayer";
 import { CenterSealLayer } from "./DataCircle/layers/CenterSealLayer";
 import { DamageTypesLayer } from "./DataCircle/layers/DamageTypesLayer";
+import { DprByRoundLayer } from "./DataCircle/layers/DprByRoundLayer";
 import { RangeProfileLayer } from "./DataCircle/layers/RangeProfileLayer";
-import { ResourceLayer } from "./DataCircle/layers/ResourceLayer";
 import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer";
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
 import "./DataCircle.css";
@@ -26,16 +30,6 @@ type DataCircleProps = {
   selectedLevel: number;
   selectedSpellIds: string[];
 };
-
-/*
-  Toggle this layer here.
-
-  false = hide the resource / requirements layer.
-  true = show the resource / requirements layer.
-
-  Later, the DPR-by-round layer can be rendered in the same outer slot.
-*/
-const SHOW_RESOURCE_LAYER = false;
 
 function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
   return selectedSpellIds
@@ -81,21 +75,7 @@ export default function DataCircle({
     [selectedSpells]
   );
 
-  /*
-    This is only calculated when the resource layer is enabled.
-    If SHOW_RESOURCE_LAYER is false, this avoids doing unnecessary work.
-  */
-  const resourceCounts = useMemo(
-    () => (SHOW_RESOURCE_LAYER ? getResourceCounts(selectedSpells) : null),
-    [selectedSpells]
-  );
-
   const maxRangeCount = Math.max(...Object.values(rangeCounts), 1);
-
-  const maxResourceCount = resourceCounts
-    ? Math.max(...Object.values(resourceCounts), 1)
-    : 1;
-
   const damageTypeTotal = Object.values(damageTypeCounts).reduce(
     (sum, value) => sum + value,
     0
@@ -114,34 +94,10 @@ export default function DataCircle({
 
           <BackgroundLayer />
 
-          {/*
-            OUTER SLOT.
-
-            Currently this is the optional C5 resource / requirements layer.
-            Later, replace this block with the DPR-by-round layer.
-
-            Example later:
-
-            <DprByRoundLayer ... />
-
-            Do not put DamageTypesLayer here. That is the damage TYPE layer,
-            not the outer DPR layer.
-          */}
-          {SHOW_RESOURCE_LAYER && resourceCounts ? (
-            <ResourceLayer
-              resourceCounts={resourceCounts}
-              maxResourceCount={maxResourceCount}
-            />
-          ) : null}
-
-          {/*
-            Future outer damage layer goes here when created.
-
-            Example:
-            {!SHOW_RESOURCE_LAYER ? (
-              <DprByRoundLayer ... />
-            ) : null}
-          */}
+          <DprByRoundLayer
+            rounds={mockDprByRound}
+            averageDpr={mockAverageDpr}
+          />
 
           <DamageTypesLayer
             damageTypeCounts={damageTypeCounts}
@@ -155,23 +111,19 @@ export default function DataCircle({
             maxRangeCount={maxRangeCount}
           />
 
-          <SectionTitleLayer showResourceTitle={SHOW_RESOURCE_LAYER} />
+          <SectionTitleLayer outerTitle="DPR BY ROUND" />
 
-          <CenterSealLayer
-            buildLabel={buildLabel}
-            characterLabel={characterLabel}
-            archetypeLabel={archetypeLabel}
-            displayLevel={displayLevel}
-            spellCount={spellCount}
-          />
+<CenterSealLayer
+  buildLabel={buildLabel}
+  characterLabel={characterLabel}
+  archetypeLabel={archetypeLabel}
+  displayLevel={displayLevel}
+  spellCount={spellCount}
+  averageDpr={mockAverageDpr}
+  totalDamage={mockDprByRound.reduce((sum, round) => sum + round.damage, 0)}
+/>
         </svg>
       </div>
-
-      {isUsingMockData ? (
-        <p className="data-circle-empty">
-          Mock data is shown until spells are selected.
-        </p>
-      ) : null}
     </div>
   );
 }
