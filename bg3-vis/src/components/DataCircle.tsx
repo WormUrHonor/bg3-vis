@@ -27,6 +27,16 @@ type DataCircleProps = {
   selectedSpellIds: string[];
 };
 
+/*
+  Toggle this layer here.
+
+  false = hide the resource / requirements layer.
+  true = show the resource / requirements layer.
+
+  Later, the DPR-by-round layer can be rendered in the same outer slot.
+*/
+const SHOW_RESOURCE_LAYER = false;
+
 function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
   return selectedSpellIds
     .map((id) => getSpellById(id))
@@ -70,13 +80,22 @@ export default function DataCircle({
     () => getDamageTypeCounts(selectedSpells),
     [selectedSpells]
   );
+
+  /*
+    This is only calculated when the resource layer is enabled.
+    If SHOW_RESOURCE_LAYER is false, this avoids doing unnecessary work.
+  */
   const resourceCounts = useMemo(
-    () => getResourceCounts(selectedSpells),
+    () => (SHOW_RESOURCE_LAYER ? getResourceCounts(selectedSpells) : null),
     [selectedSpells]
   );
 
   const maxRangeCount = Math.max(...Object.values(rangeCounts), 1);
-  const maxResourceCount = Math.max(...Object.values(resourceCounts), 1);
+
+  const maxResourceCount = resourceCounts
+    ? Math.max(...Object.values(resourceCounts), 1)
+    : 1;
+
   const damageTypeTotal = Object.values(damageTypeCounts).reduce(
     (sum, value) => sum + value,
     0
@@ -95,10 +114,34 @@ export default function DataCircle({
 
           <BackgroundLayer />
 
-          <ResourceLayer
-            resourceCounts={resourceCounts}
-            maxResourceCount={maxResourceCount}
-          />
+          {/*
+            OUTER SLOT.
+
+            Currently this is the optional C5 resource / requirements layer.
+            Later, replace this block with the DPR-by-round layer.
+
+            Example later:
+
+            <DprByRoundLayer ... />
+
+            Do not put DamageTypesLayer here. That is the damage TYPE layer,
+            not the outer DPR layer.
+          */}
+          {SHOW_RESOURCE_LAYER && resourceCounts ? (
+            <ResourceLayer
+              resourceCounts={resourceCounts}
+              maxResourceCount={maxResourceCount}
+            />
+          ) : null}
+
+          {/*
+            Future outer damage layer goes here when created.
+
+            Example:
+            {!SHOW_RESOURCE_LAYER ? (
+              <DprByRoundLayer ... />
+            ) : null}
+          */}
 
           <DamageTypesLayer
             damageTypeCounts={damageTypeCounts}
@@ -112,7 +155,7 @@ export default function DataCircle({
             maxRangeCount={maxRangeCount}
           />
 
-          <SectionTitleLayer />
+          <SectionTitleLayer showResourceTitle={SHOW_RESOURCE_LAYER} />
 
           <CenterSealLayer
             buildLabel={buildLabel}

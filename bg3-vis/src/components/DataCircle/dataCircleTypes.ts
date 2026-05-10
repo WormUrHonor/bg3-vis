@@ -32,7 +32,6 @@ export type ResourceSectorKey =
   | "action"
   | "bonus-action"
   | "reaction"
-  | "passive-conditional"
   | "concentration"
   | "cantrip"
   | "slot-1"
@@ -44,7 +43,17 @@ export type ResourceSectorKey =
   | "pact"
   | "short-rest"
   | "long-rest"
-  | "class-resource";
+  | "class-resource"
+  | "passive-conditional";
+
+export type ResourceFamily =
+  | "action"
+  | "focus"
+  | "spell-slot"
+  | "pact"
+  | "rest"
+  | "class"
+  | "trigger";
 
 export type RoleData = {
   counts: Record<AbilityRole, number>;

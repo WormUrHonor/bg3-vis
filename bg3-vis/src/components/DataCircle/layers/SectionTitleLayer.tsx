@@ -1,4 +1,10 @@
-export function SectionTitleLayer() {
+type SectionTitleLayerProps = {
+  showResourceTitle?: boolean;
+};
+
+export function SectionTitleLayer({
+  showResourceTitle = true,
+}: SectionTitleLayerProps) {
   return (
     <>
       <text className="data-circle-curved-title">
@@ -15,15 +21,21 @@ export function SectionTitleLayer() {
 
       <text className="data-circle-curved-title">
         <textPath href="#damageTitlePath" startOffset="50%" textAnchor="middle">
-          DAMAGE TYPE DISTRIBUTION
+          DAMAGE TYPE PROFILE
         </textPath>
       </text>
 
-      <text className="data-circle-curved-title">
-        <textPath href="#resourceTitlePath" startOffset="50%" textAnchor="middle">
-          ACTION RESOURCES AND REQUIREMENTS
-        </textPath>
-      </text>
+      {showResourceTitle ? (
+        <text className="data-circle-curved-title">
+          <textPath
+            href="#resourceTitlePath"
+            startOffset="50%"
+            textAnchor="middle"
+          >
+            ACTION RESOURCES AND REQUIREMENTS
+          </textPath>
+        </text>
+      ) : null}
     </>
   );
 }
