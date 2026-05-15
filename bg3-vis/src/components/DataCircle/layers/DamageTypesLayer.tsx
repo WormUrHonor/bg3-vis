@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import acidIcon from "../../../assets/Damage Types/Acid_Damage_Icon.png";
 import bludgeoningIcon from "../../../assets/Damage Types/Bludgeoning_Damage_Icon.png";
 import coldIcon from "../../../assets/Damage Types/Cold_Damage_Icon.png";
@@ -20,11 +21,22 @@ import {
   getArcTextTransform,
   polarToCartesian,
 } from "../dataCircleGeometry";
+import type {
+  DataCircleFocus,
+  LayerRelationshipIndex,
+} from "../dataCircleInteraction";
+import {
+  hasActiveFocus,
+  isDamageTypeRelatedToFocus,
+} from "../dataCircleInteraction";
 import type { DamageRingKey } from "../dataCircleTypes";
 
 type DamageTypesLayerProps = {
   damageTypeCounts: Record<DamageRingKey, number>;
   damageTypeTotal: number;
+  focus: DataCircleFocus;
+  setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
+  relationshipIndex: LayerRelationshipIndex;
 };
 
 type DamageLabelMode = "full" | "short" | "hidden";
@@ -234,7 +246,8 @@ function renderDamageTextureMarks(
   type: (typeof DAMAGE_TYPES)[number],
   startAngle: number,
   endAngle: number,
-  value: number
+  value: number,
+  opacityMultiplier = 1
 ) {
   const sweep = Math.max(0, endAngle - startAngle);
   const safeCount = Math.min(7, Math.max(2, value + 1));
@@ -256,7 +269,7 @@ function renderDamageTextureMarks(
           x2={outer.x}
           y2={outer.y}
           stroke={type.glowColor}
-          strokeOpacity="0.13"
+          strokeOpacity={0.13 * opacityMultiplier}
           strokeWidth="1"
           strokeLinecap="round"
         />
@@ -281,7 +294,7 @@ function renderDamageTextureMarks(
               r={2 + (index % 3) * 0.7}
               fill="none"
               stroke={type.glowColor}
-              strokeOpacity="0.31"
+              strokeOpacity={0.31 * opacityMultiplier}
               strokeWidth="1"
             />
           );
@@ -306,7 +319,7 @@ function renderDamageTextureMarks(
               points={`${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
               fill="none"
               stroke={type.glowColor}
-              strokeOpacity="0.38"
+              strokeOpacity={0.38 * opacityMultiplier}
               strokeWidth="1.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -334,7 +347,7 @@ function renderDamageTextureMarks(
             <g
               key={`${type.key}-spark-${index}`}
               transform={`translate(${point.x} ${point.y}) rotate(${angle})`}
-              opacity="0.38"
+              opacity={0.38 * opacityMultiplier}
             >
               <line
                 x1="-3.4"
@@ -377,7 +390,7 @@ function renderDamageTextureMarks(
               d={`M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`}
               fill="none"
               stroke={type.glowColor}
-              strokeOpacity="0.32"
+              strokeOpacity={0.32 * opacityMultiplier}
               strokeWidth="1.1"
               strokeLinecap="round"
             />
@@ -411,9 +424,9 @@ function renderDamageTextureMarks(
               cy={point.y}
               r="2.4"
               fill={type.glowColor}
-              fillOpacity="0.2"
+              fillOpacity={0.2 * opacityMultiplier}
               stroke={type.glowColor}
-              strokeOpacity="0.24"
+              strokeOpacity={0.24 * opacityMultiplier}
               strokeWidth="1"
             />
           );
@@ -438,7 +451,7 @@ function renderDamageTextureMarks(
             x2={outer.x}
             y2={outer.y}
             stroke={type.glowColor}
-            strokeOpacity="0.26"
+            strokeOpacity={0.26 * opacityMultiplier}
             strokeWidth="1.15"
             strokeLinecap="round"
           />
@@ -451,7 +464,8 @@ function renderDamageTextureMarks(
 function renderDamageIcons(
   type: (typeof DAMAGE_TYPES)[number],
   displayPlan: DamageDisplayPlan,
-  clipPathId: string
+  clipPathId: string,
+  opacity = 0.97
 ) {
   const iconHref = DAMAGE_TYPE_ICONS[type.key];
 
@@ -473,7 +487,7 @@ function renderDamageIcons(
           <g
             key={`${type.key}-icon-${index}`}
             transform={`translate(${point.x} ${point.y})`}
-            opacity="0.97"
+            opacity={opacity}
           >
             <circle
               cx="0"
@@ -512,7 +526,12 @@ function renderDamageIcons(
 export function DamageTypesLayer({
   damageTypeCounts,
   damageTypeTotal,
+  focus,
+  setFocus,
+  relationshipIndex,
 }: DamageTypesLayerProps) {
+  const activeFocus = hasActiveFocus(focus);
+
   return (
     <g className="data-circle-damage-spellwheel">
       <circle
@@ -583,8 +602,27 @@ export function DamageTypesLayer({
 
             const clipPathId = `damage-segment-clip-${type.key}`;
 
+            const isRelated = isDamageTypeRelatedToFocus(
+              type.key,
+              focus,
+              relationshipIndex
+            );
+
+            const groupOpacity = activeFocus && !isRelated ? 0.28 : 1;
+            const focusBoost = activeFocus && isRelated ? 1.18 : 1;
+            const textureOpacityMultiplier =
+              activeFocus && !isRelated ? 0.38 : focusBoost;
+            const iconOpacity = activeFocus && !isRelated ? 0.32 : 0.97;
+
             return (
-              <g key={type.key}>
+              <g
+                key={type.key}
+                opacity={groupOpacity}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() =>
+                  setFocus({ type: "damageType", damageType: type.key })
+                }
+              >
                 <defs>
                   <clipPath id={clipPathId}>
                     <path
@@ -610,7 +648,7 @@ export function DamageTypesLayer({
                   )}
                   fill="none"
                   stroke={type.glowColor}
-                  strokeOpacity="0.11"
+                  strokeOpacity={0.11 * focusBoost}
                   strokeWidth="56"
                   strokeLinecap="butt"
                   filter="url(#elementalBloom)"
@@ -626,10 +664,10 @@ export function DamageTypesLayer({
                     visualEndAngle
                   )}
                   fill={type.color}
-                  fillOpacity="0.22"
+                  fillOpacity={0.22 * focusBoost}
                   stroke={type.glowColor}
-                  strokeOpacity="0.3"
-                  strokeWidth="1.1"
+                  strokeOpacity={0.3 * focusBoost}
+                  strokeWidth={activeFocus && isRelated ? 1.7 : 1.1}
                 />
 
                 <path
@@ -656,8 +694,8 @@ export function DamageTypesLayer({
                   )}
                   fill="none"
                   stroke={type.glowColor}
-                  strokeOpacity="0.2"
-                  strokeWidth="2.1"
+                  strokeOpacity={0.2 * focusBoost}
+                  strokeWidth={activeFocus && isRelated ? 2.8 : 2.1}
                   strokeLinecap="round"
                 />
 
@@ -671,7 +709,7 @@ export function DamageTypesLayer({
                   )}
                   fill="none"
                   stroke={type.glowColor}
-                  strokeOpacity="0.09"
+                  strokeOpacity={0.09 * focusBoost}
                   strokeWidth="1.05"
                   strokeDasharray="2 8"
                   strokeLinecap="round"
@@ -681,10 +719,11 @@ export function DamageTypesLayer({
                   type,
                   visualStartAngle,
                   visualEndAngle,
-                  value
+                  value,
+                  textureOpacityMultiplier
                 )}
 
-                {renderDamageIcons(type, displayPlan, clipPathId)}
+                {renderDamageIcons(type, displayPlan, clipPathId, iconOpacity)}
 
                 {displayPlan.labelMode !== "hidden" ? (
                   <text
@@ -705,10 +744,14 @@ export function DamageTypesLayer({
                     letterSpacing={
                       displayPlan.labelMode === "full" ? "0.045em" : "0.075em"
                     }
-                    fill="rgba(255,248,226,0.98)"
+                    fill={
+                      activeFocus && isRelated
+                        ? "rgba(255,250,232,1)"
+                        : "rgba(255,248,226,0.98)"
+                    }
                     paintOrder="stroke"
                     stroke="rgba(3,2,4,0.96)"
-                    strokeWidth="3.2"
+                    strokeWidth={activeFocus && isRelated ? 3.6 : 3.2}
                     filter="url(#fineInkShadow)"
                   >
                     {displayPlan.labelText}

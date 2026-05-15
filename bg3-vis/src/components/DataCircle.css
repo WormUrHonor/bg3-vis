@@ -99,3 +99,18 @@
     min-width: 0;
   }
 }
+.data-circle-svg * {
+  transition:
+    opacity 160ms ease,
+    stroke-opacity 160ms ease,
+    fill-opacity 160ms ease,
+    stroke-width 160ms ease;
+}
+
+.data-circle-connectivity-layer {
+  mix-blend-mode: screen;
+}
+
+.data-circle-focus-explanation {
+  mix-blend-mode: normal;
+}

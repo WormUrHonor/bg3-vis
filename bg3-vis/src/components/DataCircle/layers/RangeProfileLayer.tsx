@@ -1,10 +1,22 @@
+import type { Dispatch, SetStateAction } from "react";
 import { RANGE_BANDS } from "../dataCircleConfig";
 import { CX, CY, polarToCartesian } from "../dataCircleGeometry";
+import type {
+  DataCircleFocus,
+  LayerRelationshipIndex,
+} from "../dataCircleInteraction";
+import {
+  hasActiveFocus,
+  isRangeRelatedToFocus,
+} from "../dataCircleInteraction";
 import type { RangeBandKey } from "../dataCircleTypes";
 
 type RangeProfileLayerProps = {
   rangeCounts: Record<RangeBandKey, number>;
   maxRangeCount: number;
+  focus: DataCircleFocus;
+  setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
+  relationshipIndex: LayerRelationshipIndex;
 };
 
 function getRangeDotAngles(count: number) {
@@ -50,6 +62,9 @@ function getRangeBandIntensity(value: number, maxValue: number) {
 export function RangeProfileLayer({
   rangeCounts,
   maxRangeCount,
+  focus,
+  setFocus,
+  relationshipIndex,
 }: RangeProfileLayerProps) {
   return (
     <>
@@ -81,12 +96,7 @@ export function RangeProfileLayer({
       />
 
       <g clipPath="url(#innerOrreryClip)">
-        <circle
-          cx={CX}
-          cy={CY}
-          r="216"
-          fill="rgba(8,6,7,0.96)"
-        />
+        <circle cx={CX} cy={CY} r="216" fill="rgba(8,6,7,0.96)" />
 
         {Array.from({ length: 16 }, (_, index) => {
           const angle = index * 22.5;
@@ -130,16 +140,29 @@ export function RangeProfileLayer({
         const bandWidth = band.outerRadius - band.innerRadius;
         const angles = getRangeDotAngles(value);
         const intensity = getRangeBandIntensity(value, maxRangeCount);
+        const isRelated = isRangeRelatedToFocus(
+          band.key,
+          focus,
+          relationshipIndex
+        );
+        const active = hasActiveFocus(focus);
+        const groupOpacity = active && !isRelated ? 0.28 : 1;
+        const focusBoost = active && isRelated ? 1.35 : 1;
 
         return (
-          <g key={band.key}>
+          <g
+            key={band.key}
+            opacity={groupOpacity}
+            style={{ cursor: "pointer" }}
+            onMouseEnter={() => setFocus({ type: "range", range: band.key })}
+          >
             <circle
               cx={CX}
               cy={CY}
               r={middleRadius}
               fill="none"
               stroke="#9b6fd0"
-              strokeOpacity={intensity.smokeOpacity}
+              strokeOpacity={intensity.smokeOpacity * focusBoost}
               strokeWidth={bandWidth + 3}
               filter={value > 0 ? "url(#arcaneSoftGlow)" : undefined}
             />
@@ -150,7 +173,7 @@ export function RangeProfileLayer({
               r={middleRadius}
               fill="none"
               stroke="#69496f"
-              strokeOpacity={intensity.inlayOpacity}
+              strokeOpacity={intensity.inlayOpacity * focusBoost}
               strokeWidth={bandWidth}
             />
 
@@ -160,8 +183,8 @@ export function RangeProfileLayer({
               r={band.innerRadius}
               fill="none"
               stroke="rgba(218,178,104,0.9)"
-              strokeOpacity={intensity.rimOpacity}
-              strokeWidth="0.85"
+              strokeOpacity={intensity.rimOpacity * focusBoost}
+              strokeWidth={isRelated && active ? 1.35 : 0.85}
             />
 
             <circle
@@ -170,8 +193,8 @@ export function RangeProfileLayer({
               r={band.outerRadius}
               fill="none"
               stroke="rgba(218,178,104,0.9)"
-              strokeOpacity={intensity.rimOpacity}
-              strokeWidth="0.85"
+              strokeOpacity={intensity.rimOpacity * focusBoost}
+              strokeWidth={isRelated && active ? 1.35 : 0.85}
             />
 
             <text className="data-circle-range-band-label">
@@ -195,7 +218,7 @@ export function RangeProfileLayer({
                     cy={y}
                     r={intensity.moteRadius + 6}
                     fill="#b077d6"
-                    fillOpacity={intensity.moteGlowOpacity}
+                    fillOpacity={intensity.moteGlowOpacity * focusBoost}
                     filter="url(#moteGlow)"
                   />
                   <circle
@@ -211,7 +234,7 @@ export function RangeProfileLayer({
                     cy={y}
                     r={intensity.moteRadius}
                     fill="url(#moteGradient)"
-                    fillOpacity={intensity.moteOpacity}
+                    fillOpacity={intensity.moteOpacity * focusBoost}
                     stroke="rgba(255,239,185,0.58)"
                     strokeWidth="0.7"
                   />

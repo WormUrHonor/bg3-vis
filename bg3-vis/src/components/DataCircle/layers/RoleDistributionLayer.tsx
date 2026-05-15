@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import type { AbilityRole } from "../../../data/bg3Spells";
 import {
   DAMAGE_ROLE_KEYS,
@@ -12,10 +13,21 @@ import {
   normalizeAngle,
   polarToCartesian,
 } from "../dataCircleGeometry";
+import type {
+  DataCircleFocus,
+  LayerRelationshipIndex,
+} from "../dataCircleInteraction";
+import {
+  hasActiveFocus,
+  isRoleRelatedToFocus,
+} from "../dataCircleInteraction";
 import type { RoleData } from "../dataCircleTypes";
 
 type RoleDistributionLayerProps = {
   roleData: RoleData;
+  focus: DataCircleFocus;
+  setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
+  relationshipIndex: LayerRelationshipIndex;
 };
 
 type PrimaryRoleSegment = {
@@ -258,7 +270,12 @@ function getSubcategoryFillOpacity(
   return index % 2 === 0 ? 0.48 : 0.38;
 }
 
-export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) {
+export function RoleDistributionLayer({
+  roleData,
+  focus,
+  setFocus,
+  relationshipIndex,
+}: RoleDistributionLayerProps) {
   const damageAngle =
     roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
 
@@ -304,6 +321,8 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
             subKeys: UTILITY_ROLE_KEYS,
           },
         ];
+
+  const activeFocus = hasActiveFocus(focus);
 
   return (
     <g className="data-circle-role-sigil">
@@ -365,8 +384,18 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
           visualEndAngle
         );
 
+        const primarySegmentIsRelated =
+          !activeFocus ||
+          subcategorySegments.some((subcategory) =>
+            isRoleRelatedToFocus(subcategory.key, focus, relationshipIndex)
+          );
+
+        const primaryOpacity = activeFocus && !primarySegmentIsRelated ? 0.34 : 1;
+        const primaryFocusBoost =
+          activeFocus && primarySegmentIsRelated ? 1.14 : 1;
+
         return (
-          <g key={segment.key}>
+          <g key={segment.key} opacity={primaryOpacity}>
             <title>
               {`${segment.label}: ${segment.value} ${
                 segment.value === 1 ? "ability" : "abilities"
@@ -383,7 +412,9 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
               )}
               fill="none"
               stroke={segment.glowColor}
-              strokeOpacity={roleData.total > 0 ? 0.1 : 0.04}
+              strokeOpacity={
+                (roleData.total > 0 ? 0.1 : 0.04) * primaryFocusBoost
+              }
               strokeWidth="48"
               strokeLinecap="butt"
               filter="url(#elementalBloom)"
@@ -399,10 +430,14 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                 visualEndAngle
               )}
               fill={segment.color}
-              fillOpacity={roleData.total > 0 ? 0.38 : 0.16}
+              fillOpacity={
+                (roleData.total > 0 ? 0.38 : 0.16) * primaryFocusBoost
+              }
               stroke={segment.accentColor}
-              strokeOpacity={roleData.total > 0 ? 0.26 : 0.1}
-              strokeWidth="1"
+              strokeOpacity={
+                (roleData.total > 0 ? 0.26 : 0.1) * primaryFocusBoost
+              }
+              strokeWidth={activeFocus && primarySegmentIsRelated ? 1.35 : 1}
             />
 
             <path
@@ -415,8 +450,8 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
               )}
               fill="none"
               stroke={segment.accentColor}
-              strokeOpacity="0.3"
-              strokeWidth="1.5"
+              strokeOpacity={0.3 * primaryFocusBoost}
+              strokeWidth={activeFocus && primarySegmentIsRelated ? 2 : 1.5}
               strokeLinecap="round"
             />
 
@@ -430,7 +465,7 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
               )}
               fill="none"
               stroke={segment.accentColor}
-              strokeOpacity="0.16"
+              strokeOpacity={0.16 * primaryFocusBoost}
               strokeWidth="1.1"
               strokeLinecap="round"
             />
@@ -446,6 +481,16 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                 subcategory.key
               );
 
+              const isRelated = isRoleRelatedToFocus(
+                subcategory.key,
+                focus,
+                relationshipIndex
+              );
+
+              const subcategoryOpacity = activeFocus && !isRelated ? 0.3 : 1;
+              const subcategoryFocusBoost =
+                activeFocus && isRelated ? 1.32 : 1;
+
               const subLabelPathId = `role-sub-label-${segment.key}-${getSafeId(
                 subcategory.key
               )}`;
@@ -458,7 +503,14 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
               );
 
               return (
-                <g key={`${segment.key}-${subcategory.key}`}>
+                <g
+                  key={`${segment.key}-${subcategory.key}`}
+                  opacity={subcategoryOpacity}
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() =>
+                    setFocus({ type: "role", role: subcategory.key })
+                  }
+                >
                   <title>
                     {`${subcategory.label}: ${subcategory.value} ${
                       subcategory.value === 1 ? "ability" : "abilities"
@@ -475,14 +527,16 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                       subEndAngle
                     )}
                     fill={subcategoryShadeColor}
-                    fillOpacity={getSubcategoryFillOpacity(
-                      index,
-                      subcategorySegments.length,
-                      roleData.total
-                    )}
+                    fillOpacity={
+                      getSubcategoryFillOpacity(
+                        index,
+                        subcategorySegments.length,
+                        roleData.total
+                      ) * subcategoryFocusBoost
+                    }
                     stroke={subcategoryShadeColor}
-                    strokeOpacity="0.42"
-                    strokeWidth="0.75"
+                    strokeOpacity={0.42 * subcategoryFocusBoost}
+                    strokeWidth={activeFocus && isRelated ? 1.25 : 0.75}
                   />
 
                   <path
@@ -495,8 +549,8 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                     )}
                     fill="none"
                     stroke={subcategoryShadeColor}
-                    strokeOpacity="0.45"
-                    strokeWidth="1.15"
+                    strokeOpacity={0.45 * subcategoryFocusBoost}
+                    strokeWidth={activeFocus && isRelated ? 1.75 : 1.15}
                     strokeLinecap="round"
                   />
 
@@ -505,7 +559,7 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                     cy={markerPoint.y}
                     r={subSweep >= 42 ? 1.55 : 1.05}
                     fill={subcategoryShadeColor}
-                    fillOpacity="0.82"
+                    fillOpacity={activeFocus && isRelated ? 1 : 0.82}
                     stroke="rgba(5,4,6,0.86)"
                     strokeWidth="0.7"
                   />
@@ -527,10 +581,14 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                         fontSize={getSubcategoryFontSize(subLabel)}
                         fontWeight="850"
                         letterSpacing={getSubcategoryLetterSpacing(subLabel)}
-                        fill="rgba(255,244,218,0.84)"
+                        fill={
+                          activeFocus && isRelated
+                            ? "rgba(255,250,232,0.98)"
+                            : "rgba(255,244,218,0.84)"
+                        }
                         paintOrder="stroke"
                         stroke="rgba(4,3,5,0.92)"
-                        strokeWidth="1.85"
+                        strokeWidth={activeFocus && isRelated ? 2.25 : 1.85}
                         dominantBaseline="middle"
                       >
                         <textPath
@@ -585,10 +643,14 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                   fontSize={sweep >= 44 ? 10.6 : 8.8}
                   fontWeight="950"
                   letterSpacing="0.085em"
-                  fill="rgba(255,244,218,0.96)"
+                  fill={
+                    activeFocus && primarySegmentIsRelated
+                      ? "rgba(255,250,232,0.98)"
+                      : "rgba(255,244,218,0.96)"
+                  }
                   paintOrder="stroke"
                   stroke="rgba(4,3,5,0.94)"
-                  strokeWidth="2.7"
+                  strokeWidth={activeFocus && primarySegmentIsRelated ? 3.1 : 2.7}
                   dominantBaseline="middle"
                   filter="url(#fineInkShadow)"
                 >

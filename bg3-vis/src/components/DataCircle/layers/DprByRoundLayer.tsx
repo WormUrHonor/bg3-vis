@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getSpellById } from "../../../data/bg3Spells";
 import { getSpellIcon } from "../../../logic/spellIconLogic";
@@ -8,22 +9,24 @@ import {
   describeTextArc,
   polarToCartesian,
 } from "../dataCircleGeometry";
-
-type DprContribution = {
-  abilityId: string;
-  abilityName: string;
-  damage: number;
-};
-
-type DprRound = {
-  round: number;
-  damage: number;
-  contributions?: DprContribution[];
-};
+import type {
+  DataCircleFocus,
+  DprContribution,
+  DprRound,
+  LayerRelationshipIndex,
+} from "../dataCircleInteraction";
+import {
+  hasActiveFocus,
+  isAbilityRelatedToFocus,
+  isRoundRelatedToFocus,
+} from "../dataCircleInteraction";
 
 type DprByRoundLayerProps = {
   rounds: DprRound[];
   averageDpr: number;
+  focus: DataCircleFocus;
+  setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
+  relationshipIndex: LayerRelationshipIndex;
 };
 
 type AbilityColor = {
@@ -65,9 +68,7 @@ function damageToRadius(value: number) {
 }
 
 function getRoundTotal(round: DprRound) {
-  if (typeof round.damage === "number") {
-    return round.damage;
-  }
+  if (typeof round.damage === "number") return round.damage;
 
   return (
     round.contributions?.reduce(
@@ -150,9 +151,7 @@ async function getAverageIconColor(imageSrc: string): Promise<AbilityColor> {
 
   const context = canvas.getContext("2d", { willReadFrequently: true });
 
-  if (!context) {
-    throw new Error("Could not create canvas context.");
-  }
+  if (!context) throw new Error("Could not create canvas context.");
 
   context.drawImage(image, 0, 0, size, size);
 
@@ -174,10 +173,6 @@ async function getAverageIconColor(imageSrc: string): Promise<AbilityColor> {
     const brightness = (r + g + b) / 3;
     const saturation = Math.max(r, g, b) - Math.min(r, g, b);
 
-    /*
-      Ignore near-black UI/background pixels so the calculated colour reflects
-      the actual icon subject rather than the square icon frame.
-    */
     if (brightness < 34) continue;
 
     const weight = (a / 255) * (1 + saturation / 255);
@@ -188,9 +183,7 @@ async function getAverageIconColor(imageSrc: string): Promise<AbilityColor> {
     weightTotal += weight;
   }
 
-  if (weightTotal <= 0) {
-    return FALLBACK_COLORS[0];
-  }
+  if (weightTotal <= 0) return FALLBACK_COLORS[0];
 
   return normalizeIconColor(
     redTotal / weightTotal,
@@ -216,9 +209,11 @@ function getRoundIntensity(value: number) {
   };
 }
 
-function getContributionOpacity(value: number) {
+function getContributionOpacity(value: number, isRelated: boolean) {
   const ratio = clamp(value / DPR_SCALE_MAX, 0, 1);
-  return 0.42 + Math.pow(ratio, 0.62) * 0.24;
+  const base = 0.42 + Math.pow(ratio, 0.62) * 0.24;
+
+  return isRelated ? Math.min(0.82, base + 0.18) : base * 0.36;
 }
 
 function getContributionIconSize(radialThickness: number, sectorAngle: number) {
@@ -233,18 +228,17 @@ function getContributionIcon(
   iconSize: number,
   x: number,
   y: number,
-  color: string
+  color: string,
+  isRelated: boolean
 ) {
   const spell = getSpellById(contribution.abilityId);
 
-  if (!spell || iconSize <= 0) {
-    return null;
-  }
+  if (!spell || iconSize <= 0) return null;
 
   const iconHref = getSpellIcon(spell);
 
   return (
-    <g pointerEvents="none">
+    <g pointerEvents="none" opacity={isRelated ? 1 : 0.3}>
       <circle
         cx={x}
         cy={y}
@@ -371,6 +365,9 @@ function renderAverageReference(
 export function DprByRoundLayer({
   rounds,
   averageDpr,
+  focus,
+  setFocus,
+  relationshipIndex,
 }: DprByRoundLayerProps) {
   const safeRounds = rounds.length > 0 ? rounds : [{ round: 1, damage: 0 }];
   const sectorAngle = 360 / safeRounds.length;
@@ -416,9 +413,7 @@ export function DprByRoundLayer({
         })
       );
 
-      if (!isCancelled) {
-        setAbilityColors(nextColors);
-      }
+      if (!isCancelled) setAbilityColors(nextColors);
     }
 
     loadAbilityColors();
@@ -492,6 +487,13 @@ export function DprByRoundLayer({
         const visualEndAngle = endAngle - visualGap;
 
         const roundIntensity = getRoundIntensity(roundTotal);
+        const roundIsRelated = isRoundRelatedToFocus(
+          round.round,
+          focus,
+          relationshipIndex
+        );
+        const active = hasActiveFocus(focus);
+        const roundOpacity = active && !roundIsRelated ? 0.32 : 1;
 
         const dividerInner = polarToCartesian(
           CX,
@@ -524,7 +526,12 @@ export function DprByRoundLayer({
         let cumulativeDamage = 0;
 
         return (
-          <g key={`dpr-round-${round.round}`}>
+          <g
+            key={`dpr-round-${round.round}`}
+            opacity={roundOpacity}
+            style={{ cursor: "pointer" }}
+            onMouseEnter={() => setFocus({ type: "round", round: round.round })}
+          >
             <title>{`Round ${round.round}: ${roundTotal} damage`}</title>
 
             <line
@@ -589,9 +596,23 @@ export function DprByRoundLayer({
                 midAngle
               );
 
+              const contributionIsRelated = isAbilityRelatedToFocus(
+                contribution.abilityId,
+                focus,
+                relationshipIndex
+              );
+
               return (
                 <g
                   key={`${round.round}-${contribution.abilityId}-${contributionIndex}`}
+                  onMouseEnter={(event) => {
+                    event.stopPropagation();
+                    setFocus({
+                      type: "ability",
+                      abilityId: contribution.abilityId,
+                    });
+                  }}
+                  style={{ cursor: "pointer" }}
                 >
                   <title>
                     {`Round ${round.round} · ${contribution.abilityName}: ${contribution.damage} damage`}
@@ -607,10 +628,13 @@ export function DprByRoundLayer({
                       visualEndAngle
                     )}
                     fill={color.fill}
-                    fillOpacity={getContributionOpacity(contribution.damage)}
+                    fillOpacity={getContributionOpacity(
+                      contribution.damage,
+                      contributionIsRelated
+                    )}
                     stroke={color.stroke}
-                    strokeOpacity="0.36"
-                    strokeWidth="0.8"
+                    strokeOpacity={contributionIsRelated ? 0.58 : 0.16}
+                    strokeWidth={contributionIsRelated ? 1.25 : 0.8}
                   />
 
                   <path
@@ -623,7 +647,7 @@ export function DprByRoundLayer({
                     )}
                     fill="none"
                     stroke={color.stroke}
-                    strokeOpacity="0.22"
+                    strokeOpacity={contributionIsRelated ? 0.4 : 0.12}
                     strokeWidth="1"
                     strokeLinecap="round"
                   />
@@ -633,7 +657,8 @@ export function DprByRoundLayer({
                     iconSize,
                     iconPoint.x,
                     iconPoint.y,
-                    color.stroke
+                    color.stroke,
+                    contributionIsRelated
                   )}
                 </g>
               );
@@ -649,8 +674,12 @@ export function DprByRoundLayer({
               )}
               fill="none"
               stroke="#f1d5a8"
-              strokeOpacity={roundIntensity.outerStrokeOpacity}
-              strokeWidth="1.35"
+              strokeOpacity={
+                roundIsRelated
+                  ? Math.min(0.9, roundIntensity.outerStrokeOpacity + 0.24)
+                  : roundIntensity.outerStrokeOpacity
+              }
+              strokeWidth={roundIsRelated ? 1.9 : 1.35}
               strokeLinecap="round"
             />
 
@@ -690,37 +719,6 @@ export function DprByRoundLayer({
           </g>
         );
       })}
-
-      {(() => {
-        const finalAngle = -90 + safeRounds.length * sectorAngle;
-
-        const dividerInner = polarToCartesian(
-          CX,
-          CY,
-          DPR_INNER_RADIUS,
-          finalAngle
-        );
-
-        const dividerOuter = polarToCartesian(
-          CX,
-          CY,
-          DPR_OUTER_RADIUS,
-          finalAngle
-        );
-
-        return (
-          <line
-            x1={dividerInner.x}
-            y1={dividerInner.y}
-            x2={dividerOuter.x}
-            y2={dividerOuter.y}
-            stroke="rgba(255,244,218,0.18)"
-            strokeOpacity="0.32"
-            strokeWidth="0.75"
-            strokeLinecap="round"
-          />
-        );
-      })()}
 
       <text
         x={CX}
