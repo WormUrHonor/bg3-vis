@@ -100,6 +100,27 @@ const SUBCATEGORY_LABELS: Record<
   },
 };
 
+/*
+  These colors keep each primary category visually coherent, while still making
+  the subcategory band easier to scan.
+
+  Damage stays in warm red/orange/pink shades.
+  Utility stays in blue/cyan/indigo shades.
+*/
+const SUBCATEGORY_SHADE_COLORS: Record<AbilityRole, string> = {
+  "single-target-damage": "rgba(255, 108, 93, 1)",
+  "area-damage": "rgba(255, 143, 74, 1)",
+
+  control: "rgba(91, 154, 255, 1)",
+  "support-buff": "rgba(86, 199, 255, 1)",
+  "defense-protection": "rgba(113, 181, 235, 1)",
+  healing: "rgba(96, 222, 218, 1)",
+  "mobility-positioning": "rgba(126, 166, 255, 1)",
+  "narrative-interaction": "rgba(151, 188, 255, 1)",
+  "investigation-world-interaction": "rgba(107, 214, 255, 1)",
+  summon: "rgba(135, 143, 255, 1)",
+};
+
 function getSafeId(value: string) {
   return value.replace(/[^a-zA-Z0-9-_]/g, "-");
 }
@@ -193,11 +214,6 @@ function getSubcategoryLabel(segment: SubcategorySegment) {
   const fullLabelWidth = getApproxTextWidth(fullLabel, 7.4);
   const shortLabelWidth = getApproxTextWidth(shortLabel, 8.2);
 
-  /*
-    This is intentionally more generous than before.
-    The arc-length check means full labels are shown whenever the actual
-    curved space can reasonably hold them, instead of using a fixed angle.
-  */
   if (arcLength >= fullLabelWidth * 1.02) {
     return fullLabel;
   }
@@ -223,9 +239,23 @@ function getSubcategoryLetterSpacing(label: string) {
   return "0.055em";
 }
 
-function getSubcategoryFillOpacity(index: number, totalSubcategories: number) {
-  if (totalSubcategories <= 1) return 0.18;
-  return index % 2 === 0 ? 0.2 : 0.12;
+function getSubcategoryShadeColor(subcategoryKey: AbilityRole) {
+  return SUBCATEGORY_SHADE_COLORS[subcategoryKey];
+}
+
+function getSubcategoryFillOpacity(
+  index: number,
+  totalSubcategories: number,
+  roleDataTotal: number
+) {
+  if (roleDataTotal <= 0) return 0.1;
+  if (totalSubcategories <= 1) return 0.42;
+
+  /*
+    Slight opacity variation helps adjacent segments separate, but the main
+    categorical signal now comes from hue variation rather than only opacity.
+  */
+  return index % 2 === 0 ? 0.48 : 0.38;
 }
 
 export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) {
@@ -412,6 +442,9 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
               const subEndAngle = subcategory.endAngle - subGap;
               const subMidAngle = subcategory.startAngle + subSweep / 2;
               const subLabel = getSubcategoryLabel(subcategory);
+              const subcategoryShadeColor = getSubcategoryShadeColor(
+                subcategory.key
+              );
 
               const subLabelPathId = `role-sub-label-${segment.key}-${getSafeId(
                 subcategory.key
@@ -441,14 +474,15 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                       subStartAngle,
                       subEndAngle
                     )}
-                    fill={segment.accentColor}
+                    fill={subcategoryShadeColor}
                     fillOpacity={getSubcategoryFillOpacity(
                       index,
-                      subcategorySegments.length
+                      subcategorySegments.length,
+                      roleData.total
                     )}
-                    stroke={segment.accentColor}
-                    strokeOpacity="0.18"
-                    strokeWidth="0.55"
+                    stroke={subcategoryShadeColor}
+                    strokeOpacity="0.42"
+                    strokeWidth="0.75"
                   />
 
                   <path
@@ -460,9 +494,9 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                       subEndAngle - 0.2
                     )}
                     fill="none"
-                    stroke={segment.accentColor}
-                    strokeOpacity="0.22"
-                    strokeWidth="1.1"
+                    stroke={subcategoryShadeColor}
+                    strokeOpacity="0.45"
+                    strokeWidth="1.15"
                     strokeLinecap="round"
                   />
 
@@ -470,8 +504,8 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                     cx={markerPoint.x}
                     cy={markerPoint.y}
                     r={subSweep >= 42 ? 1.55 : 1.05}
-                    fill={segment.accentColor}
-                    fillOpacity="0.58"
+                    fill={subcategoryShadeColor}
+                    fillOpacity="0.82"
                     stroke="rgba(5,4,6,0.86)"
                     strokeWidth="0.7"
                   />
@@ -527,7 +561,7 @@ export function RoleDistributionLayer({ roleData }: RoleDistributionLayerProps) 
                   x2={outer.x}
                   y2={outer.y}
                   stroke="rgba(255,244,218,0.68)"
-                  strokeOpacity="0.38"
+                  strokeOpacity="0.42"
                   strokeWidth="1.05"
                   strokeLinecap="round"
                 />
