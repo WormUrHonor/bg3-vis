@@ -19,7 +19,7 @@ import {
 } from "./DataCircle/dataCircleInteraction";
 import { BackgroundLayer } from "./DataCircle/layers/BackgroundLayer";
 import { CenterSealLayer } from "./DataCircle/layers/CenterSealLayer";
-import { ConnectivityLayer } from "./DataCircle/layers/ConnectivityLayer";
+//import { ConnectivityLayer } from "./DataCircle/layers/ConnectivityLayer";
 import { DamageTypesLayer } from "./DataCircle/layers/DamageTypesLayer";
 import { DprByRoundLayer } from "./DataCircle/layers/DprByRoundLayer";
 import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer";
@@ -156,16 +156,6 @@ export default function DataCircle({
             setFocus={setFocus}
             relationshipIndex={relationshipIndex}
           />
-
-          <ConnectivityLayer
-            focus={focus}
-            relationshipIndex={relationshipIndex}
-            roleData={roleData}
-            damageTypeCounts={damageTypeCounts}
-            damageTypeTotal={damageTypeTotal}
-            rounds={mockDprByRound}
-          />
-
           <SectionTitleLayer outerTitle="DPR BY ROUND" />
 
           <CenterSealLayer
