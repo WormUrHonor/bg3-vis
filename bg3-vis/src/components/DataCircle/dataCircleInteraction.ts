@@ -335,7 +335,7 @@ export function getFocusSummary(
   if (!focus) {
     return {
       title: "Cross-layer trace",
-      body: "Hover a role, damage type, range band, round, or ability contribution to reveal linked evidence across the circle.",
+      body: "Hover a role, damage type, range band, round, or ability contribution to reveal connections across the circle.",
     };
   }
 
@@ -350,7 +350,7 @@ export function getFocusSummary(
   if (focus.type === "ability") {
     return {
       title: index.abilityNames[focus.abilityId] ?? "Ability",
-      body: "Tracing this ability across role, damage type, range, and DPR timing.",
+      body: "Connecting this ability across role, damage type, range, and DPR timing.",
     };
   }
 
@@ -369,7 +369,7 @@ export function getFocusSummary(
       title: `Damage: ${focus.damageType}`,
       body:
         abilityIds.length > 0
-          ? `This damage type is produced by ${abilityNames.join(", ")}${suffix}.`
+          ? `This damage type is from ${abilityNames.join(", ")}${suffix}.`
           : "No linked ability-level evidence is available for this damage type yet.",
     };
   }
@@ -379,7 +379,7 @@ export function getFocusSummary(
       title: `Range: ${focus.range}`,
       body:
         abilityIds.length > 0
-          ? `This range profile is supported by ${abilityNames.join(", ")}${suffix}.`
+          ? `This range profile made of ${abilityNames.join(", ")}${suffix}.`
           : "No linked ability-level evidence is available for this range band yet.",
     };
   }
@@ -388,7 +388,7 @@ export function getFocusSummary(
     title: `Round ${focus.round}`,
     body:
       abilityIds.length > 0
-        ? `This round is driven by ${abilityNames.join(", ")}${suffix}.`
+        ? `This round contains ${abilityNames.join(", ")}${suffix}.`
         : "No ability-level contribution data is available for this round.",
   };
 }

@@ -22,7 +22,10 @@ import { CenterSealLayer } from "./DataCircle/layers/CenterSealLayer";
 import { DamageTypesLayer } from "./DataCircle/layers/DamageTypesLayer";
 import { DprByRoundLayer } from "./DataCircle/layers/DprByRoundLayer";
 import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer";
-import { RangeProfileLayer } from "./DataCircle/layers/RangeProfileLayer";
+import {
+  RangeProfileLayer,
+  type RangeMarkerMode,
+} from "./DataCircle/layers/RangeProfileLayer";
 import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer";
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
 import "./DataCircle.css";
@@ -53,6 +56,8 @@ export default function DataCircle({
   showDprLayer,
 }: DataCircleProps) {
   const [focus, setFocus] = useState<DataCircleFocus>(null);
+  const [rangeMarkerMode, setRangeMarkerMode] =
+    useState<RangeMarkerMode>("abstraction");
 
   const isUsingMockData = selectedSpellIds.length === 0;
 
@@ -121,6 +126,32 @@ export default function DataCircle({
 
   return (
     <div className="data-circle-panel">
+      <div className="data-circle-mode-toggle" aria-label="Range marker view">
+        <button
+          type="button"
+          className={
+            rangeMarkerMode === "abstraction"
+              ? "data-circle-mode-button active"
+              : "data-circle-mode-button"
+          }
+          onClick={() => setRangeMarkerMode("abstraction")}
+        >
+          Abstraction view
+        </button>
+
+        <button
+          type="button"
+          className={
+            rangeMarkerMode === "icons"
+              ? "data-circle-mode-button active"
+              : "data-circle-mode-button"
+          }
+          onClick={() => setRangeMarkerMode("icons")}
+        >
+          Icon view
+        </button>
+      </div>
+
       <div className="data-circle-stage">
         <svg
           viewBox="0 0 1000 1000"
@@ -165,6 +196,7 @@ export default function DataCircle({
             focus={focus}
             setFocus={setFocus}
             relationshipIndex={relationshipIndex}
+            markerMode={rangeMarkerMode}
           />
 
           <SectionTitleLayer

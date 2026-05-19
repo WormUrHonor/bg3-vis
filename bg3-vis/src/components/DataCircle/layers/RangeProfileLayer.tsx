@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AbilityRole } from "../../../data/bg3Spells";
+import { getSpellById } from "../../../data/bg3Spells";
+import { getSpellIcon } from "../../../logic/spellIconLogic";
 import {
   DAMAGE_ROLE_KEYS,
   DAMAGE_TYPES,
@@ -18,6 +20,8 @@ import {
 } from "../dataCircleInteraction";
 import type { DamageRingKey, RangeBandKey, RoleData } from "../dataCircleTypes";
 
+export type RangeMarkerMode = "abstraction" | "icons";
+
 type RangeProfileLayerProps = {
   rangeCounts: Record<RangeBandKey, number>;
   maxRangeCount: number;
@@ -25,6 +29,7 @@ type RangeProfileLayerProps = {
   focus: DataCircleFocus;
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
+  markerMode: RangeMarkerMode;
 };
 
 type RangeMote = {
@@ -379,13 +384,6 @@ function getMoteVisuals(
     damageRoles.map((role) => ROLE_STROKES[role])
   );
 
-  /*
-    Central dot:
-    - If the ability has damage types, show only damage type colours.
-    - If it has no damage types, show only its role/utility colours.
-    - This prevents mixed damage+utility abilities from putting utility colours
-      inside the central dot when the damage type is already known.
-  */
   const fillColors =
     damageFillColors.length > 0
       ? damageFillColors
@@ -404,13 +402,6 @@ function getMoteVisuals(
           ? damageRoleStrokeColors
           : [FALLBACK_DOT_STROKE];
 
-  /*
-    Outer glow:
-    - Mixed damage + utility = split damage/utility glow.
-    - Pure damage = damage glow.
-    - Pure utility = utility glow.
-    - Multiple utility roles can still show role-colour variation in the glow.
-  */
   const glowColors =
     hasDamageRole && hasUtilityRole
       ? [DAMAGE_GLOW_COLOR, UTILITY_GLOW_COLOR]
@@ -428,6 +419,7 @@ function getMoteVisuals(
     strokeColors,
   };
 }
+
 function assignAnglesToClosestRoleSlots(
   abilityIds: string[],
   slots: number[],
@@ -520,6 +512,117 @@ function getRangeMotes(
   });
 }
 
+function getAbilityIconHref(abilityId?: string) {
+  if (!abilityId) return undefined;
+
+  const spell = getSpellById(abilityId);
+
+  if (!spell) return undefined;
+
+  return getSpellIcon(spell);
+}
+
+function IconMarker({
+  x,
+  y,
+  size,
+  mote,
+  isRelated,
+  focusBoost,
+}: {
+  x: number;
+  y: number;
+  size: number;
+  mote: RangeMote;
+  isRelated: boolean;
+  focusBoost: number;
+}) {
+  const iconHref = getAbilityIconHref(mote.abilityId);
+  const radius = (size / 2) * focusBoost;
+  const clipId = `range-icon-clip-${mote.key}`;
+
+  if (!iconHref) {
+    return (
+      <>
+        <SegmentedCircle
+          x={x}
+          y={y}
+          radius={radius + 4}
+          colors={mote.glowColors}
+          opacity={0.24}
+          filter="url(#moteGlow)"
+        />
+
+        <SegmentedCircle
+          x={x}
+          y={y}
+          radius={radius}
+          colors={mote.fillColors}
+          opacity={0.92}
+        />
+
+        <SegmentedStrokeCircle
+          x={x}
+          y={y}
+          radius={radius}
+          colors={mote.strokeColors}
+          opacity={0.78}
+          strokeWidth={isRelated ? 1.25 : 0.8}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SegmentedCircle
+        x={x}
+        y={y}
+        radius={radius + 5.5}
+        colors={mote.glowColors}
+        opacity={isRelated ? 0.22 : 0.08}
+        filter="url(#moteGlow)"
+      />
+
+      <circle
+        cx={x}
+        cy={y}
+        r={radius + 2}
+        fill="rgba(8,5,9,0.92)"
+        stroke={mote.strokeColors[0] ?? FALLBACK_DOT_STROKE}
+        strokeOpacity={isRelated ? 0.62 : 0.28}
+        strokeWidth={isRelated ? 1.2 : 0.8}
+      />
+
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx={x} cy={y} r={radius} />
+        </clipPath>
+      </defs>
+
+      <image
+        href={iconHref}
+        x={x - radius}
+        y={y - radius}
+        width={radius * 2}
+        height={radius * 2}
+        opacity={isRelated ? 0.98 : 0.56}
+        preserveAspectRatio="xMidYMid meet"
+        clipPath={`url(#${clipId})`}
+      />
+
+      <circle
+        cx={x}
+        cy={y}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,246,218,0.34)"
+        strokeWidth="0.65"
+      />
+    </>
+  );
+}
+
 export function RangeProfileLayer({
   rangeCounts,
   maxRangeCount,
@@ -527,6 +630,7 @@ export function RangeProfileLayer({
   focus,
   setFocus,
   relationshipIndex,
+  markerMode,
 }: RangeProfileLayerProps) {
   return (
     <>
@@ -699,6 +803,8 @@ export function RangeProfileLayer({
               const moteRadius =
                 intensity.moteRadius + (mote.abilityId ? 0.35 : 0);
 
+              const iconSize = Math.max(14, moteRadius * 3.15);
+
               return (
                 <g
                   key={mote.key}
@@ -716,54 +822,67 @@ export function RangeProfileLayer({
                 >
                   <title>{mote.label}</title>
 
-                  <SegmentedCircle
-                    x={x}
-                    y={y}
-                    radius={(moteRadius + 7.2) * moteFocusBoost}
-                    colors={mote.glowColors}
-                    opacity={Math.min(
-                      0.46,
-                      intensity.moteGlowOpacity * 2.15 * focusBoost + 0.04
-                    )}
-                    filter="url(#moteGlow)"
-                  />
+                  {markerMode === "icons" ? (
+                    <IconMarker
+                      x={x}
+                      y={y}
+                      size={iconSize}
+                      mote={mote}
+                      isRelated={moteIsRelated}
+                      focusBoost={moteFocusBoost}
+                    />
+                  ) : (
+                    <>
+                      <SegmentedCircle
+                        x={x}
+                        y={y}
+                        radius={(moteRadius + 7.2) * moteFocusBoost}
+                        colors={mote.glowColors}
+                        opacity={Math.min(
+                          0.46,
+                          intensity.moteGlowOpacity * 2.15 * focusBoost + 0.04
+                        )}
+                        filter="url(#moteGlow)"
+                      />
 
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={(moteRadius + 2.6) * moteFocusBoost}
-                    fill="rgba(10,7,10,0.84)"
-                    stroke={mote.glowColors[0] ?? MIXED_GLOW_COLOR}
-                    strokeOpacity={0.48 * focusBoost}
-                    strokeWidth={active && moteIsRelated ? 1.25 : 1}
-                  />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={(moteRadius + 2.6) * moteFocusBoost}
+                        fill="rgba(10,7,10,0.84)"
+                        stroke={mote.glowColors[0] ?? MIXED_GLOW_COLOR}
+                        strokeOpacity={0.48 * focusBoost}
+                        strokeWidth={active && moteIsRelated ? 1.25 : 1}
+                      />
 
-                  <SegmentedCircle
-                    x={x}
-                    y={y}
-                    radius={moteRadius * moteFocusBoost}
-                    colors={mote.fillColors}
-                    opacity={Math.min(
-                      0.96,
-                      intensity.moteOpacity * focusBoost + 0.18
-                    )}
-                  />
+                      <SegmentedCircle
+                        x={x}
+                        y={y}
+                        radius={moteRadius * moteFocusBoost}
+                        colors={mote.fillColors}
+                        opacity={Math.min(
+                          0.96,
+                          intensity.moteOpacity * focusBoost + 0.18
+                        )}
+                      />
 
-                  <SegmentedStrokeCircle
-                    x={x}
-                    y={y}
-                    radius={moteRadius * moteFocusBoost}
-                    colors={mote.strokeColors}
-                    opacity={0.78 * focusBoost}
-                    strokeWidth={active && moteIsRelated ? 1.15 : 0.75}
-                  />
+                      <SegmentedStrokeCircle
+                        x={x}
+                        y={y}
+                        radius={moteRadius * moteFocusBoost}
+                        colors={mote.strokeColors}
+                        opacity={0.78 * focusBoost}
+                        strokeWidth={active && moteIsRelated ? 1.15 : 0.75}
+                      />
 
-                  <circle
-                    cx={x - 1.25}
-                    cy={y - 1.35}
-                    r="1"
-                    fill="rgba(255,255,230,0.76)"
-                  />
+                      <circle
+                        cx={x - 1.25}
+                        cy={y - 1.35}
+                        r="1"
+                        fill="rgba(255,255,230,0.76)"
+                      />
+                    </>
+                  )}
                 </g>
               );
             })}
