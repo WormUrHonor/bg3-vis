@@ -1,10 +1,18 @@
 import type { AbilityRole, BG3Spell } from "../../data/bg3Spells";
-import { DAMAGE_ROLE_KEYS, DAMAGE_TYPES, RANGE_BANDS } from "./dataCircleConfig";
+import {
+  DAMAGE_ROLE_KEYS,
+  DAMAGE_TYPES,
+  RANGE_BANDS,
+  UTILITY_ROLE_KEYS,
+} from "./dataCircleConfig";
 import type { DamageRingKey, RangeBandKey } from "./dataCircleTypes";
+
+export type RoleGroupKey = "damage" | "utility";
 
 export type DataCircleFocusItem =
   | { type: "ability"; abilityId: string }
   | { type: "role"; role: AbilityRole }
+  | { type: "roleGroup"; roleGroup: RoleGroupKey }
   | { type: "damageType"; damageType: DamageRingKey }
   | { type: "range"; range: RangeBandKey }
   | { type: "round"; round: number };
@@ -32,6 +40,7 @@ export type LayerRelationshipIndex = {
   abilityToRounds: Record<string, number[]>;
 
   roleToAbilities: Record<AbilityRole, string[]>;
+  roleGroupToAbilities: Record<RoleGroupKey, string[]>;
   damageTypeToAbilities: Record<DamageRingKey, string[]>;
   rangeToAbilities: Record<RangeBandKey, string[]>;
   roundToAbilities: Record<number, string[]>;
@@ -41,14 +50,7 @@ export type LayerRelationshipIndex = {
 
 const ALL_ROLE_KEYS = [
   ...DAMAGE_ROLE_KEYS,
-  "control",
-  "support-buff",
-  "defense-protection",
-  "healing",
-  "mobility-positioning",
-  "narrative-interaction",
-  "investigation-world-interaction",
-  "summon",
+  ...UTILITY_ROLE_KEYS,
 ] as AbilityRole[];
 
 const ALL_DAMAGE_TYPE_KEYS = DAMAGE_TYPES.map((type) => type.key);
@@ -129,6 +131,13 @@ function emptyRoleMap(): Record<AbilityRole, string[]> {
   return result;
 }
 
+function emptyRoleGroupMap(): Record<RoleGroupKey, string[]> {
+  return {
+    damage: [],
+    utility: [],
+  };
+}
+
 function emptyDamageTypeMap(): Record<DamageRingKey, string[]> {
   const result = {} as Record<DamageRingKey, string[]>;
 
@@ -163,6 +172,10 @@ export function isSameFocusItem(
     return a.role === b.role;
   }
 
+  if (a.type === "roleGroup" && b.type === "roleGroup") {
+    return a.roleGroup === b.roleGroup;
+  }
+
   if (a.type === "damageType" && b.type === "damageType") {
     return a.damageType === b.damageType;
   }
@@ -190,6 +203,7 @@ export function buildLayerRelationshipIndex(
   const abilityToRounds: Record<string, number[]> = {};
 
   const roleToAbilities = emptyRoleMap();
+  const roleGroupToAbilities = emptyRoleGroupMap();
   const damageTypeToAbilities = emptyDamageTypeMap();
   const rangeToAbilities = emptyRangeMap();
   const roundToAbilities: Record<number, string[]> = {};
@@ -210,6 +224,14 @@ export function buildLayerRelationshipIndex(
       roleToAbilities[role].push(abilityId);
     });
 
+    if (roles.some((role) => DAMAGE_ROLE_KEYS.includes(role))) {
+      roleGroupToAbilities.damage.push(abilityId);
+    }
+
+    if (roles.some((role) => UTILITY_ROLE_KEYS.includes(role))) {
+      roleGroupToAbilities.utility.push(abilityId);
+    }
+
     damageTypes.forEach((damageType) => {
       damageTypeToAbilities[damageType].push(abilityId);
     });
@@ -218,6 +240,9 @@ export function buildLayerRelationshipIndex(
       rangeToAbilities[range].push(abilityId);
     });
   });
+
+  roleGroupToAbilities.damage = unique(roleGroupToAbilities.damage);
+  roleGroupToAbilities.utility = unique(roleGroupToAbilities.utility);
 
   rounds.forEach((round) => {
     const roundAbilities =
@@ -250,6 +275,7 @@ export function buildLayerRelationshipIndex(
     abilityToRounds,
 
     roleToAbilities,
+    roleGroupToAbilities,
     damageTypeToAbilities,
     rangeToAbilities,
     roundToAbilities,
@@ -271,6 +297,12 @@ export function getFocusedAbilityIds(
 
     if (focusItem.type === "role") {
       index.roleToAbilities[focusItem.role]?.forEach((abilityId) =>
+        abilityIds.add(abilityId)
+      );
+    }
+
+    if (focusItem.type === "roleGroup") {
+      index.roleGroupToAbilities[focusItem.roleGroup]?.forEach((abilityId) =>
         abilityIds.add(abilityId)
       );
     }
@@ -417,6 +449,19 @@ export function getFocusSummary(
         abilityIds.length > 0
           ? `Linked abilities: ${abilityNames.join(", ")}${suffix}.`
           : "No linked ability-level evidence is available for this role yet.",
+    };
+  }
+
+  if (focusItem.type === "roleGroup") {
+    return {
+      title:
+        focusItem.roleGroup === "damage"
+          ? "Role group: Damage"
+          : "Role group: Utility",
+      body:
+        abilityIds.length > 0
+          ? `This role group links ${abilityNames.join(", ")}${suffix}.`
+          : "No linked ability-level evidence is available for this role group yet.",
     };
   }
 

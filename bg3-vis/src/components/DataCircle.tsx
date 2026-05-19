@@ -177,6 +177,7 @@ export default function DataCircle({
               focus={activeFocus}
               setFocus={setHoverFocus}
               relationshipIndex={relationshipIndex}
+              onToggleSelection={toggleSelectedFocus}
             />
           ) : null}
 
@@ -194,6 +195,7 @@ export default function DataCircle({
             focus={activeFocus}
             setFocus={setHoverFocus}
             relationshipIndex={relationshipIndex}
+            onToggleSelection={toggleSelectedFocus}
           />
 
           <RangeProfileLayer

@@ -11,6 +11,7 @@ import {
 } from "../dataCircleGeometry";
 import type {
   DataCircleFocus,
+  DataCircleFocusItem,
   DprContribution,
   DprRound,
   LayerRelationshipIndex,
@@ -27,6 +28,7 @@ type DprByRoundLayerProps = {
   focus: DataCircleFocus;
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
+  onToggleSelection?: (focus: DataCircleFocusItem) => void;
 };
 
 type AbilityColor = {
@@ -216,10 +218,16 @@ function getContributionOpacity(value: number, isRelated: boolean) {
   return isRelated ? Math.min(0.82, base + 0.18) : base * 0.36;
 }
 
+function focusIncludesType(focus: DataCircleFocus, type: DataCircleFocusItem["type"]) {
+  if (!focus) return false;
+  const focusItems = Array.isArray(focus) ? focus : [focus];
+  return focusItems.some((item) => item.type === type);
+}
+
 function getDprLayerOpacity(focus: DataCircleFocus) {
   if (!focus) return 0.58;
 
-  if (focus.type === "round" || focus.type === "ability") {
+  if (focusIncludesType(focus, "round") || focusIncludesType(focus, "ability")) {
     return 1;
   }
 
@@ -229,7 +237,7 @@ function getDprLayerOpacity(focus: DataCircleFocus) {
 function getDprLayerFilter(focus: DataCircleFocus) {
   if (!focus) return "saturate(0.78) brightness(0.86)";
 
-  if (focus.type === "round" || focus.type === "ability") {
+  if (focusIncludesType(focus, "round") || focusIncludesType(focus, "ability")) {
     return "saturate(1.08) brightness(1)";
   }
 
@@ -346,8 +354,9 @@ function renderAverageReference(
   return (
     <g className="data-circle-dpr-average-reference">
       {Array.from({ length: roundCount }, (_, index) => {
-        const startAngle = -90 + index * sectorAngle;
-        const endAngle = startAngle + sectorAngle;
+        const midAngle = -90 + index * sectorAngle;
+        const startAngle = midAngle - sectorAngle / 2;
+        const endAngle = midAngle + sectorAngle / 2;
         const gap = Math.min(2.1, sectorAngle * 0.15);
 
         return (
@@ -388,6 +397,7 @@ export function DprByRoundLayer({
   focus,
   setFocus,
   relationshipIndex,
+  onToggleSelection,
 }: DprByRoundLayerProps) {
   const safeRounds = rounds.length > 0 ? rounds : [{ round: 1, damage: 0 }];
   const sectorAngle = 360 / safeRounds.length;
@@ -506,8 +516,8 @@ export function DprByRoundLayer({
               ];
 
         const midAngle = -90 + index * sectorAngle;
-const startAngle = midAngle - sectorAngle / 2;
-const endAngle = midAngle + sectorAngle / 2;
+        const startAngle = midAngle - sectorAngle / 2;
+        const endAngle = midAngle + sectorAngle / 2;
 
         const visualGap = Math.min(2.05, sectorAngle * 0.14);
         const visualStartAngle = startAngle + visualGap;
@@ -558,6 +568,13 @@ const endAngle = midAngle + sectorAngle / 2;
             opacity={roundOpacity}
             style={{ cursor: "pointer" }}
             onMouseEnter={() => setFocus({ type: "round", round: round.round })}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSelection?.({
+                type: "round",
+                round: round.round,
+              });
+            }}
           >
             <title>{`Round ${round.round}: ${roundTotal} damage`}</title>
 
@@ -635,6 +652,16 @@ const endAngle = midAngle + sectorAngle / 2;
                   onMouseEnter={(event) => {
                     event.stopPropagation();
                     setFocus({
+                      type: "ability",
+                      abilityId: contribution.abilityId,
+                    });
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+
+                    if (contribution.abilityId === "unknown") return;
+
+                    onToggleSelection?.({
                       type: "ability",
                       abilityId: contribution.abilityId,
                     });

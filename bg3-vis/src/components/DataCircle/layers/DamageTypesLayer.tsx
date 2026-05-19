@@ -26,10 +26,7 @@ import type {
   DataCircleFocusItem,
   LayerRelationshipIndex,
 } from "../dataCircleInteraction";
-import {
-  hasActiveFocus,
-  isDamageTypeRelatedToFocus,
-} from "../dataCircleInteraction";
+import { hasActiveFocus } from "../dataCircleInteraction";
 import type { DamageRingKey } from "../dataCircleTypes";
 
 type DamageTypesLayerProps = {
@@ -77,13 +74,79 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Slashing: slashingIcon,
   Thunder: thunderIcon,
 
-  /*
-    These are aggregate/fallback categories.
-    If you later add separate files for them, replace these mappings.
-  */
   Physical: bludgeoningIcon,
   Variable: forceIcon,
 };
+
+function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
+  if (!focus) return [];
+  return Array.isArray(focus) ? focus : [focus];
+}
+
+function focusContainsOnlyDamageTypeFilters(focus: DataCircleFocus) {
+  const focusItems = getFocusItems(focus);
+
+  if (focusItems.length <= 0) return false;
+
+  return focusItems.every((focusItem) => focusItem.type === "damageType");
+}
+
+function isDamageTypeVisuallyRelated(
+  damageType: DamageRingKey,
+  focus: DataCircleFocus,
+  relationshipIndex: LayerRelationshipIndex
+) {
+  const focusItems = getFocusItems(focus);
+
+  if (focusItems.length <= 0) return true;
+
+  if (focusContainsOnlyDamageTypeFilters(focus)) {
+    return focusItems.some(
+      (focusItem) =>
+        focusItem.type === "damageType" &&
+        focusItem.damageType === damageType
+    );
+  }
+
+  const focusedAbilityIds = new Set<string>();
+
+  focusItems.forEach((focusItem) => {
+    if (focusItem.type === "ability") {
+      focusedAbilityIds.add(focusItem.abilityId);
+    }
+
+    if (focusItem.type === "role") {
+      relationshipIndex.roleToAbilities[focusItem.role]?.forEach((abilityId) =>
+        focusedAbilityIds.add(abilityId)
+      );
+    }
+
+    if (focusItem.type === "roleGroup") {
+      relationshipIndex.roleGroupToAbilities[focusItem.roleGroup]?.forEach(
+        (abilityId) => focusedAbilityIds.add(abilityId)
+      );
+    }
+
+    if (focusItem.type === "range") {
+      relationshipIndex.rangeToAbilities[focusItem.range]?.forEach(
+        (abilityId) => focusedAbilityIds.add(abilityId)
+      );
+    }
+
+    if (focusItem.type === "round") {
+      relationshipIndex.roundToAbilities[focusItem.round]?.forEach(
+        (abilityId) => focusedAbilityIds.add(abilityId)
+      );
+    }
+  });
+
+  const damageTypeAbilityIds =
+    relationshipIndex.damageTypeToAbilities[damageType] ?? [];
+
+  return damageTypeAbilityIds.some((abilityId) =>
+    focusedAbilityIds.has(abilityId)
+  );
+}
 
 function getArcLength(radius: number, sweepDegrees: number) {
   return (Math.PI * radius * Math.max(0, sweepDegrees)) / 180;
@@ -111,10 +174,6 @@ function getDamageLabelMode(label: string, shortLabel: string, sweep: number) {
     Math.max(0, sweep - DAMAGE_SEGMENT_EDGE_PADDING * 2)
   );
 
-  /*
-    Icons always win. Text only appears if there is enough remaining arc
-    after reserving room for icons on both sides.
-  */
   const reservedForSideIcons = iconSize * 2 + DAMAGE_ICON_TEXT_GAP * 2;
   const textArc = Math.max(0, availableArc - reservedForSideIcons);
 
@@ -162,10 +221,6 @@ function getDamageDisplayPlan(
     };
   }
 
-  /*
-    Convert label width into degrees so icons can sit just outside the text.
-    This keeps icons inside the real segment and prevents label overlap.
-  */
   const labelFontSize =
     labelMode === "full" ? FULL_LABEL_FONT_SIZE : SHORT_LABEL_FONT_SIZE;
 
@@ -190,10 +245,6 @@ function getDamageDisplayPlan(
 
   const maxSideOffset = safeSweep / 2 - iconAngularWidth / 2;
 
-  /*
-    Normal case: two icons around the text.
-    Larger sections may get four icons, two on each side.
-  */
   if (labelMode !== "hidden" && maxSideOffset >= minimumSideOffset) {
     const iconAngles = [
       midAngle - minimumSideOffset,
@@ -217,10 +268,6 @@ function getDamageDisplayPlan(
     };
   }
 
-  /*
-    Small segment case: hide text first, keep at least one icon.
-    If there is room, add two or three icons without crossing boundaries.
-  */
   const textlessIconCount =
     safeSweep >= iconAngularWidth * 3.4
       ? 3
@@ -605,7 +652,7 @@ export function DamageTypesLayer({
 
             const clipPathId = `damage-segment-clip-${type.key}`;
 
-            const isRelated = isDamageTypeRelatedToFocus(
+            const isRelated = isDamageTypeVisuallyRelated(
               type.key,
               focus,
               relationshipIndex
@@ -619,20 +666,20 @@ export function DamageTypesLayer({
 
             return (
               <g
-  key={type.key}
-  opacity={groupOpacity}
-  style={{ cursor: "pointer" }}
-  onMouseEnter={() =>
-    setFocus({ type: "damageType", damageType: type.key })
-  }
-  onClick={(event) => {
-    event.stopPropagation();
-    onToggleSelection?.({
-      type: "damageType",
-      damageType: type.key,
-    });
-  }}
->
+                key={type.key}
+                opacity={groupOpacity}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() =>
+                  setFocus({ type: "damageType", damageType: type.key })
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleSelection?.({
+                    type: "damageType",
+                    damageType: type.key,
+                  });
+                }}
+              >
                 <defs>
                   <clipPath id={clipPathId}>
                     <path
