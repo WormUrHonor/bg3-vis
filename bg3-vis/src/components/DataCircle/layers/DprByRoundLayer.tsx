@@ -216,6 +216,26 @@ function getContributionOpacity(value: number, isRelated: boolean) {
   return isRelated ? Math.min(0.82, base + 0.18) : base * 0.36;
 }
 
+function getDprLayerOpacity(focus: DataCircleFocus) {
+  if (!focus) return 0.58;
+
+  if (focus.type === "round" || focus.type === "ability") {
+    return 1;
+  }
+
+  return 0.68;
+}
+
+function getDprLayerFilter(focus: DataCircleFocus) {
+  if (!focus) return "saturate(0.78) brightness(0.86)";
+
+  if (focus.type === "round" || focus.type === "ability") {
+    return "saturate(1.08) brightness(1)";
+  }
+
+  return "saturate(0.9) brightness(0.9)";
+}
+
 function getContributionIconSize(radialThickness: number, sectorAngle: number) {
   if (radialThickness >= 22 && sectorAngle >= 30) return 20;
   if (radialThickness >= 17 && sectorAngle >= 28) return 17;
@@ -280,8 +300,8 @@ function renderScaleGrid() {
               cy={CY}
               r={radius}
               fill="none"
-              stroke="rgba(255,244,218,0.12)"
-              strokeOpacity={isMax ? 0.48 : 0.3}
+              stroke="rgba(255,244,218,0.09)"
+              strokeOpacity={isMax ? 0.34 : 0.2}
               strokeWidth={isMax ? 1.15 : 0.85}
               strokeDasharray={isMax ? "4 8" : "2 9"}
             />
@@ -299,7 +319,7 @@ function renderScaleGrid() {
                   fontSize={value === DPR_SCALE_MAX ? "5.7" : "5.1"}
                   fontWeight="800"
                   letterSpacing="0.015em"
-                  fill="rgba(255,244,218,0.34)"
+                  fill="rgba(255,244,218,0.24)"
                   paintOrder="stroke"
                   stroke="rgba(4,3,5,0.92)"
                   strokeWidth="1.45"
@@ -342,7 +362,7 @@ function renderAverageReference(
               endAngle - gap
             )}
             fill="#e7c887"
-            fillOpacity="0.024"
+            fillOpacity="0.018"
             stroke="none"
           />
         );
@@ -354,7 +374,7 @@ function renderAverageReference(
         r={averageRadius}
         fill="none"
         stroke="#e7c887"
-        strokeOpacity="0.24"
+        strokeOpacity="0.18"
         strokeWidth="1.25"
         strokeDasharray="5 9"
       />
@@ -424,7 +444,14 @@ export function DprByRoundLayer({
   }, [abilityIds]);
 
   return (
-    <g className="data-circle-dpr-layer">
+    <g
+      className="data-circle-dpr-layer"
+      opacity={getDprLayerOpacity(focus)}
+      style={{
+        filter: getDprLayerFilter(focus),
+        transition: "opacity 180ms ease, filter 180ms ease",
+      }}
+    >
       <circle
         cx={CX}
         cy={CY}
@@ -439,7 +466,7 @@ export function DprByRoundLayer({
         cy={CY}
         r={DPR_OUTER_RADIUS}
         fill="none"
-        stroke="rgba(230,188,112,0.18)"
+        stroke="rgba(230,188,112,0.14)"
         strokeWidth="1.2"
       />
 
@@ -448,7 +475,7 @@ export function DprByRoundLayer({
         cy={CY}
         r={DPR_INNER_RADIUS}
         fill="none"
-        stroke="rgba(230,188,112,0.12)"
+        stroke="rgba(230,188,112,0.1)"
         strokeWidth="1"
       />
 
@@ -457,7 +484,7 @@ export function DprByRoundLayer({
         cy={CY}
         r={BAR_BASE_RADIUS}
         fill="none"
-        stroke="rgba(255,244,218,0.13)"
+        stroke="rgba(255,244,218,0.1)"
         strokeWidth="1"
         strokeDasharray="2 8"
       />
@@ -539,8 +566,8 @@ export function DprByRoundLayer({
               y1={dividerInner.y}
               x2={dividerOuter.x}
               y2={dividerOuter.y}
-              stroke="rgba(255,244,218,0.18)"
-              strokeOpacity="0.32"
+              stroke="rgba(255,244,218,0.15)"
+              strokeOpacity="0.28"
               strokeWidth="0.75"
               strokeLinecap="round"
             />
@@ -691,7 +718,7 @@ export function DprByRoundLayer({
               fontSize="7.5"
               fontWeight="950"
               letterSpacing="0.03em"
-              fill="rgba(255,244,218,0.9)"
+              fill="rgba(255,244,218,0.82)"
               paintOrder="stroke"
               stroke="rgba(4,3,5,0.92)"
               strokeWidth="2"
@@ -708,7 +735,7 @@ export function DprByRoundLayer({
               fontSize="7.2"
               fontWeight="950"
               letterSpacing="0.01em"
-              fill="rgba(255,226,182,0.86)"
+              fill="rgba(255,226,182,0.74)"
               paintOrder="stroke"
               stroke="rgba(4,3,5,0.94)"
               strokeWidth="1.9"
@@ -728,7 +755,7 @@ export function DprByRoundLayer({
         fontSize="8.2"
         fontWeight="950"
         letterSpacing="0.1em"
-        fill="rgba(255,244,218,0.74)"
+        fill="rgba(255,244,218,0.56)"
         paintOrder="stroke"
         stroke="rgba(4,3,5,0.92)"
         strokeWidth="2"

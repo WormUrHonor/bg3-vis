@@ -1,5 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
-import { RANGE_BANDS } from "../dataCircleConfig";
+import type { AbilityRole } from "../../../data/bg3Spells";
+import {
+  DAMAGE_ROLE_KEYS,
+  DAMAGE_TYPES,
+  RANGE_BANDS,
+  UTILITY_ROLE_KEYS,
+} from "../dataCircleConfig";
 import { CX, CY, polarToCartesian } from "../dataCircleGeometry";
 import type {
   DataCircleFocus,
@@ -7,16 +13,68 @@ import type {
 } from "../dataCircleInteraction";
 import {
   hasActiveFocus,
+  isAbilityRelatedToFocus,
   isRangeRelatedToFocus,
 } from "../dataCircleInteraction";
-import type { RangeBandKey } from "../dataCircleTypes";
+import type { DamageRingKey, RangeBandKey, RoleData } from "../dataCircleTypes";
 
 type RangeProfileLayerProps = {
   rangeCounts: Record<RangeBandKey, number>;
   maxRangeCount: number;
+  roleData: RoleData;
   focus: DataCircleFocus;
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
+};
+
+type RangeMote = {
+  key: string;
+  abilityId?: string;
+  label: string;
+  angle: number;
+  fillColor: string;
+  glowColor: string;
+  strokeColor: string;
+};
+
+type AbilityAngleTarget = {
+  abilityId: string;
+  targetAngle: number;
+};
+
+const DAMAGE_GLOW_COLOR = "rgba(255,122,82,0.95)";
+const UTILITY_GLOW_COLOR = "rgba(93,178,255,0.95)";
+const MIXED_GLOW_COLOR = "rgba(176,119,214,0.95)";
+
+const FALLBACK_DOT_FILL = "rgba(176,119,214,1)";
+const FALLBACK_DOT_STROKE = "rgba(255,239,185,0.58)";
+
+const ROLE_COLORS: Record<AbilityRole, string> = {
+  "single-target-damage": "rgba(255,108,93,1)",
+  "area-damage": "rgba(255,143,74,1)",
+
+  control: "rgba(91,154,255,1)",
+  "support-buff": "rgba(86,199,255,1)",
+  "defense-protection": "rgba(113,181,235,1)",
+  healing: "rgba(96,222,218,1)",
+  "mobility-positioning": "rgba(126,166,255,1)",
+  "narrative-interaction": "rgba(151,188,255,1)",
+  "investigation-world-interaction": "rgba(107,214,255,1)",
+  summon: "rgba(135,143,255,1)",
+};
+
+const FALLBACK_ROLE_ANGLES: Record<AbilityRole, number> = {
+  "single-target-damage": -130,
+  "area-damage": -92,
+
+  control: -26,
+  "support-buff": 18,
+  "defense-protection": 58,
+  healing: 98,
+  "mobility-positioning": 138,
+  "narrative-interaction": 180,
+  "investigation-world-interaction": 220,
+  summon: 260,
 };
 
 function getRangeDotAngles(count: number) {
@@ -29,7 +87,7 @@ function getRangeDotAngles(count: number) {
 
   return Array.from({ length: count }, (_, index) => {
     const angle = startAngle + step * index + step / 2;
-    return angle % 360;
+    return normalizeAngle(angle);
   });
 }
 
@@ -59,9 +117,230 @@ function getRangeBandIntensity(value: number, maxValue: number) {
   };
 }
 
+function normalizeAngle(angle: number) {
+  return ((angle % 360) + 360) % 360;
+}
+
+function circularDistance(a: number, b: number) {
+  const diff = Math.abs(normalizeAngle(a) - normalizeAngle(b));
+  return Math.min(diff, 360 - diff);
+}
+
+function getPrimaryRole(roles: AbilityRole[]) {
+  if (roles.length <= 0) return undefined;
+
+  const damageRole = roles.find((role) => DAMAGE_ROLE_KEYS.includes(role));
+
+  if (damageRole) return damageRole;
+
+  const utilityRole = roles.find((role) => UTILITY_ROLE_KEYS.includes(role));
+
+  if (utilityRole) return utilityRole;
+
+  return roles[0];
+}
+
+function getRoleMidAngles(roleData: RoleData): Record<AbilityRole, number> {
+  const result = { ...FALLBACK_ROLE_ANGLES };
+
+  const damageAngle =
+    roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
+
+  const roleStartAngle = -90;
+  const clampedDamageAngle = Math.max(0.001, Math.min(359.999, damageAngle));
+  const utilityStartAngle = roleStartAngle + clampedDamageAngle;
+
+  function assignAngles(
+    keys: AbilityRole[],
+    startAngle: number,
+    endAngle: number
+  ) {
+    const total = keys.reduce((sum, key) => sum + roleData.counts[key], 0);
+    const sweep = endAngle - startAngle;
+
+    if (total <= 0 || sweep <= 0) return;
+
+    let currentAngle = startAngle;
+
+    keys.forEach((key) => {
+      const value = roleData.counts[key];
+
+      if (value <= 0) return;
+
+      const segmentSweep = (value / total) * sweep;
+      result[key] = normalizeAngle(currentAngle + segmentSweep / 2);
+      currentAngle += segmentSweep;
+    });
+  }
+
+  assignAngles(
+    DAMAGE_ROLE_KEYS,
+    roleStartAngle,
+    roleStartAngle + clampedDamageAngle
+  );
+
+  assignAngles(UTILITY_ROLE_KEYS, utilityStartAngle, roleStartAngle + 360);
+
+  return result;
+}
+
+function getDamageTypeVisual(damageType?: DamageRingKey) {
+  const damageTypeVisual = DAMAGE_TYPES.find((type) => type.key === damageType);
+
+  return {
+    fillColor: damageTypeVisual?.color ?? FALLBACK_DOT_FILL,
+    strokeColor: damageTypeVisual?.glowColor ?? FALLBACK_DOT_STROKE,
+  };
+}
+
+function getMoteVisuals(
+  roles: AbilityRole[],
+  damageTypes: DamageRingKey[]
+): {
+  fillColor: string;
+  glowColor: string;
+  strokeColor: string;
+} {
+  const primaryRole = getPrimaryRole(roles);
+  const primaryDamageType = damageTypes[0];
+
+  const hasDamageRole = roles.some((role) => DAMAGE_ROLE_KEYS.includes(role));
+  const hasUtilityRole = roles.some((role) => UTILITY_ROLE_KEYS.includes(role));
+  const hasDamageType = primaryDamageType !== undefined;
+
+  if (hasDamageType) {
+    const { fillColor, strokeColor } = getDamageTypeVisual(primaryDamageType);
+
+    return {
+      fillColor,
+      strokeColor,
+      glowColor:
+        hasUtilityRole && hasDamageRole ? MIXED_GLOW_COLOR : DAMAGE_GLOW_COLOR,
+    };
+  }
+
+  if (primaryRole !== undefined) {
+    return {
+      fillColor: ROLE_COLORS[primaryRole],
+      strokeColor: hasDamageRole
+        ? "rgba(255,205,166,0.88)"
+        : "rgba(207,234,255,0.82)",
+      glowColor: hasDamageRole
+        ? DAMAGE_GLOW_COLOR
+        : hasUtilityRole
+          ? UTILITY_GLOW_COLOR
+          : MIXED_GLOW_COLOR,
+    };
+  }
+
+  return {
+    fillColor: FALLBACK_DOT_FILL,
+    strokeColor: FALLBACK_DOT_STROKE,
+    glowColor: MIXED_GLOW_COLOR,
+  };
+}
+
+function assignAnglesToClosestRoleSlots(
+  abilityIds: string[],
+  slots: number[],
+  roleData: RoleData,
+  relationshipIndex: LayerRelationshipIndex
+): Record<string, number> {
+  const roleAngles = getRoleMidAngles(roleData);
+
+  const targets: AbilityAngleTarget[] = abilityIds.map((abilityId) => {
+    const roles = relationshipIndex.abilityToRoles[abilityId] ?? [];
+    const primaryRole = getPrimaryRole(roles);
+
+    return {
+      abilityId,
+      targetAngle:
+        primaryRole !== undefined
+          ? roleAngles[primaryRole]
+          : slots[abilityIds.indexOf(abilityId)] ?? 0,
+    };
+  });
+
+  const availableSlots = [...slots];
+  const assignedAngles: Record<string, number> = {};
+
+  /*
+    Assign the clearest role-anchored abilities first. This keeps the equal
+    dot spacing, but places each ability in the nearest available angular slot
+    to its semantic role.
+  */
+  targets
+    .sort((a, b) => a.targetAngle - b.targetAngle)
+    .forEach((target) => {
+      let bestSlotIndex = 0;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      availableSlots.forEach((slot, slotIndex) => {
+        const distance = circularDistance(target.targetAngle, slot);
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestSlotIndex = slotIndex;
+        }
+      });
+
+      const [assignedSlot] = availableSlots.splice(bestSlotIndex, 1);
+
+      assignedAngles[target.abilityId] =
+        assignedSlot ?? slots[abilityIds.indexOf(target.abilityId)] ?? 0;
+    });
+
+  return assignedAngles;
+}
+
+function getRangeMotes(
+  range: RangeBandKey,
+  fallbackCount: number,
+  roleData: RoleData,
+  relationshipIndex: LayerRelationshipIndex
+): RangeMote[] {
+  const abilityIds = relationshipIndex.rangeToAbilities[range] ?? [];
+  const count = Math.max(fallbackCount, abilityIds.length);
+  const angles = getRangeDotAngles(count);
+
+  if (abilityIds.length <= 0) {
+    return angles.map((angle, index) => ({
+      key: `${range}-fallback-${index}`,
+      label: `${range} ability ${index + 1}`,
+      angle,
+      fillColor: FALLBACK_DOT_FILL,
+      glowColor: MIXED_GLOW_COLOR,
+      strokeColor: FALLBACK_DOT_STROKE,
+    }));
+  }
+
+  const assignedAngles = assignAnglesToClosestRoleSlots(
+    abilityIds,
+    angles,
+    roleData,
+    relationshipIndex
+  );
+
+  return abilityIds.map((abilityId) => {
+    const roles = relationshipIndex.abilityToRoles[abilityId] ?? [];
+    const damageTypes = relationshipIndex.abilityToDamageTypes[abilityId] ?? [];
+
+    const visuals = getMoteVisuals(roles, damageTypes);
+
+    return {
+      key: `${range}-${abilityId}`,
+      abilityId,
+      label: relationshipIndex.abilityNames[abilityId] ?? abilityId,
+      angle: assignedAngles[abilityId] ?? 0,
+      ...visuals,
+    };
+  });
+}
+
 export function RangeProfileLayer({
   rangeCounts,
   maxRangeCount,
+  roleData,
   focus,
   setFocus,
   relationshipIndex,
@@ -138,13 +417,22 @@ export function RangeProfileLayer({
         const value = rangeCounts[band.key];
         const middleRadius = (band.innerRadius + band.outerRadius) / 2;
         const bandWidth = band.outerRadius - band.innerRadius;
-        const angles = getRangeDotAngles(value);
+
+        const motes = getRangeMotes(
+          band.key,
+          value,
+          roleData,
+          relationshipIndex
+        );
+
         const intensity = getRangeBandIntensity(value, maxRangeCount);
+
         const isRelated = isRangeRelatedToFocus(
           band.key,
           focus,
           relationshipIndex
         );
+
         const active = hasActiveFocus(focus);
         const groupOpacity = active && !isRelated ? 0.28 : 1;
         const focusBoost = active && isRelated ? 1.35 : 1;
@@ -207,37 +495,80 @@ export function RangeProfileLayer({
               </textPath>
             </text>
 
-            {angles.map((angle, index) => {
-              const { x, y } = polarToCartesian(CX, CY, middleRadius, angle);
-              const dotKey = `${band.key}-mote-${index}`;
+            {motes.map((mote) => {
+              const { x, y } = polarToCartesian(
+                CX,
+                CY,
+                middleRadius,
+                mote.angle
+              );
+
+              const moteIsRelated =
+                !mote.abilityId ||
+                isAbilityRelatedToFocus(
+                  mote.abilityId,
+                  focus,
+                  relationshipIndex
+                );
+
+              const moteOpacity = active && !moteIsRelated ? 0.22 : 1;
+              const moteFocusBoost = active && moteIsRelated ? 1.28 : 1;
+              const moteRadius =
+                intensity.moteRadius + (mote.abilityId ? 0.35 : 0);
 
               return (
-                <g key={dotKey}>
+                <g
+                  key={mote.key}
+                  opacity={moteOpacity}
+                  style={{ cursor: mote.abilityId ? "pointer" : "default" }}
+                  onMouseEnter={(event) => {
+                    if (!mote.abilityId) return;
+
+                    event.stopPropagation();
+                    setFocus({
+                      type: "ability",
+                      abilityId: mote.abilityId,
+                    });
+                  }}
+                >
+                  <title>{mote.label}</title>
+
                   <circle
                     cx={x}
                     cy={y}
-                    r={intensity.moteRadius + 6}
-                    fill="#b077d6"
-                    fillOpacity={intensity.moteGlowOpacity * focusBoost}
+                    r={(moteRadius + 7.2) * moteFocusBoost}
+                    fill={mote.glowColor}
+                    fillOpacity={Math.min(
+                      0.46,
+                      intensity.moteGlowOpacity * 2.15 * focusBoost + 0.04
+                    )}
                     filter="url(#moteGlow)"
                   />
+
                   <circle
                     cx={x}
                     cy={y}
-                    r={intensity.moteRadius + 2.3}
+                    r={(moteRadius + 2.6) * moteFocusBoost}
                     fill="rgba(10,7,10,0.84)"
-                    stroke="rgba(220,178,104,0.36)"
-                    strokeWidth="1"
+                    stroke={mote.glowColor}
+                    strokeOpacity={0.48 * focusBoost}
+                    strokeWidth={active && moteIsRelated ? 1.25 : 1}
                   />
+
                   <circle
                     cx={x}
                     cy={y}
-                    r={intensity.moteRadius}
-                    fill="url(#moteGradient)"
-                    fillOpacity={intensity.moteOpacity * focusBoost}
-                    stroke="rgba(255,239,185,0.58)"
-                    strokeWidth="0.7"
+                    r={moteRadius * moteFocusBoost}
+                    fill={mote.fillColor}
+                    fillOpacity={Math.min(
+                      0.96,
+                      intensity.moteOpacity * focusBoost + 0.18
+                    )}
+                    stroke={mote.strokeColor}
+                    strokeOpacity={0.78 * focusBoost}
+                    strokeWidth={active && moteIsRelated ? 1.15 : 0.75}
                   />
+
                   <circle
                     cx={x - 1.25}
                     cy={y - 1.35}

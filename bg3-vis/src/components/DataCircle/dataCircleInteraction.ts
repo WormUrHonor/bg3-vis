@@ -53,85 +53,64 @@ const ALL_ROLE_KEYS = [
 const ALL_DAMAGE_TYPE_KEYS = DAMAGE_TYPES.map((type) => type.key);
 const ALL_RANGE_KEYS = RANGE_BANDS.map((band) => band.key);
 
-function ensureArray(value: unknown): unknown[] {
-  if (Array.isArray(value)) return value;
-  if (value === undefined || value === null || value === "") return [];
-  return [value];
-}
-
 function unique<T>(values: T[]) {
   return [...new Set(values)];
 }
 
-function getRecord(spell: BG3Spell) {
-  return spell as BG3Spell & Record<string, unknown>;
-}
-
 function getSpellId(spell: BG3Spell) {
-  const record = getRecord(spell);
-
-  return String(record.id ?? record.spellId ?? record.key ?? record.name);
+  return spell.id;
 }
 
 function getSpellName(spell: BG3Spell) {
-  const record = getRecord(spell);
+  return spell.name;
+}
 
-  return String(record.name ?? record.label ?? getSpellId(spell));
+function isDamageRingKey(value: string): value is DamageRingKey {
+  return ALL_DAMAGE_TYPE_KEYS.includes(value as DamageRingKey);
 }
 
 function getSpellRoles(spell: BG3Spell): AbilityRole[] {
-  const record = getRecord(spell);
-
-  const rawValues = [
-    ...ensureArray(record.roles),
-    ...ensureArray(record.role),
-    ...ensureArray(record.abilityRoles),
-    ...ensureArray(record.abilityRole),
-  ];
-
   return unique(
-    rawValues
-      .map(String)
-      .filter((value): value is AbilityRole =>
-        ALL_ROLE_KEYS.includes(value as AbilityRole)
-      )
+    spell.roles.filter((role): role is AbilityRole =>
+      ALL_ROLE_KEYS.includes(role)
+    )
   );
 }
 
 function getSpellDamageTypes(spell: BG3Spell): DamageRingKey[] {
-  const record = getRecord(spell);
-
-  const rawValues = [
-    ...ensureArray(record.damageTypes),
-    ...ensureArray(record.damageType),
-    ...ensureArray(record.primaryDamageType),
-  ];
-
   return unique(
-    rawValues
-      .map(String)
-      .filter((value): value is DamageRingKey =>
-        ALL_DAMAGE_TYPE_KEYS.includes(value as DamageRingKey)
-      )
+    spell.damageTypes.flatMap((type) => {
+      if (type === "Weapon" || type === "Physical") {
+        return ["Physical"];
+      }
+
+      if (isDamageRingKey(type)) {
+        return [type];
+      }
+
+      return [];
+    })
   );
 }
 
 function getSpellRanges(spell: BG3Spell): RangeBandKey[] {
-  const record = getRecord(spell);
+  switch (spell.range.category) {
+    case "self":
+      return ["self"];
 
-  const rawValues = [
-    ...ensureArray(record.rangeBands),
-    ...ensureArray(record.rangeBand),
-    ...ensureArray(record.rangeCategory),
-  ];
+    case "melee":
+    case "weapon-range":
+      return ["melee"];
 
-  return unique(
-    rawValues
-      .map(String)
-      .filter((value): value is RangeBandKey =>
-        ALL_RANGE_KEYS.includes(value as RangeBandKey)
-      )
-  );
+    case "mid":
+      return ["mid"];
+
+    case "long":
+      return ["long"];
+
+    default:
+      return [];
+  }
 }
 
 function emptyRoleMap(): Record<AbilityRole, string[]> {
@@ -251,12 +230,22 @@ export function getFocusedAbilityIds(
   if (!focus) return [];
 
   if (focus.type === "ability") return [focus.abilityId];
-  if (focus.type === "role") return index.roleToAbilities[focus.role] ?? [];
+
+  if (focus.type === "role") {
+    return index.roleToAbilities[focus.role] ?? [];
+  }
+
   if (focus.type === "damageType") {
     return index.damageTypeToAbilities[focus.damageType] ?? [];
   }
-  if (focus.type === "range") return index.rangeToAbilities[focus.range] ?? [];
-  if (focus.type === "round") return index.roundToAbilities[focus.round] ?? [];
+
+  if (focus.type === "range") {
+    return index.rangeToAbilities[focus.range] ?? [];
+  }
+
+  if (focus.type === "round") {
+    return index.roundToAbilities[focus.round] ?? [];
+  }
 
   return [];
 }
@@ -286,7 +275,9 @@ export function isRoleRelatedToFocus(
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const roleAbilityIds = index.roleToAbilities[role] ?? [];
 
-  return roleAbilityIds.some((abilityId) => focusedAbilityIds.includes(abilityId));
+  return roleAbilityIds.some((abilityId) =>
+    focusedAbilityIds.includes(abilityId)
+  );
 }
 
 export function isDamageTypeRelatedToFocus(
@@ -316,7 +307,9 @@ export function isRangeRelatedToFocus(
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const rangeAbilityIds = index.rangeToAbilities[range] ?? [];
 
-  return rangeAbilityIds.some((abilityId) => focusedAbilityIds.includes(abilityId));
+  return rangeAbilityIds.some((abilityId) =>
+    focusedAbilityIds.includes(abilityId)
+  );
 }
 
 export function isRoundRelatedToFocus(
@@ -330,7 +323,9 @@ export function isRoundRelatedToFocus(
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const roundAbilityIds = index.roundToAbilities[round] ?? [];
 
-  return roundAbilityIds.some((abilityId) => focusedAbilityIds.includes(abilityId));
+  return roundAbilityIds.some((abilityId) =>
+    focusedAbilityIds.includes(abilityId)
+  );
 }
 
 export function getFocusSummary(

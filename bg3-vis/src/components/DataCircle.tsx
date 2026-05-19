@@ -19,7 +19,6 @@ import {
 } from "./DataCircle/dataCircleInteraction";
 import { BackgroundLayer } from "./DataCircle/layers/BackgroundLayer";
 import { CenterSealLayer } from "./DataCircle/layers/CenterSealLayer";
-//import { ConnectivityLayer } from "./DataCircle/layers/ConnectivityLayer";
 import { DamageTypesLayer } from "./DataCircle/layers/DamageTypesLayer";
 import { DprByRoundLayer } from "./DataCircle/layers/DprByRoundLayer";
 import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer";
@@ -54,6 +53,7 @@ export default function DataCircle({
   const [focus, setFocus] = useState<DataCircleFocus>(null);
 
   const isUsingMockData = selectedSpellIds.length === 0;
+
   const displaySpellIds = isUsingMockData
     ? mockSelectedSpellIds
     : selectedSpellIds;
@@ -112,6 +112,11 @@ export default function DataCircle({
     [selectedSpells]
   );
 
+  const totalDamage = mockDprByRound.reduce(
+    (sum, round) => sum + round.damage,
+    0
+  );
+
   return (
     <div className="data-circle-panel">
       <div className="data-circle-stage">
@@ -152,29 +157,30 @@ export default function DataCircle({
           <RangeProfileLayer
             rangeCounts={rangeCounts}
             maxRangeCount={maxRangeCount}
+            roleData={roleData}
             focus={focus}
             setFocus={setFocus}
             relationshipIndex={relationshipIndex}
           />
+
           <SectionTitleLayer outerTitle="DPR BY ROUND" />
 
-          <CenterSealLayer
-            buildLabel={buildLabel}
-            characterLabel={characterLabel}
-            archetypeLabel={archetypeLabel}
-            displayLevel={displayLevel}
-            spellCount={spellCount}
-            averageDpr={mockAverageDpr}
-            totalDamage={mockDprByRound.reduce(
-              (sum, round) => sum + round.damage,
-              0
-            )}
-          />
-
-          <FocusExplanationLayer
-            focus={focus}
-            relationshipIndex={relationshipIndex}
-          />
+          {focus ? (
+            <FocusExplanationLayer
+              focus={focus}
+              relationshipIndex={relationshipIndex}
+            />
+          ) : (
+            <CenterSealLayer
+              buildLabel={buildLabel}
+              characterLabel={characterLabel}
+              archetypeLabel={archetypeLabel}
+              displayLevel={displayLevel}
+              spellCount={spellCount}
+              averageDpr={mockAverageDpr}
+              totalDamage={totalDamage}
+            />
+          )}
         </svg>
       </div>
     </div>
