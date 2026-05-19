@@ -32,9 +32,9 @@ type RangeMote = {
   abilityId?: string;
   label: string;
   angle: number;
-  fillColor: string;
-  glowColor: string;
-  strokeColor: string;
+  fillColors: string[];
+  glowColors: string[];
+  strokeColors: string[];
 };
 
 type AbilityAngleTarget = {
@@ -61,6 +61,20 @@ const ROLE_COLORS: Record<AbilityRole, string> = {
   "narrative-interaction": "rgba(151,188,255,1)",
   "investigation-world-interaction": "rgba(107,214,255,1)",
   summon: "rgba(135,143,255,1)",
+};
+
+const ROLE_STROKES: Record<AbilityRole, string> = {
+  "single-target-damage": "rgba(255,205,166,0.88)",
+  "area-damage": "rgba(255,205,166,0.88)",
+
+  control: "rgba(207,234,255,0.82)",
+  "support-buff": "rgba(207,244,255,0.82)",
+  "defense-protection": "rgba(207,234,255,0.82)",
+  healing: "rgba(206,255,248,0.82)",
+  "mobility-positioning": "rgba(214,226,255,0.82)",
+  "narrative-interaction": "rgba(222,232,255,0.82)",
+  "investigation-world-interaction": "rgba(207,244,255,0.82)",
+  summon: "rgba(220,220,255,0.82)",
 };
 
 const FALLBACK_ROLE_ANGLES: Record<AbilityRole, number> = {
@@ -126,6 +140,10 @@ function circularDistance(a: number, b: number) {
   return Math.min(diff, 360 - diff);
 }
 
+function unique<T>(values: T[]) {
+  return [...new Set(values)];
+}
+
 function getPrimaryRole(roles: AbilityRole[]) {
   if (roles.length <= 0) return undefined;
 
@@ -184,7 +202,7 @@ function getRoleMidAngles(roleData: RoleData): Record<AbilityRole, number> {
   return result;
 }
 
-function getDamageTypeVisual(damageType?: DamageRingKey) {
+function getDamageTypeVisual(damageType: DamageRingKey) {
   const damageTypeVisual = DAMAGE_TYPES.find((type) => type.key === damageType);
 
   return {
@@ -193,53 +211,223 @@ function getDamageTypeVisual(damageType?: DamageRingKey) {
   };
 }
 
+function describeCircleSegment(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number
+) {
+  const start = polarToCartesian(cx, cy, radius, endAngle);
+  const end = polarToCartesian(cx, cy, radius, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+  return [
+    `M ${cx} ${cy}`,
+    `L ${start.x} ${start.y}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
+    "Z",
+  ].join(" ");
+}
+
+function SegmentedCircle({
+  x,
+  y,
+  radius,
+  colors,
+  opacity,
+  filter,
+}: {
+  x: number;
+  y: number;
+  radius: number;
+  colors: string[];
+  opacity: number;
+  filter?: string;
+}) {
+  const safeColors = colors.length > 0 ? colors : [FALLBACK_DOT_FILL];
+
+  if (safeColors.length === 1) {
+    return (
+      <circle
+        cx={x}
+        cy={y}
+        r={radius}
+        fill={safeColors[0]}
+        fillOpacity={opacity}
+        filter={filter}
+      />
+    );
+  }
+
+  const segmentAngle = 360 / safeColors.length;
+
+  return (
+    <g filter={filter}>
+      {safeColors.map((color, index) => {
+        const startAngle = -90 + index * segmentAngle;
+        const endAngle = startAngle + segmentAngle;
+
+        return (
+          <path
+            key={`${color}-${index}`}
+            d={describeCircleSegment(x, y, radius, startAngle, endAngle)}
+            fill={color}
+            fillOpacity={opacity}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+function SegmentedStrokeCircle({
+  x,
+  y,
+  radius,
+  colors,
+  opacity,
+  strokeWidth,
+}: {
+  x: number;
+  y: number;
+  radius: number;
+  colors: string[];
+  opacity: number;
+  strokeWidth: number;
+}) {
+  const safeColors = colors.length > 0 ? colors : [FALLBACK_DOT_STROKE];
+
+  if (safeColors.length === 1) {
+    return (
+      <circle
+        cx={x}
+        cy={y}
+        r={radius}
+        fill="none"
+        stroke={safeColors[0]}
+        strokeOpacity={opacity}
+        strokeWidth={strokeWidth}
+      />
+    );
+  }
+
+  const segmentAngle = 360 / safeColors.length;
+
+  return (
+    <g>
+      {safeColors.map((color, index) => {
+        const startAngle = -90 + index * segmentAngle + 1.2;
+        const endAngle = -90 + (index + 1) * segmentAngle - 1.2;
+        const start = polarToCartesian(x, y, radius, startAngle);
+        const end = polarToCartesian(x, y, radius, endAngle);
+        const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+        return (
+          <path
+            key={`${color}-${index}`}
+            d={`M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`}
+            fill="none"
+            stroke={color}
+            strokeOpacity={opacity}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </g>
+  );
+}
+
 function getMoteVisuals(
   roles: AbilityRole[],
   damageTypes: DamageRingKey[]
 ): {
-  fillColor: string;
-  glowColor: string;
-  strokeColor: string;
+  fillColors: string[];
+  glowColors: string[];
+  strokeColors: string[];
 } {
-  const primaryRole = getPrimaryRole(roles);
-  const primaryDamageType = damageTypes[0];
-
   const hasDamageRole = roles.some((role) => DAMAGE_ROLE_KEYS.includes(role));
   const hasUtilityRole = roles.some((role) => UTILITY_ROLE_KEYS.includes(role));
-  const hasDamageType = primaryDamageType !== undefined;
 
-  if (hasDamageType) {
-    const { fillColor, strokeColor } = getDamageTypeVisual(primaryDamageType);
+  const damageVisuals = damageTypes.map(getDamageTypeVisual);
 
-    return {
-      fillColor,
-      strokeColor,
-      glowColor:
-        hasUtilityRole && hasDamageRole ? MIXED_GLOW_COLOR : DAMAGE_GLOW_COLOR,
-    };
-  }
+  const damageFillColors = unique(
+    damageVisuals.map((visual) => visual.fillColor)
+  );
 
-  if (primaryRole !== undefined) {
-    return {
-      fillColor: ROLE_COLORS[primaryRole],
-      strokeColor: hasDamageRole
-        ? "rgba(255,205,166,0.88)"
-        : "rgba(207,234,255,0.82)",
-      glowColor: hasDamageRole
-        ? DAMAGE_GLOW_COLOR
-        : hasUtilityRole
-          ? UTILITY_GLOW_COLOR
-          : MIXED_GLOW_COLOR,
-    };
-  }
+  const damageStrokeColors = unique(
+    damageVisuals.map((visual) => visual.strokeColor)
+  );
+
+  const utilityRoles = roles.filter((role) => UTILITY_ROLE_KEYS.includes(role));
+  const damageRoles = roles.filter((role) => DAMAGE_ROLE_KEYS.includes(role));
+
+  const utilityFillColors = unique(
+    utilityRoles.map((role) => ROLE_COLORS[role])
+  );
+
+  const utilityStrokeColors = unique(
+    utilityRoles.map((role) => ROLE_STROKES[role])
+  );
+
+  const damageRoleFillColors = unique(
+    damageRoles.map((role) => ROLE_COLORS[role])
+  );
+
+  const damageRoleStrokeColors = unique(
+    damageRoles.map((role) => ROLE_STROKES[role])
+  );
+
+  /*
+    Central dot:
+    - If the ability has damage types, show only damage type colours.
+    - If it has no damage types, show only its role/utility colours.
+    - This prevents mixed damage+utility abilities from putting utility colours
+      inside the central dot when the damage type is already known.
+  */
+  const fillColors =
+    damageFillColors.length > 0
+      ? damageFillColors
+      : utilityFillColors.length > 0
+        ? utilityFillColors
+        : damageRoleFillColors.length > 0
+          ? damageRoleFillColors
+          : [FALLBACK_DOT_FILL];
+
+  const strokeColors =
+    damageStrokeColors.length > 0
+      ? damageStrokeColors
+      : utilityStrokeColors.length > 0
+        ? utilityStrokeColors
+        : damageRoleStrokeColors.length > 0
+          ? damageRoleStrokeColors
+          : [FALLBACK_DOT_STROKE];
+
+  /*
+    Outer glow:
+    - Mixed damage + utility = split damage/utility glow.
+    - Pure damage = damage glow.
+    - Pure utility = utility glow.
+    - Multiple utility roles can still show role-colour variation in the glow.
+  */
+  const glowColors =
+    hasDamageRole && hasUtilityRole
+      ? [DAMAGE_GLOW_COLOR, UTILITY_GLOW_COLOR]
+      : hasDamageRole
+        ? [DAMAGE_GLOW_COLOR]
+        : utilityFillColors.length > 1
+          ? utilityFillColors
+          : hasUtilityRole
+            ? [UTILITY_GLOW_COLOR]
+            : [MIXED_GLOW_COLOR];
 
   return {
-    fillColor: FALLBACK_DOT_FILL,
-    strokeColor: FALLBACK_DOT_STROKE,
-    glowColor: MIXED_GLOW_COLOR,
+    fillColors,
+    glowColors,
+    strokeColors,
   };
 }
-
 function assignAnglesToClosestRoleSlots(
   abilityIds: string[],
   slots: number[],
@@ -264,11 +452,6 @@ function assignAnglesToClosestRoleSlots(
   const availableSlots = [...slots];
   const assignedAngles: Record<string, number> = {};
 
-  /*
-    Assign the clearest role-anchored abilities first. This keeps the equal
-    dot spacing, but places each ability in the nearest available angular slot
-    to its semantic role.
-  */
   targets
     .sort((a, b) => a.targetAngle - b.targetAngle)
     .forEach((target) => {
@@ -308,9 +491,9 @@ function getRangeMotes(
       key: `${range}-fallback-${index}`,
       label: `${range} ability ${index + 1}`,
       angle,
-      fillColor: FALLBACK_DOT_FILL,
-      glowColor: MIXED_GLOW_COLOR,
-      strokeColor: FALLBACK_DOT_STROKE,
+      fillColors: [FALLBACK_DOT_FILL],
+      glowColors: [MIXED_GLOW_COLOR],
+      strokeColors: [FALLBACK_DOT_STROKE],
     }));
   }
 
@@ -533,12 +716,12 @@ export function RangeProfileLayer({
                 >
                   <title>{mote.label}</title>
 
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={(moteRadius + 7.2) * moteFocusBoost}
-                    fill={mote.glowColor}
-                    fillOpacity={Math.min(
+                  <SegmentedCircle
+                    x={x}
+                    y={y}
+                    radius={(moteRadius + 7.2) * moteFocusBoost}
+                    colors={mote.glowColors}
+                    opacity={Math.min(
                       0.46,
                       intensity.moteGlowOpacity * 2.15 * focusBoost + 0.04
                     )}
@@ -550,22 +733,28 @@ export function RangeProfileLayer({
                     cy={y}
                     r={(moteRadius + 2.6) * moteFocusBoost}
                     fill="rgba(10,7,10,0.84)"
-                    stroke={mote.glowColor}
+                    stroke={mote.glowColors[0] ?? MIXED_GLOW_COLOR}
                     strokeOpacity={0.48 * focusBoost}
                     strokeWidth={active && moteIsRelated ? 1.25 : 1}
                   />
 
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={moteRadius * moteFocusBoost}
-                    fill={mote.fillColor}
-                    fillOpacity={Math.min(
+                  <SegmentedCircle
+                    x={x}
+                    y={y}
+                    radius={moteRadius * moteFocusBoost}
+                    colors={mote.fillColors}
+                    opacity={Math.min(
                       0.96,
                       intensity.moteOpacity * focusBoost + 0.18
                     )}
-                    stroke={mote.strokeColor}
-                    strokeOpacity={0.78 * focusBoost}
+                  />
+
+                  <SegmentedStrokeCircle
+                    x={x}
+                    y={y}
+                    radius={moteRadius * moteFocusBoost}
+                    colors={mote.strokeColors}
+                    opacity={0.78 * focusBoost}
                     strokeWidth={active && moteIsRelated ? 1.15 : 0.75}
                   />
 

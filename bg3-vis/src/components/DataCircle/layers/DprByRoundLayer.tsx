@@ -42,7 +42,7 @@ const BAR_BASE_RADIUS = 342;
 const BAR_MAX_RADIUS = 455;
 const BAR_SPAN = BAR_MAX_RADIUS - BAR_BASE_RADIUS;
 
-const ROUND_LABEL_RADIUS = 362;
+const ROUND_LABEL_RADIUS = 348;
 const VALUE_LABEL_RADIUS = 462;
 
 const DPR_SCALE_MAX = 100;
@@ -505,9 +505,9 @@ export function DprByRoundLayer({
                 },
               ];
 
-        const startAngle = -90 + index * sectorAngle;
-        const endAngle = startAngle + sectorAngle;
-        const midAngle = startAngle + sectorAngle / 2;
+        const midAngle = -90 + index * sectorAngle;
+const startAngle = midAngle - sectorAngle / 2;
+const endAngle = midAngle + sectorAngle / 2;
 
         const visualGap = Math.min(2.05, sectorAngle * 0.14);
         const visualStartAngle = startAngle + visualGap;
