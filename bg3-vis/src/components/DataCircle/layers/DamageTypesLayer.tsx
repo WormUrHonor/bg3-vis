@@ -23,6 +23,7 @@ import {
 } from "../dataCircleGeometry";
 import type {
   DataCircleFocus,
+  DataCircleFocusItem,
   LayerRelationshipIndex,
 } from "../dataCircleInteraction";
 import {
@@ -37,6 +38,7 @@ type DamageTypesLayerProps = {
   focus: DataCircleFocus;
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
+  onToggleSelection?: (focus: DataCircleFocusItem) => void;
 };
 
 type DamageLabelMode = "full" | "short" | "hidden";
@@ -529,6 +531,7 @@ export function DamageTypesLayer({
   focus,
   setFocus,
   relationshipIndex,
+  onToggleSelection,
 }: DamageTypesLayerProps) {
   const activeFocus = hasActiveFocus(focus);
 
@@ -616,13 +619,20 @@ export function DamageTypesLayer({
 
             return (
               <g
-                key={type.key}
-                opacity={groupOpacity}
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() =>
-                  setFocus({ type: "damageType", damageType: type.key })
-                }
-              >
+  key={type.key}
+  opacity={groupOpacity}
+  style={{ cursor: "pointer" }}
+  onMouseEnter={() =>
+    setFocus({ type: "damageType", damageType: type.key })
+  }
+  onClick={(event) => {
+    event.stopPropagation();
+    onToggleSelection?.({
+      type: "damageType",
+      damageType: type.key,
+    });
+  }}
+>
                 <defs>
                   <clipPath id={clipPathId}>
                     <path

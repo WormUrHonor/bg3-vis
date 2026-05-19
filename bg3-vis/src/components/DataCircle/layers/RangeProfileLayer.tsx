@@ -11,6 +11,7 @@ import {
 import { CX, CY, polarToCartesian } from "../dataCircleGeometry";
 import type {
   DataCircleFocus,
+  DataCircleFocusItem,
   LayerRelationshipIndex,
 } from "../dataCircleInteraction";
 import {
@@ -20,8 +21,6 @@ import {
 } from "../dataCircleInteraction";
 import type { DamageRingKey, RangeBandKey, RoleData } from "../dataCircleTypes";
 
-export type RangeMarkerMode = "abstraction" | "icons";
-
 type RangeProfileLayerProps = {
   rangeCounts: Record<RangeBandKey, number>;
   maxRangeCount: number;
@@ -29,7 +28,7 @@ type RangeProfileLayerProps = {
   focus: DataCircleFocus;
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
-  markerMode: RangeMarkerMode;
+  onToggleSelection?: (focus: DataCircleFocusItem) => void;
 };
 
 type RangeMote = {
@@ -57,7 +56,6 @@ const FALLBACK_DOT_STROKE = "rgba(255,239,185,0.58)";
 const ROLE_COLORS: Record<AbilityRole, string> = {
   "single-target-damage": "rgba(255,108,93,1)",
   "area-damage": "rgba(255,143,74,1)",
-
   control: "rgba(91,154,255,1)",
   "support-buff": "rgba(86,199,255,1)",
   "defense-protection": "rgba(113,181,235,1)",
@@ -71,7 +69,6 @@ const ROLE_COLORS: Record<AbilityRole, string> = {
 const ROLE_STROKES: Record<AbilityRole, string> = {
   "single-target-damage": "rgba(255,205,166,0.88)",
   "area-damage": "rgba(255,205,166,0.88)",
-
   control: "rgba(207,234,255,0.82)",
   "support-buff": "rgba(207,244,255,0.82)",
   "defense-protection": "rgba(207,234,255,0.82)",
@@ -85,7 +82,6 @@ const ROLE_STROKES: Record<AbilityRole, string> = {
 const FALLBACK_ROLE_ANGLES: Record<AbilityRole, number> = {
   "single-target-damage": -130,
   "area-damage": -92,
-
   control: -26,
   "support-buff": 18,
   "defense-protection": 58,
@@ -153,11 +149,9 @@ function getPrimaryRole(roles: AbilityRole[]) {
   if (roles.length <= 0) return undefined;
 
   const damageRole = roles.find((role) => DAMAGE_ROLE_KEYS.includes(role));
-
   if (damageRole) return damageRole;
 
   const utilityRole = roles.find((role) => UTILITY_ROLE_KEYS.includes(role));
-
   if (utilityRole) return utilityRole;
 
   return roles[0];
@@ -630,7 +624,7 @@ export function RangeProfileLayer({
   focus,
   setFocus,
   relationshipIndex,
-  markerMode,
+  onToggleSelection,
 }: RangeProfileLayerProps) {
   return (
     <>
@@ -819,70 +813,26 @@ export function RangeProfileLayer({
                       abilityId: mote.abilityId,
                     });
                   }}
+                  onClick={(event) => {
+                    if (!mote.abilityId) return;
+
+                    event.stopPropagation();
+                    onToggleSelection?.({
+                      type: "ability",
+                      abilityId: mote.abilityId,
+                    });
+                  }}
                 >
                   <title>{mote.label}</title>
 
-                  {markerMode === "icons" ? (
-                    <IconMarker
-                      x={x}
-                      y={y}
-                      size={iconSize}
-                      mote={mote}
-                      isRelated={moteIsRelated}
-                      focusBoost={moteFocusBoost}
-                    />
-                  ) : (
-                    <>
-                      <SegmentedCircle
-                        x={x}
-                        y={y}
-                        radius={(moteRadius + 7.2) * moteFocusBoost}
-                        colors={mote.glowColors}
-                        opacity={Math.min(
-                          0.46,
-                          intensity.moteGlowOpacity * 2.15 * focusBoost + 0.04
-                        )}
-                        filter="url(#moteGlow)"
-                      />
-
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={(moteRadius + 2.6) * moteFocusBoost}
-                        fill="rgba(10,7,10,0.84)"
-                        stroke={mote.glowColors[0] ?? MIXED_GLOW_COLOR}
-                        strokeOpacity={0.48 * focusBoost}
-                        strokeWidth={active && moteIsRelated ? 1.25 : 1}
-                      />
-
-                      <SegmentedCircle
-                        x={x}
-                        y={y}
-                        radius={moteRadius * moteFocusBoost}
-                        colors={mote.fillColors}
-                        opacity={Math.min(
-                          0.96,
-                          intensity.moteOpacity * focusBoost + 0.18
-                        )}
-                      />
-
-                      <SegmentedStrokeCircle
-                        x={x}
-                        y={y}
-                        radius={moteRadius * moteFocusBoost}
-                        colors={mote.strokeColors}
-                        opacity={0.78 * focusBoost}
-                        strokeWidth={active && moteIsRelated ? 1.15 : 0.75}
-                      />
-
-                      <circle
-                        cx={x - 1.25}
-                        cy={y - 1.35}
-                        r="1"
-                        fill="rgba(255,255,230,0.76)"
-                      />
-                    </>
-                  )}
+                  <IconMarker
+                    x={x}
+                    y={y}
+                    size={iconSize}
+                    mote={mote}
+                    isRelated={moteIsRelated}
+                    focusBoost={moteFocusBoost}
+                  />
                 </g>
               );
             })}

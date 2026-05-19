@@ -15,17 +15,16 @@ import {
 } from "./DataCircle/dataCircleAggregation";
 import {
   buildLayerRelationshipIndex,
+  isSameFocusItem,
   type DataCircleFocus,
+  type DataCircleFocusItem,
 } from "./DataCircle/dataCircleInteraction";
 import { BackgroundLayer } from "./DataCircle/layers/BackgroundLayer";
 import { CenterSealLayer } from "./DataCircle/layers/CenterSealLayer";
 import { DamageTypesLayer } from "./DataCircle/layers/DamageTypesLayer";
 import { DprByRoundLayer } from "./DataCircle/layers/DprByRoundLayer";
 import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer";
-import {
-  RangeProfileLayer,
-  type RangeMarkerMode,
-} from "./DataCircle/layers/RangeProfileLayer";
+import { RangeProfileLayer } from "./DataCircle/layers/RangeProfileLayer";
 import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer";
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
 import "./DataCircle.css";
@@ -55,9 +54,13 @@ export default function DataCircle({
   selectedSpellIds,
   showDprLayer,
 }: DataCircleProps) {
-  const [focus, setFocus] = useState<DataCircleFocus>(null);
-  const [rangeMarkerMode, setRangeMarkerMode] =
-    useState<RangeMarkerMode>("abstraction");
+  const [hoverFocus, setHoverFocus] = useState<DataCircleFocus>(null);
+  const [selectedFocuses, setSelectedFocuses] = useState<DataCircleFocusItem[]>(
+    []
+  );
+
+  const activeFocus: DataCircleFocus =
+    hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
 
   const isUsingMockData = selectedSpellIds.length === 0;
 
@@ -124,33 +127,36 @@ export default function DataCircle({
     0
   );
 
+  function toggleSelectedFocus(nextFocus: DataCircleFocusItem) {
+    setSelectedFocuses((current) => {
+      const alreadySelected = current.some((item) =>
+        isSameFocusItem(item, nextFocus)
+      );
+
+      if (alreadySelected) {
+        return current.filter((item) => !isSameFocusItem(item, nextFocus));
+      }
+
+      return [...current, nextFocus];
+    });
+  }
+
+  function clearSelectedFocuses() {
+    setSelectedFocuses([]);
+    setHoverFocus(null);
+  }
+
   return (
     <div className="data-circle-panel">
-      <div className="data-circle-mode-toggle" aria-label="Range marker view">
+      {selectedFocuses.length > 0 ? (
         <button
           type="button"
-          className={
-            rangeMarkerMode === "abstraction"
-              ? "data-circle-mode-button active"
-              : "data-circle-mode-button"
-          }
-          onClick={() => setRangeMarkerMode("abstraction")}
+          className="data-circle-clear-selection-button"
+          onClick={clearSelectedFocuses}
         >
-          Abstraction view
+          Clear selection · {selectedFocuses.length}
         </button>
-
-        <button
-          type="button"
-          className={
-            rangeMarkerMode === "icons"
-              ? "data-circle-mode-button active"
-              : "data-circle-mode-button"
-          }
-          onClick={() => setRangeMarkerMode("icons")}
-        >
-          Icon view
-        </button>
-      </div>
+      ) : null}
 
       <div className="data-circle-stage">
         <svg
@@ -158,7 +164,7 @@ export default function DataCircle({
           className="data-circle-svg"
           role="img"
           aria-label="Overview Data Circle visualization"
-          onMouseLeave={() => setFocus(null)}
+          onMouseLeave={() => setHoverFocus(null)}
         >
           <DataCircleDefs />
 
@@ -168,8 +174,8 @@ export default function DataCircle({
             <DprByRoundLayer
               rounds={mockDprByRound}
               averageDpr={mockAverageDpr}
-              focus={focus}
-              setFocus={setFocus}
+              focus={activeFocus}
+              setFocus={setHoverFocus}
               relationshipIndex={relationshipIndex}
             />
           ) : null}
@@ -177,15 +183,16 @@ export default function DataCircle({
           <DamageTypesLayer
             damageTypeCounts={damageTypeCounts}
             damageTypeTotal={damageTypeTotal}
-            focus={focus}
-            setFocus={setFocus}
+            focus={activeFocus}
+            setFocus={setHoverFocus}
             relationshipIndex={relationshipIndex}
+            onToggleSelection={toggleSelectedFocus}
           />
 
           <RoleDistributionLayer
             roleData={roleData}
-            focus={focus}
-            setFocus={setFocus}
+            focus={activeFocus}
+            setFocus={setHoverFocus}
             relationshipIndex={relationshipIndex}
           />
 
@@ -193,19 +200,19 @@ export default function DataCircle({
             rangeCounts={rangeCounts}
             maxRangeCount={maxRangeCount}
             roleData={roleData}
-            focus={focus}
-            setFocus={setFocus}
+            focus={activeFocus}
+            setFocus={setHoverFocus}
             relationshipIndex={relationshipIndex}
-            markerMode={rangeMarkerMode}
+            onToggleSelection={toggleSelectedFocus}
           />
 
           <SectionTitleLayer
             outerTitle={showDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"}
           />
 
-          {focus ? (
+          {hoverFocus ? (
             <FocusExplanationLayer
-              focus={focus}
+              focus={hoverFocus}
               relationshipIndex={relationshipIndex}
             />
           ) : (

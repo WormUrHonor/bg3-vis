@@ -2,13 +2,14 @@ import type { AbilityRole, BG3Spell } from "../../data/bg3Spells";
 import { DAMAGE_ROLE_KEYS, DAMAGE_TYPES, RANGE_BANDS } from "./dataCircleConfig";
 import type { DamageRingKey, RangeBandKey } from "./dataCircleTypes";
 
-export type DataCircleFocus =
+export type DataCircleFocusItem =
   | { type: "ability"; abilityId: string }
   | { type: "role"; role: AbilityRole }
   | { type: "damageType"; damageType: DamageRingKey }
   | { type: "range"; range: RangeBandKey }
-  | { type: "round"; round: number }
-  | null;
+  | { type: "round"; round: number };
+
+export type DataCircleFocus = DataCircleFocusItem | DataCircleFocusItem[] | null;
 
 export type DprContribution = {
   abilityId: string;
@@ -55,6 +56,11 @@ const ALL_RANGE_KEYS = RANGE_BANDS.map((band) => band.key);
 
 function unique<T>(values: T[]) {
   return [...new Set(values)];
+}
+
+function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
+  if (!focus) return [];
+  return Array.isArray(focus) ? focus : [focus];
 }
 
 function getSpellId(spell: BG3Spell) {
@@ -143,6 +149,35 @@ function emptyRangeMap(): Record<RangeBandKey, string[]> {
   return result;
 }
 
+export function isSameFocusItem(
+  a: DataCircleFocusItem,
+  b: DataCircleFocusItem
+) {
+  if (a.type !== b.type) return false;
+
+  if (a.type === "ability" && b.type === "ability") {
+    return a.abilityId === b.abilityId;
+  }
+
+  if (a.type === "role" && b.type === "role") {
+    return a.role === b.role;
+  }
+
+  if (a.type === "damageType" && b.type === "damageType") {
+    return a.damageType === b.damageType;
+  }
+
+  if (a.type === "range" && b.type === "range") {
+    return a.range === b.range;
+  }
+
+  if (a.type === "round" && b.type === "round") {
+    return a.round === b.round;
+  }
+
+  return false;
+}
+
 export function buildLayerRelationshipIndex(
   selectedSpells: BG3Spell[],
   rounds: DprRound[]
@@ -227,31 +262,43 @@ export function getFocusedAbilityIds(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) return [];
+  const abilityIds = new Set<string>();
 
-  if (focus.type === "ability") return [focus.abilityId];
+  getFocusItems(focus).forEach((focusItem) => {
+    if (focusItem.type === "ability") {
+      abilityIds.add(focusItem.abilityId);
+    }
 
-  if (focus.type === "role") {
-    return index.roleToAbilities[focus.role] ?? [];
-  }
+    if (focusItem.type === "role") {
+      index.roleToAbilities[focusItem.role]?.forEach((abilityId) =>
+        abilityIds.add(abilityId)
+      );
+    }
 
-  if (focus.type === "damageType") {
-    return index.damageTypeToAbilities[focus.damageType] ?? [];
-  }
+    if (focusItem.type === "damageType") {
+      index.damageTypeToAbilities[focusItem.damageType]?.forEach((abilityId) =>
+        abilityIds.add(abilityId)
+      );
+    }
 
-  if (focus.type === "range") {
-    return index.rangeToAbilities[focus.range] ?? [];
-  }
+    if (focusItem.type === "range") {
+      index.rangeToAbilities[focusItem.range]?.forEach((abilityId) =>
+        abilityIds.add(abilityId)
+      );
+    }
 
-  if (focus.type === "round") {
-    return index.roundToAbilities[focus.round] ?? [];
-  }
+    if (focusItem.type === "round") {
+      index.roundToAbilities[focusItem.round]?.forEach((abilityId) =>
+        abilityIds.add(abilityId)
+      );
+    }
+  });
 
-  return [];
+  return [...abilityIds];
 }
 
 export function hasActiveFocus(focus: DataCircleFocus) {
-  return focus !== null;
+  return getFocusItems(focus).length > 0;
 }
 
 export function isAbilityRelatedToFocus(
@@ -259,7 +306,7 @@ export function isAbilityRelatedToFocus(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) return true;
+  if (!hasActiveFocus(focus)) return true;
 
   return getFocusedAbilityIds(focus, index).includes(abilityId);
 }
@@ -269,8 +316,7 @@ export function isRoleRelatedToFocus(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) return true;
-  if (focus.type === "role") return focus.role === role;
+  if (!hasActiveFocus(focus)) return true;
 
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const roleAbilityIds = index.roleToAbilities[role] ?? [];
@@ -285,8 +331,7 @@ export function isDamageTypeRelatedToFocus(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) return true;
-  if (focus.type === "damageType") return focus.damageType === damageType;
+  if (!hasActiveFocus(focus)) return true;
 
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const damageAbilityIds = index.damageTypeToAbilities[damageType] ?? [];
@@ -301,8 +346,7 @@ export function isRangeRelatedToFocus(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) return true;
-  if (focus.type === "range") return focus.range === range;
+  if (!hasActiveFocus(focus)) return true;
 
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const rangeAbilityIds = index.rangeToAbilities[range] ?? [];
@@ -317,8 +361,7 @@ export function isRoundRelatedToFocus(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) return true;
-  if (focus.type === "round") return focus.round === round;
+  if (!hasActiveFocus(focus)) return true;
 
   const focusedAbilityIds = getFocusedAbilityIds(focus, index);
   const roundAbilityIds = index.roundToAbilities[round] ?? [];
@@ -332,13 +375,14 @@ export function getFocusSummary(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  if (!focus) {
+  if (!focus || getFocusItems(focus).length <= 0) {
     return {
       title: "Cross-layer trace",
-      body: "Hover a role, damage type, range band, round, or ability contribution to reveal connections across the circle.",
+      body: "Hover or select a role, damage type, range band, round, or ability to reveal connections across the circle.",
     };
   }
 
+  const focusItems = getFocusItems(focus);
   const abilityIds = getFocusedAbilityIds(focus, index);
   const abilityNames = abilityIds
     .map((abilityId) => index.abilityNames[abilityId] ?? abilityId)
@@ -347,16 +391,28 @@ export function getFocusSummary(
   const suffix =
     abilityIds.length > 3 ? ` +${abilityIds.length - 3} more` : "";
 
-  if (focus.type === "ability") {
+  if (focusItems.length > 1) {
     return {
-      title: index.abilityNames[focus.abilityId] ?? "Ability",
+      title: `${focusItems.length} selected filters`,
+      body:
+        abilityIds.length > 0
+          ? `Combined selection links ${abilityNames.join(", ")}${suffix}.`
+          : "The combined selection has no linked ability-level evidence yet.",
+    };
+  }
+
+  const focusItem = focusItems[0];
+
+  if (focusItem.type === "ability") {
+    return {
+      title: index.abilityNames[focusItem.abilityId] ?? "Ability",
       body: "Connecting this ability across role, damage type, range, and DPR timing.",
     };
   }
 
-  if (focus.type === "role") {
+  if (focusItem.type === "role") {
     return {
-      title: `Role: ${focus.role}`,
+      title: `Role: ${focusItem.role}`,
       body:
         abilityIds.length > 0
           ? `Linked abilities: ${abilityNames.join(", ")}${suffix}.`
@@ -364,9 +420,9 @@ export function getFocusSummary(
     };
   }
 
-  if (focus.type === "damageType") {
+  if (focusItem.type === "damageType") {
     return {
-      title: `Damage: ${focus.damageType}`,
+      title: `Damage: ${focusItem.damageType}`,
       body:
         abilityIds.length > 0
           ? `This damage type is from ${abilityNames.join(", ")}${suffix}.`
@@ -374,18 +430,18 @@ export function getFocusSummary(
     };
   }
 
-  if (focus.type === "range") {
+  if (focusItem.type === "range") {
     return {
-      title: `Range: ${focus.range}`,
+      title: `Range: ${focusItem.range}`,
       body:
         abilityIds.length > 0
-          ? `This range profile made of ${abilityNames.join(", ")}${suffix}.`
+          ? `This range profile is made of ${abilityNames.join(", ")}${suffix}.`
           : "No linked ability-level evidence is available for this range band yet.",
     };
   }
 
   return {
-    title: `Round ${focus.round}`,
+    title: `Round ${focusItem.round}`,
     body:
       abilityIds.length > 0
         ? `This round contains ${abilityNames.join(", ")}${suffix}.`

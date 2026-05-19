@@ -210,7 +210,7 @@ export function CenterSealLayer({
 
       <text
         x={CX}
-        y={CY + 67}
+        y={CY + 66}
         textAnchor="middle"
         dominantBaseline="middle"
         fontSize="8"
