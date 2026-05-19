@@ -48,7 +48,9 @@ function BuildPlanner() {
   const [characterName, setCharacterName] = useState("");
   const [selectedRace, setSelectedRace] = useState<RaceName | "">("");
   const [selectedSubrace, setSelectedSubrace] = useState("");
-  const [selectedBackground, setSelectedBackground] = useState<Background | "">("");
+  const [selectedBackground, setSelectedBackground] = useState<Background | "">(
+    ""
+  );
   const [selectedClass, setSelectedClass] = useState<ClassName | "">("");
   const [selectedSubclass, setSelectedSubclass] = useState("");
   const [selectedLevel, setSelectedLevel] = useState(12);
@@ -57,13 +59,22 @@ function BuildPlanner() {
   const [bardExpertise, setBardExpertise] = useState<Skill[]>([]);
   const [rogueExpertise, setRogueExpertise] = useState<Skill[]>([]);
   const [loreBardSkills, setLoreBardSkills] = useState<Skill[]>([]);
-  const [knowledgeClericExpertise, setKnowledgeClericExpertise] = useState<Skill[]>([]);
+  const [knowledgeClericExpertise, setKnowledgeClericExpertise] = useState<
+    Skill[]
+  >([]);
 
-  const [rangerFavouredEnemy, setRangerFavouredEnemy] = useState<RangerFavouredEnemy | "">("");
-  const [rangerNaturalExplorer, setRangerNaturalExplorer] = useState<RangerNaturalExplorer | "">("");
-  const [selectedWarlockInvocations, setSelectedWarlockInvocations] = useState<WarlockInvocation[]>([]);
+  const [rangerFavouredEnemy, setRangerFavouredEnemy] = useState<
+    RangerFavouredEnemy | ""
+  >("");
+  const [rangerNaturalExplorer, setRangerNaturalExplorer] = useState<
+    RangerNaturalExplorer | ""
+  >("");
+  const [selectedWarlockInvocations, setSelectedWarlockInvocations] = useState<
+    WarlockInvocation[]
+  >([]);
 
   const [selectedSpellIds, setSelectedSpellIds] = useState<string[]>([]);
+  const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
 
   const lockedBackgroundSkills: Skill[] = selectedBackground
     ? backgroundSkills[selectedBackground]
@@ -82,7 +93,8 @@ function BuildPlanner() {
       : undefined;
 
   const warlockInvocationSkills: Skill[] =
-    selectedClass === "Warlock" && selectedWarlockInvocations.includes("Beguiling Influence")
+    selectedClass === "Warlock" &&
+    selectedWarlockInvocations.includes("Beguiling Influence")
       ? ["Deception", "Persuasion"]
       : [];
 
@@ -110,7 +122,10 @@ function BuildPlanner() {
     ...(selectedClass === "Rogue" ? rogueExpertise : []),
   ]).filter((skill) => allProficiencies.includes(skill));
 
-  const allExpertise: Skill[] = unique([...directExpertise, ...proficiencyBasedExpertise]);
+  const allExpertise: Skill[] = unique([
+    ...directExpertise,
+    ...proficiencyBasedExpertise,
+  ]);
 
   const availableSpellIds = getAvailableSpellIdsForBuild(
     bg3Spells,
@@ -125,6 +140,28 @@ function BuildPlanner() {
       cleanSelectedSpellIds(current, availableSpellIds)
     );
   }, [availableSpellIds.join("|")]);
+
+  useEffect(() => {
+    setHasEvaluatedBuild(false);
+  }, [
+    buildName,
+    characterName,
+    selectedRace,
+    selectedSubrace,
+    selectedBackground,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedClassSkills,
+    bardExpertise,
+    rogueExpertise,
+    loreBardSkills,
+    knowledgeClericExpertise,
+    rangerFavouredEnemy,
+    rangerNaturalExplorer,
+    selectedWarlockInvocations,
+    selectedSpellIds,
+  ]);
 
   function handleRaceChange(value: string) {
     const race = value as RaceName | "";
@@ -147,6 +184,10 @@ function BuildPlanner() {
     setSelectedSpellIds([]);
   }
 
+  function handleEvaluateBuild() {
+    setHasEvaluatedBuild(true);
+  }
+
   return (
     <main className="workspace-page">
       <section className="workspace-half planner-half">
@@ -155,7 +196,14 @@ function BuildPlanner() {
             <p className="eyebrow">BG3 Build Planner</p>
             <h1>Build Creation</h1>
           </div>
-          <button className="evaluate-button">Evaluate Build</button>
+
+          <button
+            className="evaluate-button"
+            type="button"
+            onClick={handleEvaluateBuild}
+          >
+            {hasEvaluatedBuild ? "Re-evaluate Build" : "Evaluate Build"}
+          </button>
         </header>
 
         <nav className="tab-bar" aria-label="Build creation sections">
@@ -164,6 +212,7 @@ function BuildPlanner() {
               key={tab.id}
               className={activeTab === tab.id ? "tab active" : "tab"}
               onClick={() => setActiveTab(tab.id)}
+              type="button"
             >
               {tab.label}
             </button>
@@ -281,6 +330,7 @@ function BuildPlanner() {
             selectedSubclass={selectedSubclass}
             selectedLevel={selectedLevel}
             selectedSpellIds={selectedSpellIds}
+            showDprLayer={hasEvaluatedBuild}
           />
         </div>
       </section>

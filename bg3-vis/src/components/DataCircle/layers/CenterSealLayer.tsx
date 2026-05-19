@@ -18,8 +18,6 @@ export function CenterSealLayer({
   buildLabel,
   characterLabel,
   archetypeLabel,
-  displayLevel,
-  spellCount,
   averageDpr,
   totalDamage,
 }: CenterSealLayerProps) {
@@ -210,36 +208,9 @@ export function CenterSealLayer({
         </>
       )}
 
-      <rect
-        x={CX - 58}
-        y={CY + 55}
-        width="116"
-        height="21"
-        rx="10.5"
-        fill="rgba(8,6,8,0.72)"
-        stroke="rgba(255,226,164,0.22)"
-        strokeWidth="1"
-      />
-
       <text
         x={CX}
-        y={CY + 66}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="8.6"
-        fontWeight="900"
-        letterSpacing="0.08em"
-        fill="rgba(255,238,199,0.86)"
-        paintOrder="stroke"
-        stroke="rgba(4,3,5,0.92)"
-        strokeWidth="1.8"
-      >
-        {`L${displayLevel} · ${spellCount} ABILITIES`}
-      </text>
-
-      <text
-        x={CX}
-        y={CY + 94}
+        y={CY + 67}
         textAnchor="middle"
         dominantBaseline="middle"
         fontSize="8"

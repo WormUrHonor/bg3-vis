@@ -35,15 +35,15 @@ type AbilityColor = {
   glow: string;
 };
 
-const DPR_INNER_RADIUS = 324;
-const DPR_OUTER_RADIUS = 468;
+const DPR_INNER_RADIUS = 339;
+const DPR_OUTER_RADIUS = 473;
 
-const BAR_BASE_RADIUS = 342;
-const BAR_MAX_RADIUS = 455;
+const BAR_BASE_RADIUS = 357;
+const BAR_MAX_RADIUS = 460;
 const BAR_SPAN = BAR_MAX_RADIUS - BAR_BASE_RADIUS;
 
-const ROUND_LABEL_RADIUS = 348;
-const VALUE_LABEL_RADIUS = 462;
+const ROUND_LABEL_RADIUS = 344;
+const VALUE_LABEL_RADIUS = 467;
 
 const DPR_SCALE_MAX = 100;
 const DPR_GRID_VALUES = [20, 40, 60, 80, 100];

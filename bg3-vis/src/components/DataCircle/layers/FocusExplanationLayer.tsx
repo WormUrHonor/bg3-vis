@@ -214,13 +214,13 @@ function IconBadge({
           y={y + 0.4}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={size <= 15 ? "5.2" : "6.4"}
+          fontSize={size <= 15 ? "5.8" : "7.2"}
           fontWeight="950"
           letterSpacing="0.02em"
           fill="rgba(255,248,226,0.96)"
           paintOrder="stroke"
           stroke="rgba(3,2,4,0.82)"
-          strokeWidth="1.3"
+          strokeWidth="1.35"
         >
           {label}
         </text>
@@ -241,8 +241,8 @@ function FocusIconRow({
     return (
       <IconBadge
         x={CX}
-        y={CY - 32}
-        size={26}
+        y={CY - 33}
+        size={27}
         href={iconHref}
         label={!iconHref ? "?" : undefined}
         stroke="rgba(230,188,112,0.72)"
@@ -257,8 +257,8 @@ function FocusIconRow({
     return (
       <IconBadge
         x={CX}
-        y={CY - 32}
-        size={26}
+        y={CY - 33}
+        size={27}
         href={visual.href}
         label={!visual.href ? visual.label : undefined}
         fill={visual.fill}
@@ -275,8 +275,8 @@ function FocusIconRow({
 
   if (linkedAbilityIds.length <= 0) return null;
 
-  const iconSize = linkedAbilityIds.length > 4 ? 14 : 16;
-  const spacing = linkedAbilityIds.length > 4 ? 15.5 : 18;
+  const iconSize = linkedAbilityIds.length > 4 ? 15 : 17;
+  const spacing = linkedAbilityIds.length > 4 ? 16.5 : 19;
   const startX = CX - ((linkedAbilityIds.length - 1) * spacing) / 2;
 
   return (
@@ -288,7 +288,7 @@ function FocusIconRow({
           <IconBadge
             key={abilityId}
             x={startX + index * spacing}
-            y={CY - 34}
+            y={CY - 35}
             size={iconSize}
             href={iconHref}
             label={!iconHref ? "?" : undefined}
@@ -306,7 +306,7 @@ export function FocusExplanationLayer({
   relationshipIndex,
 }: FocusExplanationLayerProps) {
   const summary = getFocusSummary(focus, relationshipIndex);
-  const bodyLines = splitText(summary.body, 28);
+  const bodyLines = splitText(summary.body, 25);
   const kindLabel = getFocusKindLabel(focus);
 
   return (
@@ -393,13 +393,13 @@ export function FocusExplanationLayer({
         y={CY - 64}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="7.2"
+        fontSize="8.4"
         fontWeight="950"
         letterSpacing="0.16em"
-        fill="rgba(229,202,152,0.78)"
+        fill="rgba(229,202,152,0.82)"
         paintOrder="stroke"
         stroke="rgba(4,3,5,0.9)"
-        strokeWidth="1.8"
+        strokeWidth="1.9"
       >
         {kindLabel}
       </text>
@@ -408,66 +408,39 @@ export function FocusExplanationLayer({
 
       <text
         x={CX}
-        y={CY - 3}
+        y={CY - 2}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="9"
+        fontSize="10.4"
         fontWeight="950"
         letterSpacing="0.045em"
-        fill="rgba(255,244,218,0.96)"
+        fill="rgba(255,244,218,0.98)"
         paintOrder="stroke"
         stroke="rgba(3,2,4,0.94)"
-        strokeWidth="2.6"
+        strokeWidth="2.8"
         filter="url(#fineInkShadow)"
       >
-        {truncateLabel(summary.title.toUpperCase(), 26)}
+        {truncateLabel(summary.title.toUpperCase(), 23)}
       </text>
 
       {bodyLines.map((line, index) => (
         <text
           key={`${line}-${index}`}
           x={CX}
-          y={CY + 20 + index * 11}
+          y={CY + 21 + index * 12.5}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize="7.2"
-          fontWeight="760"
+          fontSize="10.35"
+          fontWeight="800"
           letterSpacing="0.01em"
-          fill="rgba(255,236,200,0.78)"
+          fill="rgba(255,236,200,0.82)"
           paintOrder="stroke"
           stroke="rgba(3,2,4,0.9)"
-          strokeWidth="1.55"
+          strokeWidth="1.65"
         >
           {line}
         </text>
       ))}
-
-      <rect
-        x={CX - 48}
-        y={CY + 55}
-        width="96"
-        height="18"
-        rx="9"
-        fill="rgba(8,6,8,0.72)"
-        stroke="rgba(255,226,164,0.2)"
-        strokeWidth="1"
-      />
-
-      <text
-        x={CX}
-        y={CY + 64.5}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="7.2"
-        fontWeight="900"
-        letterSpacing="0.08em"
-        fill="rgba(255,238,199,0.82)"
-        paintOrder="stroke"
-        stroke="rgba(4,3,5,0.92)"
-        strokeWidth="1.5"
-      >
-        CROSS-LAYER TRACE
-      </text>
     </g>
   );
 }

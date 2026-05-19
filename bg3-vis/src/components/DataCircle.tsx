@@ -34,6 +34,7 @@ type DataCircleProps = {
   selectedSubclass: string;
   selectedLevel: number;
   selectedSpellIds: string[];
+  showDprLayer: boolean;
 };
 
 function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
@@ -49,6 +50,7 @@ export default function DataCircle({
   selectedSubclass,
   selectedLevel,
   selectedSpellIds,
+  showDprLayer,
 }: DataCircleProps) {
   const [focus, setFocus] = useState<DataCircleFocus>(null);
 
@@ -131,13 +133,15 @@ export default function DataCircle({
 
           <BackgroundLayer />
 
-          <DprByRoundLayer
-            rounds={mockDprByRound}
-            averageDpr={mockAverageDpr}
-            focus={focus}
-            setFocus={setFocus}
-            relationshipIndex={relationshipIndex}
-          />
+          {showDprLayer ? (
+            <DprByRoundLayer
+              rounds={mockDprByRound}
+              averageDpr={mockAverageDpr}
+              focus={focus}
+              setFocus={setFocus}
+              relationshipIndex={relationshipIndex}
+            />
+          ) : null}
 
           <DamageTypesLayer
             damageTypeCounts={damageTypeCounts}
@@ -163,7 +167,9 @@ export default function DataCircle({
             relationshipIndex={relationshipIndex}
           />
 
-          <SectionTitleLayer outerTitle="DPR BY ROUND" />
+          <SectionTitleLayer
+            outerTitle={showDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"}
+          />
 
           {focus ? (
             <FocusExplanationLayer
@@ -177,8 +183,8 @@ export default function DataCircle({
               archetypeLabel={archetypeLabel}
               displayLevel={displayLevel}
               spellCount={spellCount}
-              averageDpr={mockAverageDpr}
-              totalDamage={totalDamage}
+              averageDpr={showDprLayer ? mockAverageDpr : undefined}
+              totalDamage={showDprLayer ? totalDamage : undefined}
             />
           )}
         </svg>
