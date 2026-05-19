@@ -48,10 +48,7 @@ export type LayerRelationshipIndex = {
   allAbilityIds: string[];
 };
 
-const ALL_ROLE_KEYS = [
-  ...DAMAGE_ROLE_KEYS,
-  ...UTILITY_ROLE_KEYS,
-] as AbilityRole[];
+const ALL_ROLE_KEYS = [...DAMAGE_ROLE_KEYS, ...UTILITY_ROLE_KEYS] as AbilityRole[];
 
 const ALL_DAMAGE_TYPE_KEYS = DAMAGE_TYPES.map((type) => type.key);
 const ALL_RANGE_KEYS = RANGE_BANDS.map((band) => band.key);
@@ -60,7 +57,7 @@ function unique<T>(values: T[]) {
   return [...new Set(values)];
 }
 
-function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
+export function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
   if (!focus) return [];
   return Array.isArray(focus) ? focus : [focus];
 }
@@ -284,53 +281,164 @@ export function buildLayerRelationshipIndex(
   };
 }
 
+function unionAbilityIds(groups: string[][]) {
+  return unique(groups.flat());
+}
+
+function intersectAbilityIds(base: string[], filterValues: string[]) {
+  const filterSet = new Set(filterValues);
+  return base.filter((abilityId) => filterSet.has(abilityId));
+}
+
+function getAbilityFacetIds(
+  focusItems: DataCircleFocusItem[],
+  index: LayerRelationshipIndex
+) {
+  return unique(
+    focusItems
+      .filter((item): item is Extract<DataCircleFocusItem, { type: "ability" }> =>
+        item.type === "ability"
+      )
+      .map((item) => item.abilityId)
+  );
+}
+
+function getRoleFacetIds(
+  focusItems: DataCircleFocusItem[],
+  index: LayerRelationshipIndex
+) {
+  const roleItems = focusItems.filter(
+    (item): item is Extract<DataCircleFocusItem, { type: "role" }> =>
+      item.type === "role"
+  );
+
+  const roleGroupItems = focusItems.filter(
+    (item): item is Extract<DataCircleFocusItem, { type: "roleGroup" }> =>
+      item.type === "roleGroup"
+  );
+
+  if (roleItems.length <= 0 && roleGroupItems.length <= 0) return [];
+
+  return unionAbilityIds([
+    ...roleItems.map((item) => index.roleToAbilities[item.role] ?? []),
+    ...roleGroupItems.map(
+      (item) => index.roleGroupToAbilities[item.roleGroup] ?? []
+    ),
+  ]);
+}
+
+function getDamageTypeFacetIds(
+  focusItems: DataCircleFocusItem[],
+  index: LayerRelationshipIndex
+) {
+  const damageTypeItems = focusItems.filter(
+    (
+      item
+    ): item is Extract<DataCircleFocusItem, { type: "damageType" }> =>
+      item.type === "damageType"
+  );
+
+  if (damageTypeItems.length <= 0) return [];
+
+  return unionAbilityIds(
+    damageTypeItems.map(
+      (item) => index.damageTypeToAbilities[item.damageType] ?? []
+    )
+  );
+}
+
+function getRangeFacetIds(
+  focusItems: DataCircleFocusItem[],
+  index: LayerRelationshipIndex
+) {
+  const rangeItems = focusItems.filter(
+    (item): item is Extract<DataCircleFocusItem, { type: "range" }> =>
+      item.type === "range"
+  );
+
+  if (rangeItems.length <= 0) return [];
+
+  return unionAbilityIds(
+    rangeItems.map((item) => index.rangeToAbilities[item.range] ?? [])
+  );
+}
+
+function getRoundFacetIds(
+  focusItems: DataCircleFocusItem[],
+  index: LayerRelationshipIndex
+) {
+  const roundItems = focusItems.filter(
+    (item): item is Extract<DataCircleFocusItem, { type: "round" }> =>
+      item.type === "round"
+  );
+
+  if (roundItems.length <= 0) return [];
+
+  return unionAbilityIds(
+    roundItems.map((item) => index.roundToAbilities[item.round] ?? [])
+  );
+}
+
 export function getFocusedAbilityIds(
   focus: DataCircleFocus,
   index: LayerRelationshipIndex
 ) {
-  const abilityIds = new Set<string>();
+  const focusItems = getFocusItems(focus);
 
-  getFocusItems(focus).forEach((focusItem) => {
-    if (focusItem.type === "ability") {
-      abilityIds.add(focusItem.abilityId);
-    }
+  if (focusItems.length <= 0) {
+    return index.allAbilityIds;
+  }
 
-    if (focusItem.type === "role") {
-      index.roleToAbilities[focusItem.role]?.forEach((abilityId) =>
-        abilityIds.add(abilityId)
-      );
-    }
+  let result = [...index.allAbilityIds];
 
-    if (focusItem.type === "roleGroup") {
-      index.roleGroupToAbilities[focusItem.roleGroup]?.forEach((abilityId) =>
-        abilityIds.add(abilityId)
-      );
-    }
+  const abilityFacetIds = getAbilityFacetIds(focusItems, index);
+  if (abilityFacetIds.length > 0) {
+    result = intersectAbilityIds(result, abilityFacetIds);
+  }
 
-    if (focusItem.type === "damageType") {
-      index.damageTypeToAbilities[focusItem.damageType]?.forEach((abilityId) =>
-        abilityIds.add(abilityId)
-      );
-    }
+  const roleFacetIds = getRoleFacetIds(focusItems, index);
+  if (roleFacetIds.length > 0) {
+    result = intersectAbilityIds(result, roleFacetIds);
+  }
 
-    if (focusItem.type === "range") {
-      index.rangeToAbilities[focusItem.range]?.forEach((abilityId) =>
-        abilityIds.add(abilityId)
-      );
-    }
+  const damageTypeFacetIds = getDamageTypeFacetIds(focusItems, index);
+  if (damageTypeFacetIds.length > 0) {
+    result = intersectAbilityIds(result, damageTypeFacetIds);
+  }
 
-    if (focusItem.type === "round") {
-      index.roundToAbilities[focusItem.round]?.forEach((abilityId) =>
-        abilityIds.add(abilityId)
-      );
-    }
-  });
+  const rangeFacetIds = getRangeFacetIds(focusItems, index);
+  if (rangeFacetIds.length > 0) {
+    result = intersectAbilityIds(result, rangeFacetIds);
+  }
 
-  return [...abilityIds];
+  const roundFacetIds = getRoundFacetIds(focusItems, index);
+  if (roundFacetIds.length > 0) {
+    result = intersectAbilityIds(result, roundFacetIds);
+  }
+
+  return unique(result);
 }
 
 export function hasActiveFocus(focus: DataCircleFocus) {
   return getFocusItems(focus).length > 0;
+}
+
+export function focusContainsType(
+  focus: DataCircleFocus,
+  type: DataCircleFocusItem["type"]
+) {
+  return getFocusItems(focus).some((item) => item.type === type);
+}
+
+export function focusContainsOnlyTypes(
+  focus: DataCircleFocus,
+  types: DataCircleFocusItem["type"][]
+) {
+  const focusItems = getFocusItems(focus);
+
+  if (focusItems.length <= 0) return false;
+
+  return focusItems.every((item) => types.includes(item.type));
 }
 
 export function isAbilityRelatedToFocus(
@@ -425,11 +533,11 @@ export function getFocusSummary(
 
   if (focusItems.length > 1) {
     return {
-      title: `${focusItems.length} selected filters`,
+      title: `${abilityIds.length} filtered abilities`,
       body:
         abilityIds.length > 0
-          ? `Combined selection links ${abilityNames.join(", ")}${suffix}.`
-          : "The combined selection has no linked ability-level evidence yet.",
+          ? `Matching abilities: ${abilityNames.join(", ")}${suffix}.`
+          : "No abilities match the current filter combination.",
     };
   }
 
@@ -447,8 +555,8 @@ export function getFocusSummary(
       title: `Role: ${focusItem.role}`,
       body:
         abilityIds.length > 0
-          ? `Linked abilities: ${abilityNames.join(", ")}${suffix}.`
-          : "No linked ability-level evidence is available for this role yet.",
+          ? `Matching abilities: ${abilityNames.join(", ")}${suffix}.`
+          : "No abilities match this role.",
     };
   }
 
@@ -460,8 +568,8 @@ export function getFocusSummary(
           : "Role group: Utility",
       body:
         abilityIds.length > 0
-          ? `This role group links ${abilityNames.join(", ")}${suffix}.`
-          : "No linked ability-level evidence is available for this role group yet.",
+          ? `Matching abilities: ${abilityNames.join(", ")}${suffix}.`
+          : "No abilities match this role group.",
     };
   }
 
@@ -470,8 +578,8 @@ export function getFocusSummary(
       title: `Damage: ${focusItem.damageType}`,
       body:
         abilityIds.length > 0
-          ? `This damage type is from ${abilityNames.join(", ")}${suffix}.`
-          : "No linked ability-level evidence is available for this damage type yet.",
+          ? `Matching abilities: ${abilityNames.join(", ")}${suffix}.`
+          : "No abilities match this damage type.",
     };
   }
 
@@ -480,8 +588,8 @@ export function getFocusSummary(
       title: `Range: ${focusItem.range}`,
       body:
         abilityIds.length > 0
-          ? `This range profile is made of ${abilityNames.join(", ")}${suffix}.`
-          : "No linked ability-level evidence is available for this range band yet.",
+          ? `Matching abilities: ${abilityNames.join(", ")}${suffix}.`
+          : "No abilities match this range band.",
     };
   }
 
@@ -489,7 +597,7 @@ export function getFocusSummary(
     title: `Round ${focusItem.round}`,
     body:
       abilityIds.length > 0
-        ? `This round contains ${abilityNames.join(", ")}${suffix}.`
-        : "No ability-level contribution data is available for this round.",
+        ? `Matching abilities: ${abilityNames.join(", ")}${suffix}.`
+        : "No abilities match this round.",
   };
 }

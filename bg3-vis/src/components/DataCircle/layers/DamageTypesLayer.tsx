@@ -26,7 +26,10 @@ import type {
   DataCircleFocusItem,
   LayerRelationshipIndex,
 } from "../dataCircleInteraction";
-import { hasActiveFocus } from "../dataCircleInteraction";
+import {
+  getFocusedAbilityIds,
+  hasActiveFocus,
+} from "../dataCircleInteraction";
 import type { DamageRingKey } from "../dataCircleTypes";
 
 type DamageTypesLayerProps = {
@@ -83,12 +86,13 @@ function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
   return Array.isArray(focus) ? focus : [focus];
 }
 
-function focusContainsOnlyDamageTypeFilters(focus: DataCircleFocus) {
-  const focusItems = getFocusItems(focus);
-
-  if (focusItems.length <= 0) return false;
-
-  return focusItems.every((focusItem) => focusItem.type === "damageType");
+function getSelectedDamageTypes(focus: DataCircleFocus) {
+  return getFocusItems(focus)
+    .filter(
+      (item): item is Extract<DataCircleFocusItem, { type: "damageType" }> =>
+        item.type === "damageType"
+    )
+    .map((item) => item.damageType);
 }
 
 function isDamageTypeVisuallyRelated(
@@ -100,51 +104,21 @@ function isDamageTypeVisuallyRelated(
 
   if (focusItems.length <= 0) return true;
 
-  if (focusContainsOnlyDamageTypeFilters(focus)) {
-    return focusItems.some(
-      (focusItem) =>
-        focusItem.type === "damageType" &&
-        focusItem.damageType === damageType
-    );
-  }
-
-  const focusedAbilityIds = new Set<string>();
-
-  focusItems.forEach((focusItem) => {
-    if (focusItem.type === "ability") {
-      focusedAbilityIds.add(focusItem.abilityId);
-    }
-
-    if (focusItem.type === "role") {
-      relationshipIndex.roleToAbilities[focusItem.role]?.forEach((abilityId) =>
-        focusedAbilityIds.add(abilityId)
-      );
-    }
-
-    if (focusItem.type === "roleGroup") {
-      relationshipIndex.roleGroupToAbilities[focusItem.roleGroup]?.forEach(
-        (abilityId) => focusedAbilityIds.add(abilityId)
-      );
-    }
-
-    if (focusItem.type === "range") {
-      relationshipIndex.rangeToAbilities[focusItem.range]?.forEach(
-        (abilityId) => focusedAbilityIds.add(abilityId)
-      );
-    }
-
-    if (focusItem.type === "round") {
-      relationshipIndex.roundToAbilities[focusItem.round]?.forEach(
-        (abilityId) => focusedAbilityIds.add(abilityId)
-      );
-    }
-  });
-
+  const selectedDamageTypes = getSelectedDamageTypes(focus);
+  const filteredAbilityIds = getFocusedAbilityIds(focus, relationshipIndex);
   const damageTypeAbilityIds =
     relationshipIndex.damageTypeToAbilities[damageType] ?? [];
 
+  if (selectedDamageTypes.length > 0) {
+    if (!selectedDamageTypes.includes(damageType)) return false;
+
+    return damageTypeAbilityIds.some((abilityId) =>
+      filteredAbilityIds.includes(abilityId)
+    );
+  }
+
   return damageTypeAbilityIds.some((abilityId) =>
-    focusedAbilityIds.has(abilityId)
+    filteredAbilityIds.includes(abilityId)
   );
 }
 
