@@ -22,6 +22,8 @@ import {
   isRoundRelatedToFocus,
 } from "../dataCircleInteraction";
 
+type DprBarMode = "stacked" | "grouped";
+
 type DprByRoundLayerProps = {
   rounds: DprRound[];
   averageDpr: number;
@@ -31,6 +33,7 @@ type DprByRoundLayerProps = {
   onToggleSelection?: (focus: DataCircleFocusItem) => void;
   selectedFocuses?: DataCircleFocusItem[];
   showSelectionMarks?: boolean;
+  barMode: DprBarMode;
 };
 
 type AbilityColor = {
@@ -255,25 +258,8 @@ function getContributionIconSize(radialThickness: number, sectorAngle: number) {
   if (radialThickness >= 22 && sectorAngle >= 30) return 20;
   if (radialThickness >= 17 && sectorAngle >= 28) return 17;
   if (radialThickness >= 12 && sectorAngle >= 24) return 14;
+
   return 0;
-}
-
-function isRoundSelected(
-  round: number,
-  selectedFocuses: DataCircleFocusItem[] = []
-) {
-  return selectedFocuses.some(
-    (item) => item.type === "round" && item.round === round
-  );
-}
-
-function isAbilitySelected(
-  abilityId: string,
-  selectedFocuses: DataCircleFocusItem[] = []
-) {
-  return selectedFocuses.some(
-    (item) => item.type === "ability" && item.abilityId === abilityId
-  );
 }
 
 function getContributionIcon(
@@ -282,9 +268,7 @@ function getContributionIcon(
   x: number,
   y: number,
   color: string,
-  isRelated: boolean,
-  isSelected: boolean,
-  showSelectionMarks: boolean
+  isRelated: boolean
 ) {
   const spell = getSpellById(contribution.abilityId);
 
@@ -293,41 +277,15 @@ function getContributionIcon(
   const iconHref = getSpellIcon(spell);
 
   return (
-    <g
-      pointerEvents="none"
-      opacity={
-        isSelected && showSelectionMarks
-          ? 1
-          : isRelated
-            ? 1
-            : 0.3
-      }
-    >
-      {isSelected && showSelectionMarks ? (
-        <circle
-          cx={x}
-          cy={y}
-          r={iconSize * 0.78}
-          fill="rgba(255,232,176,0.14)"
-          stroke="rgba(255,250,232,0.96)"
-          strokeOpacity="0.9"
-          strokeWidth="1.8"
-          filter="url(#elementalBloom)"
-        />
-      ) : null}
-
+    <g pointerEvents="none" opacity={isRelated ? 1 : 0.3}>
       <circle
         cx={x}
         cy={y}
         r={iconSize * 0.62}
         fill="rgba(6,5,7,0.54)"
-        stroke={
-          isSelected && showSelectionMarks
-            ? "rgba(255,250,232,0.98)"
-            : color
-        }
-        strokeOpacity={isSelected && showSelectionMarks ? 0.82 : 0.2}
-        strokeWidth={isSelected && showSelectionMarks ? 1.4 : 0.75}
+        stroke={color}
+        strokeOpacity="0.2"
+        strokeWidth="0.75"
       />
 
       <image
@@ -345,6 +303,24 @@ function getContributionIcon(
 
 function getFallbackColor(index: number) {
   return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
+function isAbilitySelected(
+  abilityId: string,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "ability" && item.abilityId === abilityId
+  );
+}
+
+function isRoundSelected(
+  round: number,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "round" && item.round === round
+  );
 }
 
 function renderScaleGrid() {
@@ -453,6 +429,7 @@ export function DprByRoundLayer({
   onToggleSelection,
   selectedFocuses = [],
   showSelectionMarks = false,
+  barMode,
 }: DprByRoundLayerProps) {
   const safeRounds = rounds.length > 0 ? rounds : [{ round: 1, damage: 0 }];
   const sectorAngle = 360 / safeRounds.length;
@@ -559,7 +536,7 @@ export function DprByRoundLayer({
 
       {safeRounds.map((round, index) => {
         const roundTotal = getRoundTotal(round);
-        const contributions =
+        const rawContributions =
           round.contributions && round.contributions.length > 0
             ? round.contributions.slice(0, 3)
             : [
@@ -570,6 +547,10 @@ export function DprByRoundLayer({
                 },
               ];
 
+        const contributions = rawContributions.filter(
+          (contribution) => contribution.damage > 0
+        );
+
         const midAngle = -90 + index * sectorAngle;
         const startAngle = midAngle - sectorAngle / 2;
         const endAngle = midAngle + sectorAngle / 2;
@@ -577,6 +558,7 @@ export function DprByRoundLayer({
         const visualGap = Math.min(2.05, sectorAngle * 0.14);
         const visualStartAngle = startAngle + visualGap;
         const visualEndAngle = endAngle - visualGap;
+        const visualSweep = Math.max(0, visualEndAngle - visualStartAngle);
 
         const roundIntensity = getRoundIntensity(roundTotal);
         const roundIsRelated = isRoundRelatedToFocus(
@@ -584,10 +566,10 @@ export function DprByRoundLayer({
           focus,
           relationshipIndex
         );
-        const roundIsSelected = isRoundSelected(round.round, selectedFocuses);
 
         const active = hasActiveFocus(focus);
         const roundOpacity = active && !roundIsRelated ? 0.32 : 1;
+        const roundSelected = isRoundSelected(round.round, selectedFocuses);
 
         const dividerInner = polarToCartesian(
           CX,
@@ -635,25 +617,6 @@ export function DprByRoundLayer({
           >
             <title>{`Round ${round.round}: ${roundTotal} damage`}</title>
 
-            {roundIsSelected && showSelectionMarks ? (
-              <path
-                d={describeDonutSegment(
-                  CX,
-                  CY,
-                  DPR_INNER_RADIUS - 5,
-                  DPR_OUTER_RADIUS + 6,
-                  visualStartAngle - 0.45,
-                  visualEndAngle + 0.45
-                )}
-                fill="rgba(255,232,176,0.12)"
-                stroke="rgba(255,250,232,0.94)"
-                strokeOpacity="0.82"
-                strokeWidth="1.8"
-                filter="url(#elementalBloom)"
-                pointerEvents="none"
-              />
-            ) : null}
-
             <line
               x1={dividerInner.x}
               y1={dividerInner.y}
@@ -675,50 +638,33 @@ export function DprByRoundLayer({
               )}
               fill="none"
               stroke="#e4b375"
-              strokeOpacity={
-                roundIsSelected && showSelectionMarks
-                  ? Math.max(roundIntensity.glowOpacity, 0.12)
-                  : roundIntensity.glowOpacity
-              }
+              strokeOpacity={roundIntensity.glowOpacity}
               strokeWidth={BAR_MAX_RADIUS - BAR_BASE_RADIUS + 14}
               strokeLinecap="butt"
               filter="url(#elementalBloom)"
             />
 
+            {showSelectionMarks && roundSelected ? (
+              <path
+                d={describeDonutSegment(
+                  CX,
+                  CY,
+                  DPR_INNER_RADIUS + 2,
+                  DPR_OUTER_RADIUS - 2,
+                  visualStartAngle - 0.4,
+                  visualEndAngle + 0.4
+                )}
+                fill="rgba(255,244,218,0.045)"
+                stroke="rgba(255,244,218,0.62)"
+                strokeWidth="1.35"
+                pointerEvents="none"
+              />
+            ) : null}
+
             {contributions.map((contribution, contributionIndex) => {
-              const innerDamage = cumulativeDamage;
-              const outerDamage = cumulativeDamage + contribution.damage;
-              cumulativeDamage = outerDamage;
-
-              const clippedInnerDamage = clamp(innerDamage, 0, DPR_SCALE_MAX);
-              const clippedOuterDamage = clamp(outerDamage, 0, DPR_SCALE_MAX);
-
-              if (
-                clippedOuterDamage <= 0 ||
-                clippedOuterDamage <= clippedInnerDamage
-              ) {
-                return null;
-              }
-
-              const innerRadius = damageToRadius(clippedInnerDamage);
-              const outerRadius = damageToRadius(clippedOuterDamage);
-              const radialThickness = outerRadius - innerRadius;
-
               const color =
                 abilityColors[contribution.abilityId] ??
                 getFallbackColor(contributionIndex);
-
-              const iconSize = getContributionIconSize(
-                radialThickness,
-                sectorAngle
-              );
-
-              const iconPoint = polarToCartesian(
-                CX,
-                CY,
-                (innerRadius + outerRadius) / 2,
-                midAngle
-              );
 
               const contributionIsRelated = isAbilityRelatedToFocus(
                 contribution.abilityId,
@@ -726,9 +672,79 @@ export function DprByRoundLayer({
                 relationshipIndex
               );
 
-              const contributionIsSelected = isAbilitySelected(
+              const contributionSelected = isAbilitySelected(
                 contribution.abilityId,
                 selectedFocuses
+              );
+
+              const selectedBoost =
+                showSelectionMarks && contributionSelected ? 1.18 : 1;
+
+              let innerRadius = BAR_BASE_RADIUS;
+              let outerRadius = damageToRadius(contribution.damage);
+              let contributionStartAngle = visualStartAngle;
+              let contributionEndAngle = visualEndAngle;
+              let iconAngle = midAngle;
+
+              if (barMode === "stacked") {
+                const innerDamage = cumulativeDamage;
+                const outerDamage = cumulativeDamage + contribution.damage;
+                cumulativeDamage = outerDamage;
+
+                const clippedInnerDamage = clamp(
+                  innerDamage,
+                  0,
+                  DPR_SCALE_MAX
+                );
+
+                const clippedOuterDamage = clamp(
+                  outerDamage,
+                  0,
+                  DPR_SCALE_MAX
+                );
+
+                if (
+                  clippedOuterDamage <= 0 ||
+                  clippedOuterDamage <= clippedInnerDamage
+                ) {
+                  return null;
+                }
+
+                innerRadius = damageToRadius(clippedInnerDamage);
+                outerRadius = damageToRadius(clippedOuterDamage);
+              } else {
+                const contributionCount = Math.max(1, contributions.length);
+                const internalGap = Math.min(1.45, visualSweep * 0.055);
+                const availableSweep =
+                  visualSweep - internalGap * (contributionCount - 1);
+                const contributionSweep = availableSweep / contributionCount;
+
+                contributionStartAngle =
+                  visualStartAngle +
+                  contributionIndex * (contributionSweep + internalGap);
+                contributionEndAngle =
+                  contributionStartAngle + contributionSweep;
+                iconAngle =
+                  contributionStartAngle +
+                  (contributionEndAngle - contributionStartAngle) / 2;
+              }
+
+              const radialThickness = outerRadius - innerRadius;
+
+              if (radialThickness <= 0) return null;
+
+              const iconSize = getContributionIconSize(
+                radialThickness,
+                barMode === "grouped"
+                  ? (contributionEndAngle - contributionStartAngle) * 1.25
+                  : sectorAngle
+              );
+
+              const iconPoint = polarToCartesian(
+                CX,
+                CY,
+                (innerRadius + outerRadius) / 2,
+                iconAngle
               );
 
               return (
@@ -757,21 +773,21 @@ export function DprByRoundLayer({
                     {`Round ${round.round} · ${contribution.abilityName}: ${contribution.damage} damage`}
                   </title>
 
-                  {contributionIsSelected && showSelectionMarks ? (
+                  {showSelectionMarks && contributionSelected ? (
                     <path
                       d={describeDonutSegment(
                         CX,
                         CY,
-                        Math.max(BAR_BASE_RADIUS, innerRadius - 4),
-                        outerRadius + 5,
-                        visualStartAngle - 0.35,
-                        visualEndAngle + 0.35
+                        Math.max(BAR_BASE_RADIUS - 1.5, innerRadius - 2),
+                        Math.min(BAR_MAX_RADIUS + 3, outerRadius + 3),
+                        contributionStartAngle - 0.45,
+                        contributionEndAngle + 0.45
                       )}
                       fill={color.glow}
-                      fillOpacity="0.18"
-                      stroke="rgba(255,250,232,0.96)"
-                      strokeOpacity="0.86"
-                      strokeWidth="1.8"
+                      fillOpacity="0.12"
+                      stroke="rgba(255,250,232,0.82)"
+                      strokeOpacity="0.74"
+                      strokeWidth="1.3"
                       filter="url(#elementalBloom)"
                       pointerEvents="none"
                     />
@@ -783,29 +799,31 @@ export function DprByRoundLayer({
                       CY,
                       innerRadius,
                       outerRadius,
-                      visualStartAngle,
-                      visualEndAngle
+                      contributionStartAngle,
+                      contributionEndAngle
                     )}
                     fill={color.fill}
-                    fillOpacity={getContributionOpacity(
-                      contribution.damage,
-                      contributionIsRelated
-                    )}
+                    fillOpacity={
+                      getContributionOpacity(
+                        contribution.damage,
+                        contributionIsRelated
+                      ) * selectedBoost
+                    }
                     stroke={
-                      contributionIsSelected && showSelectionMarks
-                        ? "rgba(255,250,232,0.98)"
+                      showSelectionMarks && contributionSelected
+                        ? "#fff4d6"
                         : color.stroke
                     }
                     strokeOpacity={
-                      contributionIsSelected && showSelectionMarks
-                        ? 0.9
+                      showSelectionMarks && contributionSelected
+                        ? 0.82
                         : contributionIsRelated
                           ? 0.58
                           : 0.16
                     }
                     strokeWidth={
-                      contributionIsSelected && showSelectionMarks
-                        ? 2
+                      showSelectionMarks && contributionSelected
+                        ? 1.65
                         : contributionIsRelated
                           ? 1.25
                           : 0.8
@@ -817,23 +835,19 @@ export function DprByRoundLayer({
                       CX,
                       CY,
                       outerRadius,
-                      visualStartAngle + 0.35,
-                      visualEndAngle - 0.35
+                      contributionStartAngle + 0.35,
+                      contributionEndAngle - 0.35
                     )}
                     fill="none"
-                    stroke={
-                      contributionIsSelected && showSelectionMarks
-                        ? "rgba(255,250,232,0.98)"
-                        : color.stroke
-                    }
+                    stroke={color.stroke}
                     strokeOpacity={
-                      contributionIsSelected && showSelectionMarks
-                        ? 0.82
+                      showSelectionMarks && contributionSelected
+                        ? 0.58
                         : contributionIsRelated
                           ? 0.4
                           : 0.12
                     }
-                    strokeWidth={contributionIsSelected && showSelectionMarks ? 1.7 : 1}
+                    strokeWidth="1"
                     strokeLinecap="round"
                   />
 
@@ -843,9 +857,7 @@ export function DprByRoundLayer({
                     iconPoint.x,
                     iconPoint.y,
                     color.stroke,
-                    contributionIsRelated,
-                    contributionIsSelected,
-                    showSelectionMarks
+                    contributionIsRelated
                   )}
                 </g>
               );
@@ -860,25 +872,13 @@ export function DprByRoundLayer({
                 visualEndAngle - 0.35
               )}
               fill="none"
-              stroke={
-                roundIsSelected && showSelectionMarks
-                  ? "rgba(255,250,232,0.98)"
-                  : "#f1d5a8"
-              }
+              stroke="#f1d5a8"
               strokeOpacity={
-                roundIsSelected && showSelectionMarks
-                  ? 0.92
-                  : roundIsRelated
-                    ? Math.min(0.9, roundIntensity.outerStrokeOpacity + 0.24)
-                    : roundIntensity.outerStrokeOpacity
+                roundIsRelated
+                  ? Math.min(0.9, roundIntensity.outerStrokeOpacity + 0.24)
+                  : roundIntensity.outerStrokeOpacity
               }
-              strokeWidth={
-                roundIsSelected && showSelectionMarks
-                  ? 2.4
-                  : roundIsRelated
-                    ? 1.9
-                    : 1.35
-              }
+              strokeWidth={roundIsRelated ? 1.9 : 1.35}
               strokeLinecap="round"
             />
 
@@ -890,14 +890,10 @@ export function DprByRoundLayer({
               fontSize="7.5"
               fontWeight="950"
               letterSpacing="0.03em"
-              fill={
-                roundIsSelected && showSelectionMarks
-                  ? "rgba(255,250,232,0.98)"
-                  : "rgba(255,244,218,0.82)"
-              }
+              fill="rgba(255,244,218,0.82)"
               paintOrder="stroke"
               stroke="rgba(4,3,5,0.92)"
-              strokeWidth={roundIsSelected && showSelectionMarks ? 2.5 : 2}
+              strokeWidth="2"
               filter="url(#fineInkShadow)"
             >
               {`R${round.round}`}
@@ -911,14 +907,10 @@ export function DprByRoundLayer({
               fontSize="7.2"
               fontWeight="950"
               letterSpacing="0.01em"
-              fill={
-                roundIsSelected && showSelectionMarks
-                  ? "rgba(255,250,232,0.98)"
-                  : "rgba(255,226,182,0.74)"
-              }
+              fill="rgba(255,226,182,0.74)"
               paintOrder="stroke"
               stroke="rgba(4,3,5,0.94)"
-              strokeWidth={roundIsSelected && showSelectionMarks ? 2.35 : 1.9}
+              strokeWidth="1.9"
               filter="url(#fineInkShadow)"
             >
               {Math.round(roundTotal)}
@@ -940,7 +932,9 @@ export function DprByRoundLayer({
         stroke="rgba(4,3,5,0.92)"
         strokeWidth="2"
       >
-        {`AVG ${averageDpr.toFixed(1)} DPR · FIXED SCALE 100`}
+        {`AVG ${averageDpr.toFixed(1)} DPR · FIXED SCALE 100 · ${
+          barMode === "stacked" ? "STACKED" : "SIDE-BY-SIDE"
+        }`}
       </text>
     </g>
   );
