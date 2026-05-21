@@ -29,6 +29,8 @@ type RangeProfileLayerProps = {
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
   onToggleSelection?: (focus: DataCircleFocusItem) => void;
+  selectedFocuses?: DataCircleFocusItem[];
+  showSelectionMarks?: boolean;
 };
 
 type RangeMote = {
@@ -91,6 +93,17 @@ const FALLBACK_ROLE_ANGLES: Record<AbilityRole, number> = {
   "investigation-world-interaction": 220,
   summon: 260,
 };
+
+function isAbilitySelected(
+  abilityId: string | undefined,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  if (!abilityId) return false;
+
+  return selectedFocuses.some(
+    (item) => item.type === "ability" && item.abilityId === abilityId
+  );
+}
 
 function getRangeDotAngles(count: number) {
   if (count <= 0) return [];
@@ -625,6 +638,8 @@ export function RangeProfileLayer({
   setFocus,
   relationshipIndex,
   onToggleSelection,
+  selectedFocuses = [],
+  showSelectionMarks = false,
 }: RangeProfileLayerProps) {
   return (
     <>
@@ -792,6 +807,11 @@ export function RangeProfileLayer({
                   relationshipIndex
                 );
 
+              const moteIsSelected = isAbilitySelected(
+                mote.abilityId,
+                selectedFocuses
+              );
+
               const moteOpacity = active && !moteIsRelated ? 0.22 : 1;
               const moteFocusBoost = active && moteIsRelated ? 1.28 : 1;
               const moteRadius =
@@ -824,6 +844,33 @@ export function RangeProfileLayer({
                   }}
                 >
                   <title>{mote.label}</title>
+
+                  {moteIsSelected && showSelectionMarks ? (
+                    <>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={iconSize * 0.72}
+                        fill="rgba(255,232,176,0.14)"
+                        stroke="rgba(255,250,232,0.96)"
+                        strokeOpacity="0.92"
+                        strokeWidth="2"
+                        filter="url(#elementalBloom)"
+                        pointerEvents="none"
+                      />
+
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={iconSize * 0.55}
+                        fill="none"
+                        stroke="rgba(255,250,232,0.9)"
+                        strokeOpacity="0.88"
+                        strokeWidth="1.4"
+                        pointerEvents="none"
+                      />
+                    </>
+                  ) : null}
 
                   <IconMarker
                     x={x}

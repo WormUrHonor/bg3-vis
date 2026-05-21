@@ -39,6 +39,8 @@ type DamageTypesLayerProps = {
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
   onToggleSelection?: (focus: DataCircleFocusItem) => void;
+  selectedFocuses?: DataCircleFocusItem[];
+  showSelectionMarks?: boolean;
 };
 
 type DamageLabelMode = "full" | "short" | "hidden";
@@ -93,6 +95,15 @@ function getSelectedDamageTypes(focus: DataCircleFocus) {
         item.type === "damageType"
     )
     .map((item) => item.damageType);
+}
+
+function isDamageTypeSelected(
+  damageType: DamageRingKey,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "damageType" && item.damageType === damageType
+  );
 }
 
 function isDamageTypeVisuallyRelated(
@@ -553,6 +564,8 @@ export function DamageTypesLayer({
   setFocus,
   relationshipIndex,
   onToggleSelection,
+  selectedFocuses = [],
+  showSelectionMarks = false,
 }: DamageTypesLayerProps) {
   const activeFocus = hasActiveFocus(focus);
 
@@ -632,11 +645,21 @@ export function DamageTypesLayer({
               relationshipIndex
             );
 
+            const isSelected = isDamageTypeSelected(type.key, selectedFocuses);
+
             const groupOpacity = activeFocus && !isRelated ? 0.28 : 1;
             const focusBoost = activeFocus && isRelated ? 1.18 : 1;
+            const selectionBoost = isSelected && showSelectionMarks ? 1.16 : 1;
+            const reviewBoost = isSelected && showSelectionMarks ? 1.35 : 1;
+
             const textureOpacityMultiplier =
               activeFocus && !isRelated ? 0.38 : focusBoost;
-            const iconOpacity = activeFocus && !isRelated ? 0.32 : 0.97;
+            const iconOpacity =
+              activeFocus && !isRelated
+                ? 0.32
+                : isSelected && showSelectionMarks
+                  ? 1
+                  : 0.97;
 
             return (
               <g
@@ -669,6 +692,44 @@ export function DamageTypesLayer({
                   </clipPath>
                 </defs>
 
+                {isSelected && showSelectionMarks ? (
+                  <>
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        DAMAGE_RING_OUTER_RADIUS + 5,
+                        DAMAGE_RING_OUTER_RADIUS + 13,
+                        visualStartAngle - 0.45,
+                        visualEndAngle + 0.45
+                      )}
+                      fill={type.glowColor}
+                      fillOpacity="0.24"
+                      stroke={type.glowColor}
+                      strokeOpacity="0.72"
+                      strokeWidth="1.5"
+                      filter="url(#elementalBloom)"
+                      pointerEvents="none"
+                    />
+
+                    <path
+                      d={describeTextArc(
+                        CX,
+                        CY,
+                        DAMAGE_RING_OUTER_RADIUS + 16,
+                        visualStartAngle + 0.2,
+                        visualEndAngle - 0.2
+                      )}
+                      fill="none"
+                      stroke="rgba(255,248,220,0.98)"
+                      strokeOpacity="0.88"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                ) : null}
+
                 <path
                   d={describeTextArc(
                     CX,
@@ -679,7 +740,7 @@ export function DamageTypesLayer({
                   )}
                   fill="none"
                   stroke={type.glowColor}
-                  strokeOpacity={0.11 * focusBoost}
+                  strokeOpacity={0.11 * focusBoost * reviewBoost}
                   strokeWidth="56"
                   strokeLinecap="butt"
                   filter="url(#elementalBloom)"
@@ -695,10 +756,24 @@ export function DamageTypesLayer({
                     visualEndAngle
                   )}
                   fill={type.color}
-                  fillOpacity={0.22 * focusBoost}
-                  stroke={type.glowColor}
-                  strokeOpacity={0.3 * focusBoost}
-                  strokeWidth={activeFocus && isRelated ? 1.7 : 1.1}
+                  fillOpacity={0.22 * focusBoost * selectionBoost}
+                  stroke={
+                    isSelected && showSelectionMarks
+                      ? "rgba(255,250,232,0.98)"
+                      : type.glowColor
+                  }
+                  strokeOpacity={
+                    isSelected && showSelectionMarks
+                      ? 0.95
+                      : 0.3 * focusBoost
+                  }
+                  strokeWidth={
+                    isSelected && showSelectionMarks
+                      ? 2.35
+                      : activeFocus && isRelated
+                        ? 1.7
+                        : 1.1
+                  }
                 />
 
                 <path
@@ -724,9 +799,23 @@ export function DamageTypesLayer({
                     visualEndAngle - 0.9
                   )}
                   fill="none"
-                  stroke={type.glowColor}
-                  strokeOpacity={0.2 * focusBoost}
-                  strokeWidth={activeFocus && isRelated ? 2.8 : 2.1}
+                  stroke={
+                    isSelected && showSelectionMarks
+                      ? "rgba(255,250,232,1)"
+                      : type.glowColor
+                  }
+                  strokeOpacity={
+                    isSelected && showSelectionMarks
+                      ? 0.86
+                      : 0.2 * focusBoost
+                  }
+                  strokeWidth={
+                    isSelected && showSelectionMarks
+                      ? 3.4
+                      : activeFocus && isRelated
+                        ? 2.8
+                        : 2.1
+                  }
                   strokeLinecap="round"
                 />
 
@@ -776,13 +865,21 @@ export function DamageTypesLayer({
                       displayPlan.labelMode === "full" ? "0.045em" : "0.075em"
                     }
                     fill={
-                      activeFocus && isRelated
+                      isSelected && showSelectionMarks
                         ? "rgba(255,250,232,1)"
-                        : "rgba(255,248,226,0.98)"
+                        : activeFocus && isRelated
+                          ? "rgba(255,250,232,1)"
+                          : "rgba(255,248,226,0.98)"
                     }
                     paintOrder="stroke"
                     stroke="rgba(3,2,4,0.96)"
-                    strokeWidth={activeFocus && isRelated ? 3.6 : 3.2}
+                    strokeWidth={
+                      isSelected && showSelectionMarks
+                        ? 4.3
+                        : activeFocus && isRelated
+                          ? 3.6
+                          : 3.2
+                    }
                     filter="url(#fineInkShadow)"
                   >
                     {displayPlan.labelText}

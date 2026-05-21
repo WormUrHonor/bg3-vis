@@ -19,7 +19,10 @@ import type {
   LayerRelationshipIndex,
   RoleGroupKey,
 } from "../dataCircleInteraction";
-import { hasActiveFocus } from "../dataCircleInteraction";
+import {
+  getFocusedAbilityIds,
+  hasActiveFocus,
+} from "../dataCircleInteraction";
 import type { RoleData } from "../dataCircleTypes";
 
 type RoleDistributionLayerProps = {
@@ -28,6 +31,8 @@ type RoleDistributionLayerProps = {
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
   onToggleSelection?: (focus: DataCircleFocusItem) => void;
+  selectedFocuses?: DataCircleFocusItem[];
+  showSelectionMarks?: boolean;
 };
 
 type PrimaryRoleSegment = {
@@ -140,13 +145,35 @@ function roleBelongsToGroup(role: AbilityRole, roleGroup: RoleGroupKey) {
   return UTILITY_ROLE_KEYS.includes(role);
 }
 
-function focusContainsOnlyRoleFilters(focus: DataCircleFocus) {
-  const focusItems = getFocusItems(focus);
+function getSelectedRoleFilters(focus: DataCircleFocus) {
+  return getFocusItems(focus).filter(
+    (item): item is
+      | Extract<DataCircleFocusItem, { type: "role" }>
+      | Extract<DataCircleFocusItem, { type: "roleGroup" }> =>
+      item.type === "role" || item.type === "roleGroup"
+  );
+}
 
-  if (focusItems.length <= 0) return false;
+function isRoleSelected(
+  role: AbilityRole,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some((item) => {
+    if (item.type === "role") return item.role === role;
+    if (item.type === "roleGroup") {
+      return roleBelongsToGroup(role, item.roleGroup);
+    }
 
-  return focusItems.every(
-    (focusItem) => focusItem.type === "role" || focusItem.type === "roleGroup"
+    return false;
+  });
+}
+
+function isRoleGroupSelected(
+  roleGroup: RoleGroupKey,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "roleGroup" && item.roleGroup === roleGroup
   );
 }
 
@@ -159,49 +186,33 @@ function isRoleVisuallyRelated(
 
   if (focusItems.length <= 0) return true;
 
-  if (focusContainsOnlyRoleFilters(focus)) {
-    return focusItems.some((focusItem) => {
+  const selectedRoleFilters = getSelectedRoleFilters(focus);
+
+  if (selectedRoleFilters.length > 0) {
+    const directlySelected = selectedRoleFilters.some((focusItem) => {
       if (focusItem.type === "role") {
         return focusItem.role === role;
       }
 
-      if (focusItem.type === "roleGroup") {
-        return roleBelongsToGroup(role, focusItem.roleGroup);
-      }
-
-      return false;
+      return roleBelongsToGroup(role, focusItem.roleGroup);
     });
+
+    if (!directlySelected) return false;
+
+    const filteredAbilityIds = getFocusedAbilityIds(focus, relationshipIndex);
+    const roleAbilityIds = relationshipIndex.roleToAbilities[role] ?? [];
+
+    return roleAbilityIds.some((abilityId) =>
+      filteredAbilityIds.includes(abilityId)
+    );
   }
 
-  const focusedAbilityIds = new Set<string>();
-
-  focusItems.forEach((focusItem) => {
-    if (focusItem.type === "ability") {
-      focusedAbilityIds.add(focusItem.abilityId);
-    }
-
-    if (focusItem.type === "damageType") {
-      relationshipIndex.damageTypeToAbilities[focusItem.damageType]?.forEach(
-        (abilityId) => focusedAbilityIds.add(abilityId)
-      );
-    }
-
-    if (focusItem.type === "range") {
-      relationshipIndex.rangeToAbilities[focusItem.range]?.forEach(
-        (abilityId) => focusedAbilityIds.add(abilityId)
-      );
-    }
-
-    if (focusItem.type === "round") {
-      relationshipIndex.roundToAbilities[focusItem.round]?.forEach(
-        (abilityId) => focusedAbilityIds.add(abilityId)
-      );
-    }
-  });
-
+  const filteredAbilityIds = getFocusedAbilityIds(focus, relationshipIndex);
   const roleAbilityIds = relationshipIndex.roleToAbilities[role] ?? [];
 
-  return roleAbilityIds.some((abilityId) => focusedAbilityIds.has(abilityId));
+  return roleAbilityIds.some((abilityId) =>
+    filteredAbilityIds.includes(abilityId)
+  );
 }
 
 function isRoleGroupVisuallyRelated(
@@ -214,18 +225,18 @@ function isRoleGroupVisuallyRelated(
 
   if (focusItems.length <= 0) return true;
 
-  if (focusContainsOnlyRoleFilters(focus)) {
-    return focusItems.some((focusItem) => {
+  const selectedRoleFilters = getSelectedRoleFilters(focus);
+
+  if (selectedRoleFilters.length > 0) {
+    const directlySelected = selectedRoleFilters.some((focusItem) => {
       if (focusItem.type === "roleGroup") {
         return focusItem.roleGroup === roleGroup;
       }
 
-      if (focusItem.type === "role") {
-        return subRoles.includes(focusItem.role);
-      }
-
-      return false;
+      return subRoles.includes(focusItem.role);
     });
+
+    if (!directlySelected) return false;
   }
 
   return subRoles.some((role) =>
@@ -368,6 +379,8 @@ export function RoleDistributionLayer({
   setFocus,
   relationshipIndex,
   onToggleSelection,
+  selectedFocuses = [],
+  showSelectionMarks = false,
 }: RoleDistributionLayerProps) {
   const damageAngle =
     roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
@@ -477,18 +490,23 @@ export function RoleDistributionLayer({
           visualEndAngle
         );
 
-        const primarySegmentIsDirectlyFocused = isRoleGroupVisuallyRelated(
-  segment.key,
-  segment.subKeys,
-  focus,
-  relationshipIndex
-);
+        const primarySegmentIsRelated = isRoleGroupVisuallyRelated(
+          segment.key,
+          segment.subKeys,
+          focus,
+          relationshipIndex
+        );
 
-        const primaryOpacity =
-          activeFocus && !primarySegmentIsDirectlyFocused ? 0.34 : 1;
+        const primaryIsSelected = isRoleGroupSelected(
+          segment.key,
+          selectedFocuses
+        );
 
+        const primaryOpacity = activeFocus && !primarySegmentIsRelated ? 0.34 : 1;
         const primaryFocusBoost =
-          activeFocus && primarySegmentIsDirectlyFocused ? 1.14 : 1;
+          activeFocus && primarySegmentIsRelated ? 1.14 : 1;
+        const primarySelectionBoost =
+          primaryIsSelected && showSelectionMarks ? 1.14 : 1;
 
         const primaryFocus: DataCircleFocusItem = {
           type: "roleGroup",
@@ -503,6 +521,26 @@ export function RoleDistributionLayer({
               }`}
             </title>
 
+            {primaryIsSelected && showSelectionMarks ? (
+              <path
+                d={describeDonutSegment(
+                  CX,
+                  CY,
+                  ROLE_OUTER_RADIUS + 5,
+                  ROLE_OUTER_RADIUS + 14,
+                  visualStartAngle - 0.35,
+                  visualEndAngle + 0.35
+                )}
+                fill={segment.accentColor}
+                fillOpacity={0.2}
+                stroke="rgba(255,250,232,0.98)"
+                strokeOpacity={0.82}
+                strokeWidth={1.7}
+                filter="url(#elementalBloom)"
+                pointerEvents="none"
+              />
+            ) : null}
+
             <path
               d={describeTextArc(
                 CX,
@@ -514,7 +552,9 @@ export function RoleDistributionLayer({
               fill="none"
               stroke={segment.glowColor}
               strokeOpacity={
-                (roleData.total > 0 ? 0.1 : 0.04) * primaryFocusBoost
+                (roleData.total > 0 ? 0.1 : 0.04) *
+                primaryFocusBoost *
+                primarySelectionBoost
               }
               strokeWidth="48"
               strokeLinecap="butt"
@@ -538,13 +578,27 @@ export function RoleDistributionLayer({
               )}
               fill={segment.color}
               fillOpacity={
-                (roleData.total > 0 ? 0.38 : 0.16) * primaryFocusBoost
+                (roleData.total > 0 ? 0.38 : 0.16) *
+                primaryFocusBoost *
+                primarySelectionBoost
               }
-              stroke={segment.accentColor}
+              stroke={
+                primaryIsSelected && showSelectionMarks
+                  ? "rgba(255,250,232,0.98)"
+                  : segment.accentColor
+              }
               strokeOpacity={
-                (roleData.total > 0 ? 0.26 : 0.1) * primaryFocusBoost
+                primaryIsSelected && showSelectionMarks
+                  ? 0.9
+                  : (roleData.total > 0 ? 0.26 : 0.1) * primaryFocusBoost
               }
-              strokeWidth={activeFocus && primarySegmentIsDirectlyFocused ? 1.35 : 1}
+              strokeWidth={
+                primaryIsSelected && showSelectionMarks
+                  ? 2.2
+                  : activeFocus && primarySegmentIsRelated
+                    ? 1.35
+                    : 1
+              }
               style={{ cursor: "pointer" }}
               onMouseEnter={() => setFocus(primaryFocus)}
               onClick={(event) => {
@@ -562,10 +616,22 @@ export function RoleDistributionLayer({
                 visualEndAngle
               )}
               fill="none"
-              stroke={segment.accentColor}
-              strokeOpacity={0.3 * primaryFocusBoost}
+              stroke={
+                primaryIsSelected && showSelectionMarks
+                  ? "rgba(255,250,232,1)"
+                  : segment.accentColor
+              }
+              strokeOpacity={
+                primaryIsSelected && showSelectionMarks
+                  ? 0.86
+                  : 0.3 * primaryFocusBoost
+              }
               strokeWidth={
-                activeFocus && primarySegmentIsDirectlyFocused ? 2 : 1.5
+                primaryIsSelected && showSelectionMarks
+                  ? 3.1
+                  : activeFocus && primarySegmentIsRelated
+                    ? 2
+                    : 1.5
               }
               strokeLinecap="round"
               pointerEvents="none"
@@ -598,17 +664,25 @@ export function RoleDistributionLayer({
                 subcategory.key
               );
 
-              const subcategoryIsDirectlyFocused = isRoleVisuallyRelated(
-  subcategory.key,
-  focus,
-  relationshipIndex
-);
+              const subcategoryIsRelated = isRoleVisuallyRelated(
+                subcategory.key,
+                focus,
+                relationshipIndex
+              );
+
+              const subcategoryIsSelected = isRoleSelected(
+                subcategory.key,
+                selectedFocuses
+              );
 
               const subcategoryOpacity =
-                activeFocus && !subcategoryIsDirectlyFocused ? 0.3 : 1;
+                activeFocus && !subcategoryIsRelated ? 0.3 : 1;
 
               const subcategoryFocusBoost =
-                activeFocus && subcategoryIsDirectlyFocused ? 1.32 : 1;
+                activeFocus && subcategoryIsRelated ? 1.32 : 1;
+
+              const subcategorySelectionBoost =
+                subcategoryIsSelected && showSelectionMarks ? 1.16 : 1;
 
               const subLabelPathId = `role-sub-label-${segment.key}-${getSafeId(
                 subcategory.key
@@ -646,6 +720,26 @@ export function RoleDistributionLayer({
                     }`}
                   </title>
 
+                  {subcategoryIsSelected && showSelectionMarks ? (
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        SUBCATEGORY_INNER_RADIUS - 5,
+                        SUBCATEGORY_OUTER_RADIUS + 5,
+                        subStartAngle - 0.3,
+                        subEndAngle + 0.3
+                      )}
+                      fill={subcategoryShadeColor}
+                      fillOpacity={0.26}
+                      stroke="rgba(255,250,232,0.98)"
+                      strokeOpacity={0.86}
+                      strokeWidth={1.9}
+                      filter="url(#elementalBloom)"
+                      pointerEvents="none"
+                    />
+                  ) : null}
+
                   <path
                     d={describeDonutSegment(
                       CX,
@@ -661,12 +755,26 @@ export function RoleDistributionLayer({
                         index,
                         subcategorySegments.length,
                         roleData.total
-                      ) * subcategoryFocusBoost
+                      ) *
+                      subcategoryFocusBoost *
+                      subcategorySelectionBoost
                     }
-                    stroke={subcategoryShadeColor}
-                    strokeOpacity={0.42 * subcategoryFocusBoost}
+                    stroke={
+                      subcategoryIsSelected && showSelectionMarks
+                        ? "rgba(255,250,232,0.98)"
+                        : subcategoryShadeColor
+                    }
+                    strokeOpacity={
+                      subcategoryIsSelected && showSelectionMarks
+                        ? 0.9
+                        : 0.42 * subcategoryFocusBoost
+                    }
                     strokeWidth={
-                      activeFocus && subcategoryIsDirectlyFocused ? 1.25 : 0.75
+                      subcategoryIsSelected && showSelectionMarks
+                        ? 2.25
+                        : activeFocus && subcategoryIsRelated
+                          ? 1.25
+                          : 0.75
                     }
                   />
 
@@ -679,10 +787,22 @@ export function RoleDistributionLayer({
                       subEndAngle - 0.2
                     )}
                     fill="none"
-                    stroke={subcategoryShadeColor}
-                    strokeOpacity={0.45 * subcategoryFocusBoost}
+                    stroke={
+                      subcategoryIsSelected && showSelectionMarks
+                        ? "rgba(255,250,232,1)"
+                        : subcategoryShadeColor
+                    }
+                    strokeOpacity={
+                      subcategoryIsSelected && showSelectionMarks
+                        ? 0.9
+                        : 0.45 * subcategoryFocusBoost
+                    }
                     strokeWidth={
-                      activeFocus && subcategoryIsDirectlyFocused ? 1.75 : 1.15
+                      subcategoryIsSelected && showSelectionMarks
+                        ? 2.7
+                        : activeFocus && subcategoryIsRelated
+                          ? 1.75
+                          : 1.15
                     }
                     strokeLinecap="round"
                   />
@@ -690,10 +810,20 @@ export function RoleDistributionLayer({
                   <circle
                     cx={markerPoint.x}
                     cy={markerPoint.y}
-                    r={subSweep >= 42 ? 1.55 : 1.05}
-                    fill={subcategoryShadeColor}
+                    r={
+                      subcategoryIsSelected && showSelectionMarks
+                        ? 2.3
+                        : subSweep >= 42
+                          ? 1.55
+                          : 1.05
+                    }
+                    fill={
+                      subcategoryIsSelected && showSelectionMarks
+                        ? "rgba(255,250,232,1)"
+                        : subcategoryShadeColor
+                    }
                     fillOpacity={
-                      activeFocus && subcategoryIsDirectlyFocused ? 1 : 0.82
+                      activeFocus && subcategoryIsRelated ? 1 : 0.82
                     }
                     stroke="rgba(5,4,6,0.86)"
                     strokeWidth="0.7"
@@ -717,16 +847,20 @@ export function RoleDistributionLayer({
                         fontWeight="850"
                         letterSpacing={getSubcategoryLetterSpacing(subLabel)}
                         fill={
-                          activeFocus && subcategoryIsDirectlyFocused
+                          subcategoryIsSelected && showSelectionMarks
                             ? "rgba(255,250,232,0.98)"
-                            : "rgba(255,244,218,0.84)"
+                            : activeFocus && subcategoryIsRelated
+                              ? "rgba(255,250,232,0.98)"
+                              : "rgba(255,244,218,0.84)"
                         }
                         paintOrder="stroke"
                         stroke="rgba(4,3,5,0.92)"
                         strokeWidth={
-                          activeFocus && subcategoryIsDirectlyFocused
-                            ? 2.25
-                            : 1.85
+                          subcategoryIsSelected && showSelectionMarks
+                            ? 2.75
+                            : activeFocus && subcategoryIsRelated
+                              ? 2.25
+                              : 1.85
                         }
                         dominantBaseline="middle"
                       >
@@ -784,14 +918,20 @@ export function RoleDistributionLayer({
                   fontWeight="950"
                   letterSpacing="0.085em"
                   fill={
-                    activeFocus && primarySegmentIsDirectlyFocused
+                    primaryIsSelected && showSelectionMarks
                       ? "rgba(255,250,232,0.98)"
-                      : "rgba(255,244,218,0.96)"
+                      : activeFocus && primarySegmentIsRelated
+                        ? "rgba(255,250,232,0.98)"
+                        : "rgba(255,244,218,0.96)"
                   }
                   paintOrder="stroke"
                   stroke="rgba(4,3,5,0.94)"
                   strokeWidth={
-                    activeFocus && primarySegmentIsDirectlyFocused ? 3.1 : 2.7
+                    primaryIsSelected && showSelectionMarks
+                      ? 3.5
+                      : activeFocus && primarySegmentIsRelated
+                        ? 3.1
+                        : 2.7
                   }
                   dominantBaseline="middle"
                   filter="url(#fineInkShadow)"

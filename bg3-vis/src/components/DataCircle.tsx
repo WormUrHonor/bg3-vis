@@ -58,6 +58,7 @@ export default function DataCircle({
   const [selectedFocuses, setSelectedFocuses] = useState<DataCircleFocusItem[]>(
     []
   );
+  const [isSelectionReviewActive, setIsSelectionReviewActive] = useState(false);
 
   const activeFocus: DataCircleFocus =
     hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
@@ -144,6 +145,7 @@ export default function DataCircle({
   function clearSelectedFocuses() {
     setSelectedFocuses([]);
     setHoverFocus(null);
+    setIsSelectionReviewActive(false);
   }
 
   return (
@@ -151,8 +153,16 @@ export default function DataCircle({
       {selectedFocuses.length > 0 ? (
         <button
           type="button"
-          className="data-circle-clear-selection-button"
+          className={`data-circle-clear-selection-button ${
+            isSelectionReviewActive
+              ? "data-circle-clear-selection-button--active"
+              : ""
+          }`}
           onClick={clearSelectedFocuses}
+          onMouseEnter={() => setIsSelectionReviewActive(true)}
+          onMouseLeave={() => setIsSelectionReviewActive(false)}
+          onFocus={() => setIsSelectionReviewActive(true)}
+          onBlur={() => setIsSelectionReviewActive(false)}
         >
           Clear selection · {selectedFocuses.length}
         </button>
@@ -171,42 +181,50 @@ export default function DataCircle({
           <BackgroundLayer />
 
           {showDprLayer ? (
-            <DprByRoundLayer
-              rounds={mockDprByRound}
-              averageDpr={mockAverageDpr}
-              focus={activeFocus}
-              setFocus={setHoverFocus}
-              relationshipIndex={relationshipIndex}
-              onToggleSelection={toggleSelectedFocus}
-            />
-          ) : null}
+  <DprByRoundLayer
+    rounds={mockDprByRound}
+    averageDpr={mockAverageDpr}
+    focus={activeFocus}
+    setFocus={setHoverFocus}
+    relationshipIndex={relationshipIndex}
+    onToggleSelection={toggleSelectedFocus}
+    selectedFocuses={selectedFocuses}
+    showSelectionMarks={isSelectionReviewActive}
+  />
+) : null}
 
-          <DamageTypesLayer
-            damageTypeCounts={damageTypeCounts}
-            damageTypeTotal={damageTypeTotal}
-            focus={activeFocus}
-            setFocus={setHoverFocus}
-            relationshipIndex={relationshipIndex}
-            onToggleSelection={toggleSelectedFocus}
-          />
+<DamageTypesLayer
+  damageTypeCounts={damageTypeCounts}
+  damageTypeTotal={damageTypeTotal}
+  focus={activeFocus}
+  setFocus={setHoverFocus}
+  relationshipIndex={relationshipIndex}
+  onToggleSelection={toggleSelectedFocus}
+  selectedFocuses={selectedFocuses}
+  showSelectionMarks={isSelectionReviewActive}
+/>
 
-          <RoleDistributionLayer
-            roleData={roleData}
-            focus={activeFocus}
-            setFocus={setHoverFocus}
-            relationshipIndex={relationshipIndex}
-            onToggleSelection={toggleSelectedFocus}
-          />
+<RoleDistributionLayer
+  roleData={roleData}
+  focus={activeFocus}
+  setFocus={setHoverFocus}
+  relationshipIndex={relationshipIndex}
+  onToggleSelection={toggleSelectedFocus}
+  selectedFocuses={selectedFocuses}
+  showSelectionMarks={isSelectionReviewActive}
+/>
 
-          <RangeProfileLayer
-            rangeCounts={rangeCounts}
-            maxRangeCount={maxRangeCount}
-            roleData={roleData}
-            focus={activeFocus}
-            setFocus={setHoverFocus}
-            relationshipIndex={relationshipIndex}
-            onToggleSelection={toggleSelectedFocus}
-          />
+<RangeProfileLayer
+  rangeCounts={rangeCounts}
+  maxRangeCount={maxRangeCount}
+  roleData={roleData}
+  focus={activeFocus}
+  setFocus={setHoverFocus}
+  relationshipIndex={relationshipIndex}
+  onToggleSelection={toggleSelectedFocus}
+  selectedFocuses={selectedFocuses}
+  showSelectionMarks={isSelectionReviewActive}
+/>
 
           <SectionTitleLayer
             outerTitle={showDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"}

@@ -29,6 +29,8 @@ type DprByRoundLayerProps = {
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
   relationshipIndex: LayerRelationshipIndex;
   onToggleSelection?: (focus: DataCircleFocusItem) => void;
+  selectedFocuses?: DataCircleFocusItem[];
+  showSelectionMarks?: boolean;
 };
 
 type AbilityColor = {
@@ -218,9 +220,14 @@ function getContributionOpacity(value: number, isRelated: boolean) {
   return isRelated ? Math.min(0.82, base + 0.18) : base * 0.36;
 }
 
-function focusIncludesType(focus: DataCircleFocus, type: DataCircleFocusItem["type"]) {
+function focusIncludesType(
+  focus: DataCircleFocus,
+  type: DataCircleFocusItem["type"]
+) {
   if (!focus) return false;
+
   const focusItems = Array.isArray(focus) ? focus : [focus];
+
   return focusItems.some((item) => item.type === type);
 }
 
@@ -251,13 +258,33 @@ function getContributionIconSize(radialThickness: number, sectorAngle: number) {
   return 0;
 }
 
+function isRoundSelected(
+  round: number,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "round" && item.round === round
+  );
+}
+
+function isAbilitySelected(
+  abilityId: string,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "ability" && item.abilityId === abilityId
+  );
+}
+
 function getContributionIcon(
   contribution: DprContribution,
   iconSize: number,
   x: number,
   y: number,
   color: string,
-  isRelated: boolean
+  isRelated: boolean,
+  isSelected: boolean,
+  showSelectionMarks: boolean
 ) {
   const spell = getSpellById(contribution.abilityId);
 
@@ -266,15 +293,41 @@ function getContributionIcon(
   const iconHref = getSpellIcon(spell);
 
   return (
-    <g pointerEvents="none" opacity={isRelated ? 1 : 0.3}>
+    <g
+      pointerEvents="none"
+      opacity={
+        isSelected && showSelectionMarks
+          ? 1
+          : isRelated
+            ? 1
+            : 0.3
+      }
+    >
+      {isSelected && showSelectionMarks ? (
+        <circle
+          cx={x}
+          cy={y}
+          r={iconSize * 0.78}
+          fill="rgba(255,232,176,0.14)"
+          stroke="rgba(255,250,232,0.96)"
+          strokeOpacity="0.9"
+          strokeWidth="1.8"
+          filter="url(#elementalBloom)"
+        />
+      ) : null}
+
       <circle
         cx={x}
         cy={y}
         r={iconSize * 0.62}
         fill="rgba(6,5,7,0.54)"
-        stroke={color}
-        strokeOpacity="0.2"
-        strokeWidth="0.75"
+        stroke={
+          isSelected && showSelectionMarks
+            ? "rgba(255,250,232,0.98)"
+            : color
+        }
+        strokeOpacity={isSelected && showSelectionMarks ? 0.82 : 0.2}
+        strokeWidth={isSelected && showSelectionMarks ? 1.4 : 0.75}
       />
 
       <image
@@ -398,6 +451,8 @@ export function DprByRoundLayer({
   setFocus,
   relationshipIndex,
   onToggleSelection,
+  selectedFocuses = [],
+  showSelectionMarks = false,
 }: DprByRoundLayerProps) {
   const safeRounds = rounds.length > 0 ? rounds : [{ round: 1, damage: 0 }];
   const sectorAngle = 360 / safeRounds.length;
@@ -529,6 +584,8 @@ export function DprByRoundLayer({
           focus,
           relationshipIndex
         );
+        const roundIsSelected = isRoundSelected(round.round, selectedFocuses);
+
         const active = hasActiveFocus(focus);
         const roundOpacity = active && !roundIsRelated ? 0.32 : 1;
 
@@ -578,6 +635,25 @@ export function DprByRoundLayer({
           >
             <title>{`Round ${round.round}: ${roundTotal} damage`}</title>
 
+            {roundIsSelected && showSelectionMarks ? (
+              <path
+                d={describeDonutSegment(
+                  CX,
+                  CY,
+                  DPR_INNER_RADIUS - 5,
+                  DPR_OUTER_RADIUS + 6,
+                  visualStartAngle - 0.45,
+                  visualEndAngle + 0.45
+                )}
+                fill="rgba(255,232,176,0.12)"
+                stroke="rgba(255,250,232,0.94)"
+                strokeOpacity="0.82"
+                strokeWidth="1.8"
+                filter="url(#elementalBloom)"
+                pointerEvents="none"
+              />
+            ) : null}
+
             <line
               x1={dividerInner.x}
               y1={dividerInner.y}
@@ -599,7 +675,11 @@ export function DprByRoundLayer({
               )}
               fill="none"
               stroke="#e4b375"
-              strokeOpacity={roundIntensity.glowOpacity}
+              strokeOpacity={
+                roundIsSelected && showSelectionMarks
+                  ? Math.max(roundIntensity.glowOpacity, 0.12)
+                  : roundIntensity.glowOpacity
+              }
               strokeWidth={BAR_MAX_RADIUS - BAR_BASE_RADIUS + 14}
               strokeLinecap="butt"
               filter="url(#elementalBloom)"
@@ -646,6 +726,11 @@ export function DprByRoundLayer({
                 relationshipIndex
               );
 
+              const contributionIsSelected = isAbilitySelected(
+                contribution.abilityId,
+                selectedFocuses
+              );
+
               return (
                 <g
                   key={`${round.round}-${contribution.abilityId}-${contributionIndex}`}
@@ -672,6 +757,26 @@ export function DprByRoundLayer({
                     {`Round ${round.round} · ${contribution.abilityName}: ${contribution.damage} damage`}
                   </title>
 
+                  {contributionIsSelected && showSelectionMarks ? (
+                    <path
+                      d={describeDonutSegment(
+                        CX,
+                        CY,
+                        Math.max(BAR_BASE_RADIUS, innerRadius - 4),
+                        outerRadius + 5,
+                        visualStartAngle - 0.35,
+                        visualEndAngle + 0.35
+                      )}
+                      fill={color.glow}
+                      fillOpacity="0.18"
+                      stroke="rgba(255,250,232,0.96)"
+                      strokeOpacity="0.86"
+                      strokeWidth="1.8"
+                      filter="url(#elementalBloom)"
+                      pointerEvents="none"
+                    />
+                  ) : null}
+
                   <path
                     d={describeDonutSegment(
                       CX,
@@ -686,9 +791,25 @@ export function DprByRoundLayer({
                       contribution.damage,
                       contributionIsRelated
                     )}
-                    stroke={color.stroke}
-                    strokeOpacity={contributionIsRelated ? 0.58 : 0.16}
-                    strokeWidth={contributionIsRelated ? 1.25 : 0.8}
+                    stroke={
+                      contributionIsSelected && showSelectionMarks
+                        ? "rgba(255,250,232,0.98)"
+                        : color.stroke
+                    }
+                    strokeOpacity={
+                      contributionIsSelected && showSelectionMarks
+                        ? 0.9
+                        : contributionIsRelated
+                          ? 0.58
+                          : 0.16
+                    }
+                    strokeWidth={
+                      contributionIsSelected && showSelectionMarks
+                        ? 2
+                        : contributionIsRelated
+                          ? 1.25
+                          : 0.8
+                    }
                   />
 
                   <path
@@ -700,9 +821,19 @@ export function DprByRoundLayer({
                       visualEndAngle - 0.35
                     )}
                     fill="none"
-                    stroke={color.stroke}
-                    strokeOpacity={contributionIsRelated ? 0.4 : 0.12}
-                    strokeWidth="1"
+                    stroke={
+                      contributionIsSelected && showSelectionMarks
+                        ? "rgba(255,250,232,0.98)"
+                        : color.stroke
+                    }
+                    strokeOpacity={
+                      contributionIsSelected && showSelectionMarks
+                        ? 0.82
+                        : contributionIsRelated
+                          ? 0.4
+                          : 0.12
+                    }
+                    strokeWidth={contributionIsSelected && showSelectionMarks ? 1.7 : 1}
                     strokeLinecap="round"
                   />
 
@@ -712,7 +843,9 @@ export function DprByRoundLayer({
                     iconPoint.x,
                     iconPoint.y,
                     color.stroke,
-                    contributionIsRelated
+                    contributionIsRelated,
+                    contributionIsSelected,
+                    showSelectionMarks
                   )}
                 </g>
               );
@@ -727,13 +860,25 @@ export function DprByRoundLayer({
                 visualEndAngle - 0.35
               )}
               fill="none"
-              stroke="#f1d5a8"
-              strokeOpacity={
-                roundIsRelated
-                  ? Math.min(0.9, roundIntensity.outerStrokeOpacity + 0.24)
-                  : roundIntensity.outerStrokeOpacity
+              stroke={
+                roundIsSelected && showSelectionMarks
+                  ? "rgba(255,250,232,0.98)"
+                  : "#f1d5a8"
               }
-              strokeWidth={roundIsRelated ? 1.9 : 1.35}
+              strokeOpacity={
+                roundIsSelected && showSelectionMarks
+                  ? 0.92
+                  : roundIsRelated
+                    ? Math.min(0.9, roundIntensity.outerStrokeOpacity + 0.24)
+                    : roundIntensity.outerStrokeOpacity
+              }
+              strokeWidth={
+                roundIsSelected && showSelectionMarks
+                  ? 2.4
+                  : roundIsRelated
+                    ? 1.9
+                    : 1.35
+              }
               strokeLinecap="round"
             />
 
@@ -745,10 +890,14 @@ export function DprByRoundLayer({
               fontSize="7.5"
               fontWeight="950"
               letterSpacing="0.03em"
-              fill="rgba(255,244,218,0.82)"
+              fill={
+                roundIsSelected && showSelectionMarks
+                  ? "rgba(255,250,232,0.98)"
+                  : "rgba(255,244,218,0.82)"
+              }
               paintOrder="stroke"
               stroke="rgba(4,3,5,0.92)"
-              strokeWidth="2"
+              strokeWidth={roundIsSelected && showSelectionMarks ? 2.5 : 2}
               filter="url(#fineInkShadow)"
             >
               {`R${round.round}`}
@@ -762,10 +911,14 @@ export function DprByRoundLayer({
               fontSize="7.2"
               fontWeight="950"
               letterSpacing="0.01em"
-              fill="rgba(255,226,182,0.74)"
+              fill={
+                roundIsSelected && showSelectionMarks
+                  ? "rgba(255,250,232,0.98)"
+                  : "rgba(255,226,182,0.74)"
+              }
               paintOrder="stroke"
               stroke="rgba(4,3,5,0.94)"
-              strokeWidth="1.9"
+              strokeWidth={roundIsSelected && showSelectionMarks ? 2.35 : 1.9}
               filter="url(#fineInkShadow)"
             >
               {Math.round(roundTotal)}
