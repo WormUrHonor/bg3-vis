@@ -114,16 +114,37 @@ function ClassScoresTab({
   const pointsRemaining = 27 - usedPoints;
   const knowledgeSkills: Skill[] = ["Arcana", "History", "Nature", "Religion"];
 
+  const selectedFeatCount = featSelections.filter(
+    (selection) => selection.featName
+  ).length;
+
   const finalScores = calculateFinalAbilityScores(
     baseAbilityScores,
     bonusPlusTwo,
     bonusPlusOne,
     featAbilityIncreases
   );
+function increaseLevel() {
+  setSelectedLevel(Math.min(12, selectedLevel + 1));
+}
 
+function decreaseLevel() {
+  const nextLevel = Math.max(1, selectedLevel - 1);
+  setSelectedLevel(nextLevel);
+
+  if (nextLevel < 3) {
+    setBardExpertise([]);
+    setLoreBardSkills([]);
+  }
+
+  if (nextLevel < 6) {
+    setRogueExpertise((current) => current.slice(0, 2));
+  }
+}
   function increaseScore(score: AbilityScore) {
     setBaseAbilityScores((current) => {
       const currentValue = current[score];
+
       if (currentValue >= 15) return current;
 
       const nextValue = currentValue + 1;
@@ -138,7 +159,9 @@ function ClassScoresTab({
   function decreaseScore(score: AbilityScore) {
     setBaseAbilityScores((current) => {
       const currentValue = current[score];
+
       if (currentValue <= 8) return current;
+
       return { ...current, [score]: currentValue - 1 };
     });
   }
@@ -179,7 +202,9 @@ function ClassScoresTab({
     updater: (current: FeatSelection) => FeatSelection
   ) {
     setFeatSelections((current) => {
-      const existing = current.find((selection) => selection.slotLevel === slotLevel);
+      const existing = current.find(
+        (selection) => selection.slotLevel === slotLevel
+      );
 
       if (!existing) {
         return [...current, updater(createEmptyFeatSelection(slotLevel))].sort(
@@ -253,6 +278,7 @@ function ClassScoresTab({
 
   function renderFeatChoices(selection: FeatSelection) {
     const feat = getFeatDefinition(selection.featName);
+
     if (!feat) return null;
 
     if (feat.choiceKind === "ability-improvement") {
@@ -303,35 +329,35 @@ function ClassScoresTab({
       );
     }
 
-if (
-  feat.choiceKind === "single-ability" ||
-  feat.choiceKind === "resilient"
-) {
-  return (
-    <div className="feat-choice-grid">
-      <label>
-        Ability increase
-        <select
-          value={selection.selectedAbility}
-          onChange={(e) =>
-            setFeatAbility(
-              selection.slotLevel,
-              "selectedAbility",
-              e.target.value as AbilityScore | ""
-            )
-          }
-        >
-          <option value="">Select ability</option>
-          {(feat.abilityOptions ?? abilityScores).map((score) => (
-            <option key={score} value={score}>
-              {score}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
-}
+    if (
+      feat.choiceKind === "single-ability" ||
+      feat.choiceKind === "resilient"
+    ) {
+      return (
+        <div className="feat-choice-grid">
+          <label>
+            Ability increase
+            <select
+              value={selection.selectedAbility}
+              onChange={(e) =>
+                setFeatAbility(
+                  selection.slotLevel,
+                  "selectedAbility",
+                  e.target.value as AbilityScore | ""
+                )
+              }
+            >
+              <option value="">Select ability</option>
+              {(feat.abilityOptions ?? abilityScores).map((score) => (
+                <option key={score} value={score}>
+                  {score}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      );
+    }
 
     if (feat.choiceKind === "elemental-adept") {
       return (
@@ -364,14 +390,16 @@ if (
 
       return (
         <div className="feat-subsection">
-          <p className="panel-intro">
-            Choose {max} skill proficiencies. Selected: {selection.selectedSkills.length}/{max}.
+          <p className="panel-intro compact-intro">
+            Choose {max} skill proficiencies. Selected:{" "}
+            {selection.selectedSkills.length}/{max}.
           </p>
 
-          <div className="skill-grid">
+          <div className="skill-grid compact-chip-grid">
             {skills.map((skill) => {
               const isSelected = selection.selectedSkills.includes(skill);
-              const alreadyProficient = allProficiencies.includes(skill) && !isSelected;
+              const alreadyProficient =
+                allProficiencies.includes(skill) && !isSelected;
               const maxReached = selection.selectedSkills.length >= max && !isSelected;
 
               return (
@@ -385,7 +413,12 @@ if (
                     alreadyProficient ? "locked" : "",
                   ].join(" ")}
                   onClick={() =>
-                    toggleFeatListItem(selection.slotLevel, "selectedSkills", skill, max)
+                    toggleFeatListItem(
+                      selection.slotLevel,
+                      "selectedSkills",
+                      skill,
+                      max
+                    )
                   }
                 >
                   {skill}
@@ -402,11 +435,12 @@ if (
 
       return (
         <div className="feat-subsection">
-          <p className="panel-intro">
-            Choose {max} ritual spells. Selected: {selection.selectedSpells.length}/{max}.
+          <p className="panel-intro compact-intro">
+            Choose {max} ritual spells. Selected:{" "}
+            {selection.selectedSpells.length}/{max}.
           </p>
 
-          <div className="chip-grid">
+          <div className="chip-grid compact-chip-grid">
             {ritualCasterSpells.map((spell) => {
               const isSelected = selection.selectedSpells.includes(spell);
               const maxReached = selection.selectedSpells.length >= max && !isSelected;
@@ -418,7 +452,12 @@ if (
                   disabled={maxReached}
                   className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
                   onClick={() =>
-                    toggleFeatListItem(selection.slotLevel, "selectedSpells", spell, max)
+                    toggleFeatListItem(
+                      selection.slotLevel,
+                      "selectedSpells",
+                      spell,
+                      max
+                    )
                   }
                 >
                   {spell}
@@ -435,14 +474,16 @@ if (
 
       return (
         <div className="feat-subsection">
-          <p className="panel-intro">
-            Choose {max} cantrip. Selected: {selection.selectedCantrips.length}/{max}.
+          <p className="panel-intro compact-intro">
+            Choose {max} cantrip. Selected:{" "}
+            {selection.selectedCantrips.length}/{max}.
           </p>
 
-          <div className="chip-grid">
+          <div className="chip-grid compact-chip-grid">
             {spellSniperCantrips.map((cantrip) => {
               const isSelected = selection.selectedCantrips.includes(cantrip);
-              const maxReached = selection.selectedCantrips.length >= max && !isSelected;
+              const maxReached =
+                selection.selectedCantrips.length >= max && !isSelected;
 
               return (
                 <button
@@ -451,7 +492,12 @@ if (
                   disabled={maxReached}
                   className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
                   onClick={() =>
-                    toggleFeatListItem(selection.slotLevel, "selectedCantrips", cantrip, max)
+                    toggleFeatListItem(
+                      selection.slotLevel,
+                      "selectedCantrips",
+                      cantrip,
+                      max
+                    )
                   }
                 >
                   {cantrip}
@@ -463,84 +509,87 @@ if (
       );
     }
 
-if (feat.choiceKind === "weapon-master") {
-  const max = feat.chooseWeaponCount ?? 4;
+    if (feat.choiceKind === "weapon-master") {
+      const max = feat.chooseWeaponCount ?? 4;
 
-  return (
-    <>
-      <div className="feat-choice-grid">
-        <label>
-          Ability increase
-          <select
-            value={selection.selectedAbility}
-            onChange={(e) =>
-              setFeatAbility(
-                selection.slotLevel,
-                "selectedAbility",
-                e.target.value as AbilityScore | ""
-              )
-            }
-          >
-            <option value="">Select ability</option>
-            {(feat.abilityOptions ?? abilityScores).map((score) => (
-              <option key={score} value={score}>
-                {score}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="feat-subsection">
-        <p className="panel-intro">
-          Choose {max} weapon proficiencies. Selected:{" "}
-          {selection.selectedWeaponTypes.length}/{max}.
-        </p>
-
-        <div className="chip-grid">
-          {weaponMasterWeaponTypes.map((weaponType) => {
-            const isSelected = selection.selectedWeaponTypes.includes(weaponType);
-            const maxReached =
-              selection.selectedWeaponTypes.length >= max && !isSelected;
-
-            return (
-              <button
-                key={weaponType}
-                type="button"
-                disabled={maxReached}
-                className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                onClick={() =>
-                  toggleFeatListItem(
+      return (
+        <>
+          <div className="feat-choice-grid">
+            <label>
+              Ability increase
+              <select
+                value={selection.selectedAbility}
+                onChange={(e) =>
+                  setFeatAbility(
                     selection.slotLevel,
-                    "selectedWeaponTypes",
-                    weaponType,
-                    max
+                    "selectedAbility",
+                    e.target.value as AbilityScore | ""
                   )
                 }
               >
-                {weaponType}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </>
-  );
-}
+                <option value="">Select ability</option>
+                {(feat.abilityOptions ?? abilityScores).map((score) => (
+                  <option key={score} value={score}>
+                    {score}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="feat-subsection">
+            <p className="panel-intro compact-intro">
+              Choose {max} weapon proficiencies. Selected:{" "}
+              {selection.selectedWeaponTypes.length}/{max}.
+            </p>
+
+            <div className="chip-grid compact-chip-grid">
+              {weaponMasterWeaponTypes.map((weaponType) => {
+                const isSelected =
+                  selection.selectedWeaponTypes.includes(weaponType);
+                const maxReached =
+                  selection.selectedWeaponTypes.length >= max && !isSelected;
+
+                return (
+                  <button
+                    key={weaponType}
+                    type="button"
+                    disabled={maxReached}
+                    className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                    onClick={() =>
+                      toggleFeatListItem(
+                        selection.slotLevel,
+                        "selectedWeaponTypes",
+                        weaponType,
+                        max
+                      )
+                    }
+                  >
+                    {weaponType}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      );
+    }
 
     if (feat.choiceKind === "martial-adept") {
       const max = feat.chooseManoeuvreCount ?? 2;
 
       return (
         <div className="feat-subsection">
-          <p className="panel-intro">
-            Choose {max} manoeuvres. Selected: {selection.selectedManoeuvres.length}/{max}.
+          <p className="panel-intro compact-intro">
+            Choose {max} manoeuvres. Selected:{" "}
+            {selection.selectedManoeuvres.length}/{max}.
           </p>
 
-          <div className="chip-grid">
+          <div className="chip-grid compact-chip-grid">
             {battleMasterManoeuvres.map((manoeuvre) => {
               const isSelected = selection.selectedManoeuvres.includes(manoeuvre);
-              const maxReached = selection.selectedManoeuvres.length >= max && !isSelected;
+              const maxReached =
+                selection.selectedManoeuvres.length >= max && !isSelected;
 
               return (
                 <button
@@ -569,8 +618,8 @@ if (feat.choiceKind === "weapon-master") {
     if (feat.choiceKind === "magic-initiate") {
       return (
         <div className="placeholder-box feat-note-box">
-          This feat is recorded here. Its exact cantrip and spell choices should be connected to
-          the spell data once Magic Initiate spell-list filtering is added.
+          This feat is recorded here. Its exact cantrip and spell choices should be
+          connected to the spell data once Magic Initiate spell-list filtering is added.
         </div>
       );
     }
@@ -582,11 +631,11 @@ if (feat.choiceKind === "weapon-master") {
     <div className="tab-content">
       <h2>Class & Ability Scores</h2>
       <p className="panel-intro">
-        Select the class progression, point-buy scores, flexible ability bonuses, and level-based
-        feats used by the build.
+        Select the class progression, point-buy scores, flexible ability bonuses, and
+        level-based feats used by the build.
       </p>
 
-      <div className="form-grid">
+      <div className="form-grid compact-class-grid">
         <label>
           Class
           <select value={selectedClass} onChange={(e) => onClassChange(e.target.value)}>
@@ -610,7 +659,9 @@ if (feat.choiceKind === "weapon-master") {
             }}
             disabled={!selectedClass}
           >
-            <option value="">{selectedClass ? "Select subclass" : "Select class first"}</option>
+            <option value="">
+              {selectedClass ? "Select subclass" : "Select class first"}
+            </option>
             {availableSubclasses.map((subclass) => (
               <option key={subclass} value={subclass}>
                 {subclass}
@@ -619,43 +670,38 @@ if (feat.choiceKind === "weapon-master") {
           </select>
         </label>
 
-        <label>
-          Level
-          <select
-            value={selectedLevel}
-            onChange={(e) => {
-              const nextLevel = Number(e.target.value);
-              setSelectedLevel(nextLevel);
+       <label>
+  <span className="label-with-meta">
+    Level
+    {selectedClass && featSelections.length > 0 && (
+      <span>
+        {selectedFeatCount}/{featSelections.length} feats selected
+      </span>
+    )}
+  </span>
 
-              if (nextLevel < 3) {
-                setBardExpertise([]);
-                setLoreBardSkills([]);
-              }
+  <div className="level-stepper">
+    <button
+      type="button"
+      onClick={decreaseLevel}
+      disabled={selectedLevel <= 1}
+      aria-label="Decrease level"
+    >
+      −
+    </button>
 
-              if (nextLevel < 6) {
-                setRogueExpertise((current) => current.slice(0, 2));
-              }
-            }}
-          >
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((level) => (
-              <option key={level} value={level}>
-                Level {level}
-              </option>
-            ))}
-          </select>
-        </label>
+    <strong>Level {selectedLevel}</strong>
 
-        <label>
-          Feat slots
-          <input
-            value={
-              featSelections.length > 0
-                ? featSelections.map((selection) => `Level ${selection.slotLevel}`).join(", ")
-                : "None yet"
-            }
-            readOnly
-          />
-        </label>
+    <button
+      type="button"
+      onClick={increaseLevel}
+      disabled={selectedLevel >= 12}
+      aria-label="Increase level"
+    >
+      +
+    </button>
+  </div>
+</label>
       </div>
 
       <h3>Ability Scores</h3>
@@ -671,7 +717,9 @@ if (feat.choiceKind === "weapon-master") {
           const currentValue = baseAbilityScores[score];
           const nextValue = currentValue + 1;
           const costDifference =
-            nextValue <= 15 ? pointBuyCost[nextValue] - pointBuyCost[currentValue] : Infinity;
+            nextValue <= 15
+              ? pointBuyCost[nextValue] - pointBuyCost[currentValue]
+              : Infinity;
 
           const featBonus = featAbilityIncreases[score] ?? 0;
           const flexibleBonus =
@@ -681,6 +729,7 @@ if (feat.choiceKind === "weapon-master") {
           return (
             <div key={score} className="score-card">
               <span className="score-name">{score}</span>
+
               <div className="score-controls">
                 <button
                   type="button"
@@ -689,15 +738,21 @@ if (feat.choiceKind === "weapon-master") {
                 >
                   −
                 </button>
+
                 <strong>{baseAbilityScores[score]}</strong>
+
                 <button
                   type="button"
                   onClick={() => increaseScore(score)}
-                  disabled={baseAbilityScores[score] >= 15 || pointsRemaining < costDifference}
+                  disabled={
+                    baseAbilityScores[score] >= 15 ||
+                    pointsRemaining < costDifference
+                  }
                 >
                   +
                 </button>
               </div>
+
               <span className="score-final">
                 Final: {finalScores[score]}
                 {totalBonus > 0 ? ` (+${totalBonus})` : ""}
@@ -741,11 +796,19 @@ if (feat.choiceKind === "weapon-master") {
 
       {featSelections.length > 0 && (
         <div className="section-block">
-          <h3>Feats</h3>
-          <p className="panel-intro">
-            Feat slots are based on the selected class and level. Fighter receives an additional
-            slot at level 6, while Rogue receives an additional slot at level 10.
-          </p>
+          <div className="section-heading-row">
+            <div>
+              <h3>Feats</h3>
+              <p className="panel-intro compact-intro">
+                Choose feats for the available level-up slots. Ability increases
+                and proficiency effects are applied automatically.
+              </p>
+            </div>
+
+            <span className="section-count-pill">
+              {selectedFeatCount}/{featSelections.length}
+            </span>
+          </div>
 
           <div className="feat-slot-list">
             {featSelections.map((selection) => {
@@ -753,11 +816,13 @@ if (feat.choiceKind === "weapon-master") {
 
               return (
                 <div key={selection.slotLevel} className="feat-card">
-                  <div className="feat-card-header">
-                    <div>
-                      <h4>Level {selection.slotLevel}</h4>
-                      <span>{describeFeatSelection(selection)}</span>
-                    </div>
+                  <div className="feat-card-header compact-feat-header">
+                    <span className="feat-level-pill">
+                      Lv. {selection.slotLevel}
+                    </span>
+                    <span className="feat-summary-line">
+                      {describeFeatSelection(selection)}
+                    </span>
                   </div>
 
                   <label>
@@ -783,9 +848,11 @@ if (feat.choiceKind === "weapon-master") {
                   {feat && (
                     <>
                       <p className="feat-description">{feat.description}</p>
+
                       {feat.requirements && (
                         <p className="feat-requirement">{feat.requirements}</p>
                       )}
+
                       {renderFeatChoices(selection)}
                     </>
                   )}
@@ -805,7 +872,9 @@ if (feat.choiceKind === "weapon-master") {
               Favoured Enemy
               <select
                 value={rangerFavouredEnemy}
-                onChange={(e) => setRangerFavouredEnemy(e.target.value as RangerFavouredEnemy | "")}
+                onChange={(e) =>
+                  setRangerFavouredEnemy(e.target.value as RangerFavouredEnemy | "")
+                }
               >
                 <option value="">Select favoured enemy</option>
                 {rangerFavouredEnemies.map((enemy) => (
@@ -820,7 +889,11 @@ if (feat.choiceKind === "weapon-master") {
               Natural Explorer
               <select
                 value={rangerNaturalExplorer}
-                onChange={(e) => setRangerNaturalExplorer(e.target.value as RangerNaturalExplorer | "")}
+                onChange={(e) =>
+                  setRangerNaturalExplorer(
+                    e.target.value as RangerNaturalExplorer | ""
+                  )
+                }
               >
                 <option value="">Select natural explorer</option>
                 {rangerNaturalExplorers.map((environment) => (
@@ -837,7 +910,9 @@ if (feat.choiceKind === "weapon-master") {
       {selectedClass === "Warlock" && (
         <div className="section-block">
           <h3>Eldritch Invocations</h3>
-          <p className="panel-intro">Beguiling Influence grants Deception and Persuasion proficiency.</p>
+          <p className="panel-intro">
+            Beguiling Influence grants Deception and Persuasion proficiency.
+          </p>
 
           <div className="chip-grid">
             {warlockInvocations.map((invocation) => {
@@ -847,7 +922,9 @@ if (feat.choiceKind === "weapon-master") {
                 <button
                   key={invocation}
                   type="button"
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(
+                    " "
+                  )}
                   onClick={() => toggleInvocation(invocation)}
                 >
                   {invocation}
@@ -858,38 +935,47 @@ if (feat.choiceKind === "weapon-master") {
         </div>
       )}
 
-      {selectedClass === "Bard" && selectedSubclass === "College of Lore" && selectedLevel >= 3 && (
-        <div className="section-block">
-          <h3>College of Lore bonus proficiencies</h3>
-          <p className="panel-intro">Choose any three additional skill proficiencies.</p>
+      {selectedClass === "Bard" &&
+        selectedSubclass === "College of Lore" &&
+        selectedLevel >= 3 && (
+          <div className="section-block">
+            <h3>College of Lore bonus proficiencies</h3>
+            <p className="panel-intro">
+              Choose any three additional skill proficiencies.
+            </p>
 
-          <div className="skill-grid">
-            {skills.map((skill) => {
-              const isSelected = loreBardSkills.includes(skill);
-              const alreadyKnown = allProficiencies.includes(skill) && !isSelected;
-              const maxReached = loreBardSkills.length >= 3 && !isSelected;
+            <div className="skill-grid">
+              {skills.map((skill) => {
+                const isSelected = loreBardSkills.includes(skill);
+                const alreadyKnown = allProficiencies.includes(skill) && !isSelected;
+                const maxReached = loreBardSkills.length >= 3 && !isSelected;
 
-              return (
-                <button
-                  key={skill}
-                  type="button"
-                  disabled={alreadyKnown || maxReached}
-                  className={["choice-chip", isSelected ? "selected" : "", alreadyKnown ? "locked" : ""].join(" ")}
-                  onClick={() => toggleLimitedSkill(skill, setLoreBardSkills, 3)}
-                >
-                  {skill}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    disabled={alreadyKnown || maxReached}
+                    className={[
+                      "choice-chip",
+                      isSelected ? "selected" : "",
+                      alreadyKnown ? "locked" : "",
+                    ].join(" ")}
+                    onClick={() => toggleLimitedSkill(skill, setLoreBardSkills, 3)}
+                  >
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {selectedClass === "Cleric" && selectedSubclass === "Knowledge Domain" && (
         <div className="section-block">
           <h3>Knowledge Domain expertise</h3>
           <p className="panel-intro">
-            Choose two from Arcana, History, Nature, and Religion. These do not require prior proficiency.
+            Choose two from Arcana, History, Nature, and Religion. These do not
+            require prior proficiency.
           </p>
 
           <div className="skill-grid">
@@ -902,8 +988,17 @@ if (feat.choiceKind === "weapon-master") {
                   key={skill}
                   type="button"
                   disabled={maxReached}
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                  onClick={() => toggleLimitedSkill(skill, setKnowledgeClericExpertise, 2, knowledgeSkills)}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(
+                    " "
+                  )}
+                  onClick={() =>
+                    toggleLimitedSkill(
+                      skill,
+                      setKnowledgeClericExpertise,
+                      2,
+                      knowledgeSkills
+                    )
+                  }
                 >
                   {skill}
                 </button>
@@ -917,7 +1012,8 @@ if (feat.choiceKind === "weapon-master") {
         <div className="section-block">
           <h3>Bard expertise</h3>
           <p className="panel-intro">
-            Bards select expertise in two proficient skills at level 3. A second pair becomes available at level 10.
+            Bards select expertise in two proficient skills at level 3. A second
+            pair becomes available at level 10.
           </p>
 
           <div className="skill-grid">
@@ -931,8 +1027,12 @@ if (feat.choiceKind === "weapon-master") {
                   key={skill}
                   type="button"
                   disabled={maxReached}
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                  onClick={() => toggleLimitedSkill(skill, setBardExpertise, maxExpertise)}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(
+                    " "
+                  )}
+                  onClick={() =>
+                    toggleLimitedSkill(skill, setBardExpertise, maxExpertise)
+                  }
                 >
                   {skill}
                 </button>
@@ -946,7 +1046,8 @@ if (feat.choiceKind === "weapon-master") {
         <div className="section-block">
           <h3>Rogue expertise</h3>
           <p className="panel-intro">
-            Rogues select expertise in two proficient skills at level 1. A second pair becomes available at level 6.
+            Rogues select expertise in two proficient skills at level 1. A second
+            pair becomes available at level 6.
           </p>
 
           <div className="skill-grid">
@@ -960,8 +1061,12 @@ if (feat.choiceKind === "weapon-master") {
                   key={skill}
                   type="button"
                   disabled={maxReached}
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                  onClick={() => toggleLimitedSkill(skill, setRogueExpertise, maxExpertise)}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(
+                    " "
+                  )}
+                  onClick={() =>
+                    toggleLimitedSkill(skill, setRogueExpertise, maxExpertise)
+                  }
                 >
                   {skill}
                 </button>

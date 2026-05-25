@@ -42,8 +42,149 @@ function half(className: ClassName, rank: number, subclass?: string): SpellSourc
 function third(className: ClassName, rank: number, subclass?: string): SpellSource {
   return source(className, thirdCasterLevelByRank[rank], subclass);
 }
+function cantripSource(className: ClassName, subclass?: string): SpellSource {
+  return source(className, 1, subclass);
+}
+
+function thirdCasterCantrip(className: ClassName, subclass: string): SpellSource {
+  return source(className, 3, subclass);
+}
 
 export const spellAvailability: Record<string, SpellSource[]> = {
+    "acid-splash": [
+    cantripSource("Sorcerer"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "blade-ward": [
+    cantripSource("Bard"),
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "bone-chill": [
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "booming-blade": [
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "bursting-sinew": [],
+  "dancing-lights": [
+    cantripSource("Bard"),
+    cantripSource("Sorcerer"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "eldritch-blast": [cantripSource("Warlock")],
+  "fire-bolt": [
+    cantripSource("Sorcerer"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  friends: [
+    cantripSource("Bard"),
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  guidance: [
+    cantripSource("Cleric"),
+    cantripSource("Druid"),
+  ],
+  light: [
+    cantripSource("Bard"),
+    cantripSource("Cleric"),
+    cantripSource("Sorcerer"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "mage-hand": [
+    cantripSource("Bard"),
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "minor-illusion": [
+    cantripSource("Bard"),
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "poison-spray": [
+    cantripSource("Druid"),
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "produce-flame": [
+    cantripSource("Druid"),
+  ],
+  "ray-of-frost": [
+    cantripSource("Sorcerer"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  resistance: [
+    cantripSource("Cleric"),
+    cantripSource("Druid"),
+  ],
+  "sacred-flame": [
+    cantripSource("Cleric"),
+  ],
+  shillelagh: [
+    cantripSource("Druid"),
+  ],
+  "shocking-grasp": [
+    cantripSource("Sorcerer"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  thaumaturgy: [
+    cantripSource("Cleric"),
+  ],
+  "thorn-whip": [
+    cantripSource("Druid"),
+  ],
+  "toll-the-dead": [
+    cantripSource("Cleric"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+  ],
+  "true-strike": [
+    cantripSource("Bard"),
+    cantripSource("Sorcerer"),
+    cantripSource("Warlock"),
+    cantripSource("Wizard"),
+    thirdCasterCantrip("Rogue", "Arcane Trickster"),
+    thirdCasterCantrip("Fighter", "Eldritch Knight"),
+  ],
+  "vicious-mockery": [
+    cantripSource("Bard"),
+  ],
   "animal-friendship": [
     full("Bard", 1),
     full("Druid", 1),

@@ -143,12 +143,270 @@ function invocation(
     tags: ["invocation", ...tags],
   };
 }
+
+function cantrip(
+  id: string,
+  name: string,
+  range: BG3Spell["range"],
+  roles: AbilityRole[],
+  damageTypes: DamageType[],
+  actions: ActionCost[],
+  requiresConcentration = false,
+  tags: string[] = []
+): BG3Spell {
+  return {
+    id,
+    name,
+    sourceType: "spell",
+    rank: 0,
+    range,
+    roles,
+    damageTypes,
+    costs: {
+      actions,
+      resources: ["cantrip"],
+      requiresConcentration,
+    },
+    tags: ["cantrip", ...tags],
+  };
+}
+
 const self = { label: "self", meters: 0, category: "self", shape: "self" } as const;
 const melee = { label: "1.5m", meters: 1.5, category: "melee", shape: "melee" } as const;
 const touch = { label: "1.5m", meters: 1.5, category: "melee", shape: "single-target" } as const;
 const weaponRange = { label: "weapon range", meters: 18, category: "long", shape: "weapon" } as const;
 
+
 export const bg3Spells: BG3Spell[] = [
+    cantrip(
+    "acid-splash",
+    "Acid Splash",
+    { label: "18m, 2m AoE", meters: 18, category: "long", shape: "radius", aoeMeters: 2 },
+    ["area-damage"],
+    ["Acid"],
+    ["action"]
+  ),
+
+  cantrip(
+    "blade-ward",
+    "Blade Ward",
+    self,
+    ["defense-protection"],
+    [],
+    ["action"]
+  ),
+
+  cantrip(
+    "bone-chill",
+    "Bone Chill",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage", "control"],
+    ["Necrotic"],
+    ["action"]
+  ),
+
+  cantrip(
+    "booming-blade",
+    "Booming Blade",
+    weaponRange,
+    ["single-target-damage", "control"],
+    ["Weapon", "Thunder"],
+    ["action"]
+  ),
+
+  cantrip(
+    "bursting-sinew",
+    "Bursting Sinew",
+    { label: "18m, 3m AoE", meters: 18, category: "long", shape: "radius", aoeMeters: 3 },
+    ["area-damage"],
+    ["Piercing"],
+    ["action"]
+  ),
+
+  cantrip(
+    "dancing-lights",
+    "Dancing Lights",
+    { label: "18m, 9m AoE", meters: 18, category: "long", shape: "radius", aoeMeters: 9 },
+    ["support-buff", "investigation-world-interaction"],
+    [],
+    ["action"],
+    true
+  ),
+
+  cantrip(
+    "eldritch-blast",
+    "Eldritch Blast",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage"],
+    ["Force"],
+    ["action"]
+  ),
+
+  cantrip(
+    "fire-bolt",
+    "Fire Bolt",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage"],
+    ["Fire"],
+    ["action"]
+  ),
+
+  cantrip(
+    "friends",
+    "Friends",
+    { label: "9m", meters: 9, category: "mid", shape: "single-target" },
+    ["narrative-interaction", "support-buff"],
+    [],
+    ["action"],
+    true
+  ),
+
+  cantrip(
+    "guidance",
+    "Guidance",
+    touch,
+    ["support-buff", "investigation-world-interaction"],
+    [],
+    ["action"],
+    true
+  ),
+
+  cantrip(
+    "light",
+    "Light",
+    touch,
+    ["support-buff", "investigation-world-interaction"],
+    [],
+    ["action"]
+  ),
+
+  cantrip(
+    "mage-hand",
+    "Mage Hand",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["summon", "investigation-world-interaction"],
+    [],
+    ["action"]
+  ),
+
+  cantrip(
+    "minor-illusion",
+    "Minor Illusion",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["control", "investigation-world-interaction"],
+    [],
+    ["action"]
+  ),
+
+  cantrip(
+    "poison-spray",
+    "Poison Spray",
+    { label: "3m", meters: 3, category: "melee", shape: "single-target" },
+    ["single-target-damage"],
+    ["Poison"],
+    ["action"]
+  ),
+
+  cantrip(
+    "produce-flame",
+    "Produce Flame",
+    self,
+    ["single-target-damage", "support-buff"],
+    ["Fire"],
+    ["action"]
+  ),
+
+  cantrip(
+    "ray-of-frost",
+    "Ray of Frost",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage", "control"],
+    ["Cold"],
+    ["action"]
+  ),
+
+  cantrip(
+    "resistance",
+    "Resistance",
+    touch,
+    ["support-buff", "defense-protection"],
+    [],
+    ["action"],
+    true
+  ),
+
+  cantrip(
+    "sacred-flame",
+    "Sacred Flame",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage"],
+    ["Radiant"],
+    ["action"]
+  ),
+
+  cantrip(
+    "shillelagh",
+    "Shillelagh",
+    self,
+    ["support-buff", "single-target-damage"],
+    ["Weapon"],
+    ["bonus-action"]
+  ),
+
+  cantrip(
+    "shocking-grasp",
+    "Shocking Grasp",
+    touch,
+    ["single-target-damage", "control"],
+    ["Lightning"],
+    ["action"]
+  ),
+
+  cantrip(
+    "thaumaturgy",
+    "Thaumaturgy",
+    self,
+    ["narrative-interaction", "support-buff"],
+    [],
+    ["action"]
+  ),
+
+  cantrip(
+    "thorn-whip",
+    "Thorn Whip",
+    { label: "9m", meters: 9, category: "mid", shape: "single-target" },
+    ["single-target-damage", "control"],
+    ["Piercing"],
+    ["action"]
+  ),
+
+  cantrip(
+    "toll-the-dead",
+    "Toll the Dead",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage"],
+    ["Necrotic"],
+    ["action"]
+  ),
+
+  cantrip(
+    "true-strike",
+    "True Strike",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["support-buff"],
+    [],
+    ["action"],
+    true
+  ),
+
+  cantrip(
+    "vicious-mockery",
+    "Vicious Mockery",
+    { label: "18m", meters: 18, category: "long", shape: "single-target" },
+    ["single-target-damage", "control"],
+    ["Psychic"],
+    ["action"]
+  ),
   spell("animal-friendship", "Animal Friendship", 1, { label: "18m", meters: 18, category: "long", shape: "single-target" }, ["control"], [], ["action"]),
   spell("armour-of-agathys", "Armour of Agathys", 1, self, ["defense-protection"], ["Cold"], ["action"], false, ["temporary-hit-points", "retaliation"]),
   spell("arms-of-hadar", "Arms of Hadar", 1, { label: "3m", meters: 3, category: "melee", shape: "radius", aoeMeters: 3 }, ["area-damage", "control"], ["Necrotic"], ["action"]),
@@ -365,6 +623,31 @@ export const bg3Spells: BG3Spell[] = [
 ];
 
 const spellDescriptions: Record<string, string> = {
+  "acid-splash": "Hurl a bubble of acid that damages creatures in a small area.",
+  "blade-ward": "Take only half damage from Bludgeoning, Piercing, and Slashing attacks for a short time.",
+  "bone-chill": "Deal Necrotic damage and prevent the target from regaining Hit Points. Undead targets also receive Disadvantage on Attack Rolls.",
+  "booming-blade": "Make a weapon attack that deals normal weapon damage and wreathes the target in unstable Thunder energy.",
+  "bursting-sinew": "Burst a corpse or target area, dealing Piercing damage in a small radius.",
+  "dancing-lights": "Create lights that illuminate an area.",
+  "eldritch-blast": "Fire a beam of crackling Force energy.",
+  "fire-bolt": "Hurl a mote of fire that deals Fire damage and can ignite flammable surfaces.",
+  "friends": "Gain Advantage on Charisma Checks against a non-hostile creature.",
+  "guidance": "Grant a creature a 1d4 bonus to Ability Checks.",
+  "light": "Infuse an object with an aura of light.",
+  "mage-hand": "Create a spectral hand that can manipulate and throw objects.",
+  "minor-illusion": "Create an illusion that distracts nearby creatures.",
+  "poison-spray": "Project a puff of noxious gas that deals Poison damage.",
+  "produce-flame": "Create a flame in your hand that sheds light and can be hurled at enemies.",
+  "ray-of-frost": "Reduce a creature's Movement Speed and deal Cold damage.",
+  "resistance": "Grant a creature a 1d4 bonus to Saving Throws.",
+  "sacred-flame": "Call down radiant flame that ignores cover and forces a Dexterity Saving Throw.",
+  "shillelagh": "Imbue your staff or club with nature's power.",
+  "shocking-grasp": "Shock a creature with Lightning damage and prevent it from taking reactions.",
+  "thaumaturgy": "Gain Advantage on Intimidation and Performance checks.",
+  "thorn-whip": "Strike a creature with a thorny vine and pull it closer.",
+  "toll-the-dead": "Force a creature to make a Wisdom Saving Throw or take Necrotic damage.",
+  "true-strike": "Gain Advantage on your next Attack Roll against the target.",
+  "vicious-mockery": "Insult a creature with magical force, dealing Psychic damage and imposing Disadvantage on its next Attack Roll.",
   "animal-friendship": "Convince a beast not to attack you. The creature must have an Intelligence of 3 or less. The condition ends early if you or an ally hurts the target.",
   "armour-of-agathys": "Gain 5 Temporary Hit Points and deal Cold damage to any creature that hits you with a melee attack.",
   "arms-of-hadar": "Prevent nearby targets from using reactions. Targets still take half damage on a successful save.",

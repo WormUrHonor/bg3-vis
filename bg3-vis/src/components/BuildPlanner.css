@@ -394,14 +394,22 @@ select {
   position: absolute;
   top: 2px;
   left: 3px;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border-radius: 999px;
-  background: rgba(96, 68, 144, 0.92);
-  color: #efe4ff;
-  font-size: 0.58rem;
-  line-height: 14px;
-  font-weight: 800;
+  background: rgba(20, 14, 10, 0.78);
+  border: 1px solid rgba(216, 178, 104, 0.36);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.spell-concentration-badge img {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  display: block;
 }
 
 .spell-tooltip {
@@ -544,4 +552,198 @@ select {
   .feat-choice-grid {
     grid-template-columns: 1fr;
   }
+}
+.compact-class-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.label-with-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.label-with-meta span {
+  color: #b9aa91;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.section-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.section-heading-row h3 {
+  margin: 0 0 4px;
+}
+
+.compact-intro {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.section-count-pill {
+  flex-shrink: 0;
+  min-width: 46px;
+  text-align: center;
+  border: 1px solid rgba(216, 178, 104, 0.32);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(216, 178, 104, 0.12);
+  color: #f7d995;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.feat-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.feat-card {
+  background:
+    radial-gradient(circle at top right, rgba(216, 178, 104, 0.08), transparent 36%),
+    rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(216, 178, 104, 0.22);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.feat-card-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.compact-feat-header {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.feat-level-pill {
+  flex-shrink: 0;
+  border: 1px solid rgba(216, 178, 104, 0.35);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(216, 178, 104, 0.12);
+  color: #f7d995;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.feat-summary-line {
+  min-width: 0;
+  color: #b9aa91;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feat-description {
+  margin: 10px 0 0;
+  color: #cbbda7;
+  line-height: 1.42;
+  font-size: 0.94rem;
+}
+
+.feat-requirement {
+  margin: 8px 0 0;
+  color: #d7a85f;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.feat-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.feat-subsection {
+  margin-top: 12px;
+}
+
+.feat-note-box {
+  margin-top: 12px;
+}
+
+.compact-chip-grid {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.compact-chip-grid .choice-chip {
+  padding: 7px 11px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 800px) {
+  .compact-class-grid,
+  .feat-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .label-with-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .section-heading-row {
+    flex-direction: column;
+  }
+}
+.level-stepper {
+  height: 43px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  overflow: hidden;
+  background: #211a14;
+  border: 1px solid rgba(216, 178, 104, 0.35);
+  border-radius: 10px;
+}
+
+.level-stepper button {
+  height: 100%;
+  border: none;
+  background: rgba(216, 178, 104, 0.1);
+  color: #f2e7d2;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.level-stepper button:first-child {
+  border-right: 1px solid rgba(216, 178, 104, 0.22);
+}
+
+.level-stepper button:last-child {
+  border-left: 1px solid rgba(216, 178, 104, 0.22);
+}
+
+.level-stepper button:hover:not(:disabled) {
+  background: rgba(216, 178, 104, 0.2);
+}
+
+.level-stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.level-stepper strong {
+  text-align: center;
+  color: #f2e7d2;
+  font-size: 0.96rem;
+  font-weight: 700;
 }

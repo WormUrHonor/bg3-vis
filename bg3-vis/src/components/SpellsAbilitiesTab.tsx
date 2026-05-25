@@ -4,6 +4,7 @@ import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 import { toggleSpellSelection } from "../logic/spellSelectionLogic";
 import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
 import { getSpellIcon } from "../logic/spellIconLogic";
+import concentrationIcon from "../assets/UI Icons/20px-Concentration_Icon.png.webp";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -15,6 +16,8 @@ type SpellsAbilitiesTabProps = {
 };
 
 function toRoman(value: number): string {
+  if (value === 0) return "C";
+
   const romanByNumber: Record<number, string> = {
     1: "I",
     2: "II",
@@ -35,7 +38,7 @@ function SpellsAbilitiesTab({
   selectedSpellIds,
   setSelectedSpellIds,
 }: SpellsAbilitiesTabProps) {
-  const spellRanks = [1, 2, 3, 4, 5, 6] as const;
+  const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
   const availableSpells = getAvailableSpellsForBuild(
     bg3Spells,
@@ -77,7 +80,7 @@ function SpellsAbilitiesTab({
 
             return (
               <section key={rank} className="spell-rank-section">
-                <h4>Level {toRoman(rank)}</h4>
+                <h4>{rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}</h4>
 
                 <div className="spell-icon-grid">
                   {spellsForRank.map((spell) => (
@@ -100,11 +103,15 @@ function SpellsAbilitiesTab({
   className="spell-icon-image"
 />
 
-                      <span className="spell-rank-badge">{toRoman(spell.rank)}</span>
+                      <span className="spell-rank-badge">
+  {spell.rank === 0 ? "C" : toRoman(spell.rank)}
+</span>
 
                       {spell.costs.requiresConcentration && (
-                        <span className="spell-concentration-badge">C</span>
-                      )}
+  <span className="spell-concentration-badge" title="Requires concentration">
+    <img src={concentrationIcon} alt="Concentration" />
+  </span>
+)}
 
                       <span className="spell-tooltip">
                         <strong>{spell.name}</strong>
