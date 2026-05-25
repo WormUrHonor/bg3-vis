@@ -480,3 +480,68 @@ select {
     grid-template-columns: 1fr;
   }
 }
+.feat-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.feat-card {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(216, 178, 104, 0.22);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.feat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.feat-card-header h4 {
+  margin: 0 0 4px;
+  color: #f2e7d2;
+}
+
+.feat-card-header span {
+  color: #b9aa91;
+  font-size: 0.9rem;
+}
+
+.feat-description {
+  margin: 12px 0 0;
+  color: #cbbda7;
+  line-height: 1.45;
+}
+
+.feat-requirement {
+  margin: 8px 0 0;
+  color: #d7a85f;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.feat-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.feat-subsection {
+  margin-top: 14px;
+}
+
+.feat-note-box {
+  margin-top: 14px;
+}
+
+@media (max-width: 800px) {
+  .feat-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,8 +1,10 @@
-import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
   AbilityScore,
   ClassName,
+  ElementalAdeptDamageType,
+  FeatName,
+  FeatSelection,
   RaceName,
   RangerFavouredEnemy,
   RangerNaturalExplorer,
@@ -15,9 +17,28 @@ import {
   pointBuyCost,
   rangerFavouredEnemies,
   rangerNaturalExplorers,
+  skills,
   subclassesByClass,
   warlockInvocations,
 } from "../data/bg3CharacterData";
+import {
+  battleMasterManoeuvres,
+  bg3Feats,
+  elementalAdeptDamageTypes,
+  getFeatDefinition,
+  ritualCasterSpells,
+  spellSniperCantrips,
+  weaponMasterWeaponTypes,
+} from "../data/bg3Feats";
+import {
+  calculateFinalAbilityScores,
+  calculateUsedPointBuyPoints,
+} from "../logic/abilityScoreLogic";
+import {
+  createEmptyFeatSelection,
+  describeFeatSelection,
+  resetFeatSelection,
+} from "../logic/featLogic";
 
 type ClassScoresTabProps = {
   selectedClass: ClassName | "";
@@ -33,6 +54,11 @@ type ClassScoresTabProps = {
   rangerFavouredEnemy: RangerFavouredEnemy | "";
   rangerNaturalExplorer: RangerNaturalExplorer | "";
   selectedWarlockInvocations: WarlockInvocation[];
+  baseAbilityScores: Record<AbilityScore, number>;
+  bonusPlusTwo: AbilityScore | "";
+  bonusPlusOne: AbilityScore | "";
+  featSelections: FeatSelection[];
+  featAbilityIncreases: Partial<Record<AbilityScore, number>>;
   onClassChange: (value: string) => void;
   setSelectedSubclass: (value: string) => void;
   setSelectedLevel: (value: number) => void;
@@ -43,6 +69,10 @@ type ClassScoresTabProps = {
   setRangerFavouredEnemy: (value: RangerFavouredEnemy | "") => void;
   setRangerNaturalExplorer: (value: RangerNaturalExplorer | "") => void;
   setSelectedWarlockInvocations: Dispatch<SetStateAction<WarlockInvocation[]>>;
+  setBaseAbilityScores: Dispatch<SetStateAction<Record<AbilityScore, number>>>;
+  setBonusPlusTwo: (value: AbilityScore | "") => void;
+  setBonusPlusOne: (value: AbilityScore | "") => void;
+  setFeatSelections: Dispatch<SetStateAction<FeatSelection[]>>;
 };
 
 function ClassScoresTab({
@@ -59,6 +89,11 @@ function ClassScoresTab({
   rangerFavouredEnemy,
   rangerNaturalExplorer,
   selectedWarlockInvocations,
+  baseAbilityScores,
+  bonusPlusTwo,
+  bonusPlusOne,
+  featSelections,
+  featAbilityIncreases,
   onClassChange,
   setSelectedSubclass,
   setSelectedLevel,
@@ -69,26 +104,25 @@ function ClassScoresTab({
   setRangerFavouredEnemy,
   setRangerNaturalExplorer,
   setSelectedWarlockInvocations,
+  setBaseAbilityScores,
+  setBonusPlusTwo,
+  setBonusPlusOne,
+  setFeatSelections,
 }: ClassScoresTabProps) {
-  const [scores, setScores] = useState<Record<AbilityScore, number>>({
-    Strength: 8,
-    Dexterity: 8,
-    Constitution: 8,
-    Intelligence: 8,
-    Wisdom: 8,
-    Charisma: 8,
-  });
-
-  const [bonusPlusTwo, setBonusPlusTwo] = useState<AbilityScore | "">("");
-  const [bonusPlusOne, setBonusPlusOne] = useState<AbilityScore | "">("");
-
   const availableSubclasses = selectedClass ? subclassesByClass[selectedClass] : [];
-  const usedPoints = abilityScores.reduce((sum, score) => sum + pointBuyCost[scores[score]], 0);
+  const usedPoints = calculateUsedPointBuyPoints(baseAbilityScores);
   const pointsRemaining = 27 - usedPoints;
   const knowledgeSkills: Skill[] = ["Arcana", "History", "Nature", "Religion"];
 
+  const finalScores = calculateFinalAbilityScores(
+    baseAbilityScores,
+    bonusPlusTwo,
+    bonusPlusOne,
+    featAbilityIncreases
+  );
+
   function increaseScore(score: AbilityScore) {
-    setScores((current) => {
+    setBaseAbilityScores((current) => {
       const currentValue = current[score];
       if (currentValue >= 15) return current;
 
@@ -102,18 +136,11 @@ function ClassScoresTab({
   }
 
   function decreaseScore(score: AbilityScore) {
-    setScores((current) => {
+    setBaseAbilityScores((current) => {
       const currentValue = current[score];
       if (currentValue <= 8) return current;
       return { ...current, [score]: currentValue - 1 };
     });
-  }
-
-  function finalScore(score: AbilityScore) {
-    let bonus = 0;
-    if (bonusPlusTwo === score) bonus += 2;
-    if (bonusPlusOne === score) bonus += 1;
-    return scores[score] + bonus;
   }
 
   function toggleLimitedSkill(
@@ -147,11 +174,416 @@ function ClassScoresTab({
     });
   }
 
+  function updateFeatSelection(
+    slotLevel: number,
+    updater: (current: FeatSelection) => FeatSelection
+  ) {
+    setFeatSelections((current) => {
+      const existing = current.find((selection) => selection.slotLevel === slotLevel);
+
+      if (!existing) {
+        return [...current, updater(createEmptyFeatSelection(slotLevel))].sort(
+          (a, b) => a.slotLevel - b.slotLevel
+        );
+      }
+
+      return current.map((selection) =>
+        selection.slotLevel === slotLevel ? updater(selection) : selection
+      );
+    });
+  }
+
+  function handleFeatNameChange(slotLevel: number, featName: FeatName | "") {
+    updateFeatSelection(slotLevel, () => resetFeatSelection(slotLevel, featName));
+  }
+
+  function toggleFeatListItem(
+    slotLevel: number,
+    field:
+      | "selectedSkills"
+      | "selectedCantrips"
+      | "selectedSpells"
+      | "selectedWeaponTypes"
+      | "selectedManoeuvres",
+    item: string,
+    max: number
+  ) {
+    updateFeatSelection(slotLevel, (current) => {
+      const currentItems = current[field] as string[];
+      const isSelected = currentItems.includes(item);
+
+      if (isSelected) {
+        return {
+          ...current,
+          [field]: currentItems.filter((currentItem) => currentItem !== item),
+        };
+      }
+
+      if (currentItems.length >= max) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [field]: [...currentItems, item],
+      };
+    });
+  }
+
+  function setFeatAbility(
+    slotLevel: number,
+    field: "selectedAbility" | "secondaryAbility",
+    value: AbilityScore | ""
+  ) {
+    updateFeatSelection(slotLevel, (current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function setFeatDamageType(
+    slotLevel: number,
+    value: ElementalAdeptDamageType | ""
+  ) {
+    updateFeatSelection(slotLevel, (current) => ({
+      ...current,
+      selectedDamageType: value,
+    }));
+  }
+
+  function renderFeatChoices(selection: FeatSelection) {
+    const feat = getFeatDefinition(selection.featName);
+    if (!feat) return null;
+
+    if (feat.choiceKind === "ability-improvement") {
+      return (
+        <div className="feat-choice-grid">
+          <label>
+            First +1
+            <select
+              value={selection.selectedAbility}
+              onChange={(e) =>
+                setFeatAbility(
+                  selection.slotLevel,
+                  "selectedAbility",
+                  e.target.value as AbilityScore | ""
+                )
+              }
+            >
+              <option value="">Select ability</option>
+              {abilityScores.map((score) => (
+                <option key={score} value={score}>
+                  {score}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Second +1
+            <select
+              value={selection.secondaryAbility}
+              onChange={(e) =>
+                setFeatAbility(
+                  selection.slotLevel,
+                  "secondaryAbility",
+                  e.target.value as AbilityScore | ""
+                )
+              }
+            >
+              <option value="">Select ability</option>
+              {abilityScores.map((score) => (
+                <option key={score} value={score}>
+                  {score}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      );
+    }
+
+if (
+  feat.choiceKind === "single-ability" ||
+  feat.choiceKind === "resilient"
+) {
+  return (
+    <div className="feat-choice-grid">
+      <label>
+        Ability increase
+        <select
+          value={selection.selectedAbility}
+          onChange={(e) =>
+            setFeatAbility(
+              selection.slotLevel,
+              "selectedAbility",
+              e.target.value as AbilityScore | ""
+            )
+          }
+        >
+          <option value="">Select ability</option>
+          {(feat.abilityOptions ?? abilityScores).map((score) => (
+            <option key={score} value={score}>
+              {score}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+    if (feat.choiceKind === "elemental-adept") {
+      return (
+        <div className="feat-choice-grid">
+          <label>
+            Damage type
+            <select
+              value={selection.selectedDamageType}
+              onChange={(e) =>
+                setFeatDamageType(
+                  selection.slotLevel,
+                  e.target.value as ElementalAdeptDamageType | ""
+                )
+              }
+            >
+              <option value="">Select damage type</option>
+              {elementalAdeptDamageTypes.map((damageType) => (
+                <option key={damageType} value={damageType}>
+                  {damageType}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      );
+    }
+
+    if (feat.choiceKind === "skill-proficiencies") {
+      const max = feat.chooseSkillCount ?? 3;
+
+      return (
+        <div className="feat-subsection">
+          <p className="panel-intro">
+            Choose {max} skill proficiencies. Selected: {selection.selectedSkills.length}/{max}.
+          </p>
+
+          <div className="skill-grid">
+            {skills.map((skill) => {
+              const isSelected = selection.selectedSkills.includes(skill);
+              const alreadyProficient = allProficiencies.includes(skill) && !isSelected;
+              const maxReached = selection.selectedSkills.length >= max && !isSelected;
+
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  disabled={alreadyProficient || maxReached}
+                  className={[
+                    "choice-chip",
+                    isSelected ? "selected" : "",
+                    alreadyProficient ? "locked" : "",
+                  ].join(" ")}
+                  onClick={() =>
+                    toggleFeatListItem(selection.slotLevel, "selectedSkills", skill, max)
+                  }
+                >
+                  {skill}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (feat.choiceKind === "ritual-caster") {
+      const max = feat.chooseSpellCount ?? 2;
+
+      return (
+        <div className="feat-subsection">
+          <p className="panel-intro">
+            Choose {max} ritual spells. Selected: {selection.selectedSpells.length}/{max}.
+          </p>
+
+          <div className="chip-grid">
+            {ritualCasterSpells.map((spell) => {
+              const isSelected = selection.selectedSpells.includes(spell);
+              const maxReached = selection.selectedSpells.length >= max && !isSelected;
+
+              return (
+                <button
+                  key={spell}
+                  type="button"
+                  disabled={maxReached}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                  onClick={() =>
+                    toggleFeatListItem(selection.slotLevel, "selectedSpells", spell, max)
+                  }
+                >
+                  {spell}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (feat.choiceKind === "spell-sniper") {
+      const max = feat.chooseCantripCount ?? 1;
+
+      return (
+        <div className="feat-subsection">
+          <p className="panel-intro">
+            Choose {max} cantrip. Selected: {selection.selectedCantrips.length}/{max}.
+          </p>
+
+          <div className="chip-grid">
+            {spellSniperCantrips.map((cantrip) => {
+              const isSelected = selection.selectedCantrips.includes(cantrip);
+              const maxReached = selection.selectedCantrips.length >= max && !isSelected;
+
+              return (
+                <button
+                  key={cantrip}
+                  type="button"
+                  disabled={maxReached}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                  onClick={() =>
+                    toggleFeatListItem(selection.slotLevel, "selectedCantrips", cantrip, max)
+                  }
+                >
+                  {cantrip}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+if (feat.choiceKind === "weapon-master") {
+  const max = feat.chooseWeaponCount ?? 4;
+
+  return (
+    <>
+      <div className="feat-choice-grid">
+        <label>
+          Ability increase
+          <select
+            value={selection.selectedAbility}
+            onChange={(e) =>
+              setFeatAbility(
+                selection.slotLevel,
+                "selectedAbility",
+                e.target.value as AbilityScore | ""
+              )
+            }
+          >
+            <option value="">Select ability</option>
+            {(feat.abilityOptions ?? abilityScores).map((score) => (
+              <option key={score} value={score}>
+                {score}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="feat-subsection">
+        <p className="panel-intro">
+          Choose {max} weapon proficiencies. Selected:{" "}
+          {selection.selectedWeaponTypes.length}/{max}.
+        </p>
+
+        <div className="chip-grid">
+          {weaponMasterWeaponTypes.map((weaponType) => {
+            const isSelected = selection.selectedWeaponTypes.includes(weaponType);
+            const maxReached =
+              selection.selectedWeaponTypes.length >= max && !isSelected;
+
+            return (
+              <button
+                key={weaponType}
+                type="button"
+                disabled={maxReached}
+                className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                onClick={() =>
+                  toggleFeatListItem(
+                    selection.slotLevel,
+                    "selectedWeaponTypes",
+                    weaponType,
+                    max
+                  )
+                }
+              >
+                {weaponType}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+    if (feat.choiceKind === "martial-adept") {
+      const max = feat.chooseManoeuvreCount ?? 2;
+
+      return (
+        <div className="feat-subsection">
+          <p className="panel-intro">
+            Choose {max} manoeuvres. Selected: {selection.selectedManoeuvres.length}/{max}.
+          </p>
+
+          <div className="chip-grid">
+            {battleMasterManoeuvres.map((manoeuvre) => {
+              const isSelected = selection.selectedManoeuvres.includes(manoeuvre);
+              const maxReached = selection.selectedManoeuvres.length >= max && !isSelected;
+
+              return (
+                <button
+                  key={manoeuvre}
+                  type="button"
+                  disabled={maxReached}
+                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                  onClick={() =>
+                    toggleFeatListItem(
+                      selection.slotLevel,
+                      "selectedManoeuvres",
+                      manoeuvre,
+                      max
+                    )
+                  }
+                >
+                  {manoeuvre}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (feat.choiceKind === "magic-initiate") {
+      return (
+        <div className="placeholder-box feat-note-box">
+          This feat is recorded here. Its exact cantrip and spell choices should be connected to
+          the spell data once Magic Initiate spell-list filtering is added.
+        </div>
+      );
+    }
+
+    return null;
+  }
+
   return (
     <div className="tab-content">
       <h2>Class & Ability Scores</h2>
       <p className="panel-intro">
-        ....
+        Select the class progression, point-buy scores, flexible ability bonuses, and level-based
+        feats used by the build.
       </p>
 
       <div className="form-grid">
@@ -214,16 +646,15 @@ function ClassScoresTab({
         </label>
 
         <label>
-          Feat / ASI
-          <select>
-            <option>Select later</option>
-            <option>Ability Score Improvement</option>
-            <option>Actor</option>
-            <option>Alert</option>
-            <option>Great Weapon Master</option>
-            <option>Sharpshooter</option>
-            <option>War Caster</option>
-          </select>
+          Feat slots
+          <input
+            value={
+              featSelections.length > 0
+                ? featSelections.map((selection) => `Level ${selection.slotLevel}`).join(", ")
+                : "None yet"
+            }
+            readOnly
+          />
         </label>
       </div>
 
@@ -237,28 +668,40 @@ function ClassScoresTab({
 
       <div className="score-grid improved">
         {abilityScores.map((score) => {
-          const currentValue = scores[score];
+          const currentValue = baseAbilityScores[score];
           const nextValue = currentValue + 1;
           const costDifference =
             nextValue <= 15 ? pointBuyCost[nextValue] - pointBuyCost[currentValue] : Infinity;
+
+          const featBonus = featAbilityIncreases[score] ?? 0;
+          const flexibleBonus =
+            (bonusPlusTwo === score ? 2 : 0) + (bonusPlusOne === score ? 1 : 0);
+          const totalBonus = flexibleBonus + featBonus;
 
           return (
             <div key={score} className="score-card">
               <span className="score-name">{score}</span>
               <div className="score-controls">
-                <button type="button" onClick={() => decreaseScore(score)} disabled={scores[score] <= 8}>
+                <button
+                  type="button"
+                  onClick={() => decreaseScore(score)}
+                  disabled={baseAbilityScores[score] <= 8}
+                >
                   −
                 </button>
-                <strong>{scores[score]}</strong>
+                <strong>{baseAbilityScores[score]}</strong>
                 <button
                   type="button"
                   onClick={() => increaseScore(score)}
-                  disabled={scores[score] >= 15 || pointsRemaining < costDifference}
+                  disabled={baseAbilityScores[score] >= 15 || pointsRemaining < costDifference}
                 >
                   +
                 </button>
               </div>
-              <span className="score-final">Final: {finalScore(score)}</span>
+              <span className="score-final">
+                Final: {finalScores[score]}
+                {totalBonus > 0 ? ` (+${totalBonus})` : ""}
+              </span>
             </div>
           );
         })}
@@ -267,7 +710,10 @@ function ClassScoresTab({
       <div className="form-grid">
         <label>
           +2 ability bonus
-          <select value={bonusPlusTwo} onChange={(e) => setBonusPlusTwo(e.target.value as AbilityScore | "")}>
+          <select
+            value={bonusPlusTwo}
+            onChange={(e) => setBonusPlusTwo(e.target.value as AbilityScore | "")}
+          >
             <option value="">Select ability</option>
             {abilityScores.map((score) => (
               <option key={score} value={score} disabled={bonusPlusOne === score}>
@@ -279,7 +725,10 @@ function ClassScoresTab({
 
         <label>
           +1 ability bonus
-          <select value={bonusPlusOne} onChange={(e) => setBonusPlusOne(e.target.value as AbilityScore | "")}>
+          <select
+            value={bonusPlusOne}
+            onChange={(e) => setBonusPlusOne(e.target.value as AbilityScore | "")}
+          >
             <option value="">Select ability</option>
             {abilityScores.map((score) => (
               <option key={score} value={score} disabled={bonusPlusTwo === score}>
@@ -289,6 +738,63 @@ function ClassScoresTab({
           </select>
         </label>
       </div>
+
+      {featSelections.length > 0 && (
+        <div className="section-block">
+          <h3>Feats</h3>
+          <p className="panel-intro">
+            Feat slots are based on the selected class and level. Fighter receives an additional
+            slot at level 6, while Rogue receives an additional slot at level 10.
+          </p>
+
+          <div className="feat-slot-list">
+            {featSelections.map((selection) => {
+              const feat = getFeatDefinition(selection.featName);
+
+              return (
+                <div key={selection.slotLevel} className="feat-card">
+                  <div className="feat-card-header">
+                    <div>
+                      <h4>Level {selection.slotLevel}</h4>
+                      <span>{describeFeatSelection(selection)}</span>
+                    </div>
+                  </div>
+
+                  <label>
+                    Feat / ASI
+                    <select
+                      value={selection.featName}
+                      onChange={(e) =>
+                        handleFeatNameChange(
+                          selection.slotLevel,
+                          e.target.value as FeatName | ""
+                        )
+                      }
+                    >
+                      <option value="">Select feat</option>
+                      {bg3Feats.map((featOption) => (
+                        <option key={featOption.name} value={featOption.name}>
+                          {featOption.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {feat && (
+                    <>
+                      <p className="feat-description">{feat.description}</p>
+                      {feat.requirements && (
+                        <p className="feat-requirement">{feat.requirements}</p>
+                      )}
+                      {renderFeatChoices(selection)}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {selectedClass === "Ranger" && (
         <div className="section-block">
@@ -358,43 +864,23 @@ function ClassScoresTab({
           <p className="panel-intro">Choose any three additional skill proficiencies.</p>
 
           <div className="skill-grid">
-            {knowledgeSkills.concat(allProficiencies).length > 0 &&
-              ([
-                "Acrobatics",
-                "Animal Handling",
-                "Arcana",
-                "Athletics",
-                "Deception",
-                "History",
-                "Insight",
-                "Intimidation",
-                "Investigation",
-                "Medicine",
-                "Nature",
-                "Perception",
-                "Performance",
-                "Persuasion",
-                "Religion",
-                "Sleight of Hand",
-                "Stealth",
-                "Survival",
-              ] as Skill[]).map((skill) => {
-                const isSelected = loreBardSkills.includes(skill);
-                const alreadyKnown = allProficiencies.includes(skill) && !isSelected;
-                const maxReached = loreBardSkills.length >= 3 && !isSelected;
+            {skills.map((skill) => {
+              const isSelected = loreBardSkills.includes(skill);
+              const alreadyKnown = allProficiencies.includes(skill) && !isSelected;
+              const maxReached = loreBardSkills.length >= 3 && !isSelected;
 
-                return (
-                  <button
-                    key={skill}
-                    type="button"
-                    disabled={alreadyKnown || maxReached}
-                    className={["choice-chip", isSelected ? "selected" : "", alreadyKnown ? "locked" : ""].join(" ")}
-                    onClick={() => toggleLimitedSkill(skill, setLoreBardSkills, 3)}
-                  >
-                    {skill}
-                  </button>
-                );
-              })}
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  disabled={alreadyKnown || maxReached}
+                  className={["choice-chip", isSelected ? "selected" : "", alreadyKnown ? "locked" : ""].join(" ")}
+                  onClick={() => toggleLimitedSkill(skill, setLoreBardSkills, 3)}
+                >
+                  {skill}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

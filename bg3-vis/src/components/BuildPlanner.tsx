@@ -7,8 +7,10 @@ import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
 import DataCircle from "./DataCircle";
 
 import type {
+  AbilityScore,
   Background,
   ClassName,
+  FeatSelection,
   RaceName,
   RangerFavouredEnemy,
   RangerNaturalExplorer,
@@ -35,6 +37,16 @@ import {
   getAvailableSpellIdsForBuild,
 } from "../logic/spellSelectionLogic";
 
+import { defaultAbilityScores } from "../logic/abilityScoreLogic";
+
+import {
+  cleanFeatSelections,
+  getFeatAbilityIncreases,
+  getFeatExpertise,
+  getFeatLevelsForClass,
+  getFeatSkillProficiencies,
+} from "../logic/featLogic";
+
 const tabs: { id: TabId; label: string }[] = [
   { id: "character", label: "Character" },
   { id: "classScores", label: "Class & Scores" },
@@ -54,6 +66,12 @@ function BuildPlanner() {
   const [selectedClass, setSelectedClass] = useState<ClassName | "">("");
   const [selectedSubclass, setSelectedSubclass] = useState("");
   const [selectedLevel, setSelectedLevel] = useState(12);
+
+  const [baseAbilityScores, setBaseAbilityScores] =
+    useState<Record<AbilityScore, number>>(defaultAbilityScores);
+  const [bonusPlusTwo, setBonusPlusTwo] = useState<AbilityScore | "">("");
+  const [bonusPlusOne, setBonusPlusOne] = useState<AbilityScore | "">("");
+  const [featSelections, setFeatSelections] = useState<FeatSelection[]>([]);
 
   const [selectedClassSkills, setSelectedClassSkills] = useState<Skill[]>([]);
   const [bardExpertise, setBardExpertise] = useState<Skill[]>([]);
@@ -98,6 +116,10 @@ function BuildPlanner() {
       ? ["Deception", "Persuasion"]
       : [];
 
+  const featSkillProficiencies = getFeatSkillProficiencies(featSelections);
+  const featExpertise = getFeatExpertise(featSelections);
+  const featAbilityIncreases = getFeatAbilityIncreases(featSelections);
+
   const lockedSkills: Skill[] = unique([
     ...lockedBackgroundSkills,
     ...lockedRaceSkills,
@@ -110,11 +132,13 @@ function BuildPlanner() {
     ...lockedSkills,
     ...selectedClassSkills,
     ...loreBardSkills,
+    ...featSkillProficiencies,
   ]);
 
   const directExpertise: Skill[] = unique([
     ...getRaceExpertise(selectedRace, selectedSubrace),
     ...knowledgeClericExpertise,
+    ...featExpertise,
   ]);
 
   const proficiencyBasedExpertise: Skill[] = unique([
@@ -142,6 +166,12 @@ function BuildPlanner() {
   }, [availableSpellIds.join("|")]);
 
   useEffect(() => {
+    const featLevels = getFeatLevelsForClass(selectedClass, selectedLevel);
+
+    setFeatSelections((current) => cleanFeatSelections(current, featLevels));
+  }, [selectedClass, selectedLevel]);
+
+  useEffect(() => {
     setHasEvaluatedBuild(false);
   }, [
     buildName,
@@ -161,6 +191,10 @@ function BuildPlanner() {
     rangerNaturalExplorer,
     selectedWarlockInvocations,
     selectedSpellIds,
+    baseAbilityScores,
+    bonusPlusTwo,
+    bonusPlusOne,
+    featSelections,
   ]);
 
   function handleRaceChange(value: string) {
@@ -244,6 +278,13 @@ function BuildPlanner() {
             </div>
 
             <div className="summary-row">
+              <span>Feats</span>
+              <strong>
+                {featSelections.filter((selection) => selection.featName).length}
+              </strong>
+            </div>
+
+            <div className="summary-row">
               <span>Spells</span>
               <strong>{selectedSpellIds.length}</strong>
             </div>
@@ -287,6 +328,11 @@ function BuildPlanner() {
                 rangerFavouredEnemy={rangerFavouredEnemy}
                 rangerNaturalExplorer={rangerNaturalExplorer}
                 selectedWarlockInvocations={selectedWarlockInvocations}
+                baseAbilityScores={baseAbilityScores}
+                bonusPlusTwo={bonusPlusTwo}
+                bonusPlusOne={bonusPlusOne}
+                featSelections={featSelections}
+                featAbilityIncreases={featAbilityIncreases}
                 onClassChange={handleClassChange}
                 setSelectedSubclass={setSelectedSubclass}
                 setSelectedLevel={setSelectedLevel}
@@ -297,6 +343,10 @@ function BuildPlanner() {
                 setRangerFavouredEnemy={setRangerFavouredEnemy}
                 setRangerNaturalExplorer={setRangerNaturalExplorer}
                 setSelectedWarlockInvocations={setSelectedWarlockInvocations}
+                setBaseAbilityScores={setBaseAbilityScores}
+                setBonusPlusTwo={setBonusPlusTwo}
+                setBonusPlusOne={setBonusPlusOne}
+                setFeatSelections={setFeatSelections}
               />
             )}
 
