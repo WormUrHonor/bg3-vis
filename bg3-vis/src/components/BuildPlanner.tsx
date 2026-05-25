@@ -232,12 +232,13 @@ function BuildPlanner() {
     selectedWarlockInvocations
   );
 
-  const availableClassFeatures = getAvailableClassFeaturesForBuild(
-    bg3ClassFeatures,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel
-  );
+const availableClassFeatures = getAvailableClassFeaturesForBuild(
+  bg3ClassFeatures,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  selectedClassFeatureIds
+);
 
   const fixedClassFeatureIds = getFixedClassFeatureIds(availableClassFeatures);
 

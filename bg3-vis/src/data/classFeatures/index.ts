@@ -1,0 +1,70 @@
+﻿import type { ClassName } from "../../types/buildPlannerTypes";
+import type { BG3ClassFeature, ClassFeatureModule } from "./classFeatureTypes";
+
+import { barbarianClassModule } from "./barbarian";
+import { bardClassModule } from "./bard";
+import { clericClassModule } from "./cleric";
+import { druidClassModule } from "./druid";
+import { fighterClassModule } from "./fighter";
+import { monkClassModule } from "./monk";
+import { paladinClassModule } from "./paladin";
+import { rangerClassModule } from "./ranger";
+import { rogueClassModule } from "./rogue";
+import { sorcererClassModule } from "./sorcerer";
+import { warlockClassModule } from "./warlock";
+import { wizardClassModule } from "./wizard";
+
+export type {
+  BG3ClassFeature,
+  ClassFeatureAvailability,
+  ClassFeatureKind,
+  ClassFeatureModule,
+  ClassFeatureRange,
+} from "./classFeatureTypes";
+
+export const classFeatureModules: ClassFeatureModule[] = [
+  barbarianClassModule,
+  bardClassModule,
+  clericClassModule,
+  druidClassModule,
+  fighterClassModule,
+  monkClassModule,
+  paladinClassModule,
+  rangerClassModule,
+  rogueClassModule,
+  sorcererClassModule,
+  warlockClassModule,
+  wizardClassModule,
+];
+
+export const bg3ClassFeatures: BG3ClassFeature[] = classFeatureModules.flatMap(
+  (module) => module.features
+);
+
+export const classFeatureIconFileById: Record<string, string> = Object.assign(
+  {},
+  ...classFeatureModules.map((module) => module.iconFileByFeatureId)
+);
+
+export function getClassFeatureById(id: string): BG3ClassFeature | undefined {
+  return bg3ClassFeatures.find((featureEntry) => featureEntry.id === id);
+}
+
+export function getClassFeatureTabLabel(
+  selectedClass: ClassName | "",
+  selectedSubclass: string
+): string {
+  if (!selectedClass) return "Spells & Abilities";
+
+  const module = classFeatureModules.find(
+    (item) => item.className === selectedClass
+  );
+
+  if (!module) return "Spells & Abilities";
+
+  return (
+    module.subclassTabLabels?.[selectedSubclass] ??
+    module.defaultTabLabel ??
+    "Spells & Abilities"
+  );
+}
