@@ -187,7 +187,12 @@ export const subclassesByClass: Record<ClassName, string[]> = {
   Cleric: ["Life Domain", "Light Domain", "Trickery Domain", "Knowledge Domain", "Nature Domain", "Tempest Domain", "War Domain"],
   Druid: ["Circle of the Land", "Circle of the Moon", "Circle of the Spores"],
 Fighter: ["Arcane Archer", "Battle Master", "Champion", "Eldritch Knight"],
-  Monk: ["Way of the Open Hand", "Way of Shadow", "Way of the Four Elements"],
+  Monk: [
+  "Way of the Drunken Master",
+  "Way of the Four Elements",
+  "Way of the Open Hand",
+  "Way of Shadow",
+],
   Paladin: ["Oath of the Ancients", "Oath of Devotion", "Oath of Vengeance", "Oathbreaker"],
   Ranger: ["Hunter", "Beast Master", "Gloom Stalker"],
   Rogue: ["Arcane Trickster", "Assassin", "Thief"],
