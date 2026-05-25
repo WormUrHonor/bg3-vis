@@ -8,6 +8,13 @@ import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
 import { getSpellIcon } from "../logic/spellIconLogic";
 import { getClassFeatureIcon } from "../logic/classFeatureIconLogic";
 import concentrationIcon from "../assets/UI Icons/20px-Concentration_Icon.png.webp";
+import ritualIcon from "../assets/UI Icons/Ritual_Spell_Icon.png";
+import {
+  getActiveSpellChoiceRulesForBuild,
+  getSelectedSpellIdsForRule,
+  getSpellChoiceRuleForSpell,
+  isSpellChoiceGroupFull,
+} from "../data/spellChoiceRules";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -76,6 +83,9 @@ function formatCost(actions: string[], resources: string[]): string {
   if (items.length === 0) return "none";
 
   return items.join(", ");
+}
+function isRitualSpell(spell: { tags?: string[] }): boolean {
+  return spell.tags?.some((tag) => tag.toLowerCase() === "ritual") ?? false;
 }
 
 function getKindBadge(feature: BG3ClassFeature): string {
@@ -188,6 +198,14 @@ function SpellsAbilitiesTab({
   );
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
+
+  const activeSpellChoiceRules = getActiveSpellChoiceRulesForBuild(
+    availableSpells,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel
+  );
+
   const featureDisplayGroups = groupClassFeatures(availableClassFeatures);
 
   const selectedSpellCount = selectedSpellIds.length;
@@ -317,28 +335,11 @@ function SpellsAbilitiesTab({
         const nonChoiceFeatures = displayGroup.features.filter(
           (feature) => !feature.choiceGroupId
         );
-
-        const selectedOrGrantedInDisplayGroup = displayGroup.features.filter(
-          (feature) =>
-            !feature.isInformational &&
-            (selectedClassFeatureIds.includes(feature.id) ||
-              fixedClassFeatureIds.includes(feature.id))
-        ).length;
-
-        const countableFeaturesInDisplayGroup = displayGroup.features.filter(
-          (feature) => !feature.isInformational
-        ).length;
-
-        return (
-          <div key={displayGroup.id} className="section-block feature-group-block">
-            <div className="ability-section-heading">
-              <h3>{displayGroup.label}</h3>
-              <span>
-                {countableFeaturesInDisplayGroup > 0
-                  ? `${selectedOrGrantedInDisplayGroup}/${countableFeaturesInDisplayGroup}`
-                  : "Info"}
-              </span>
-            </div>
+return (
+  <div key={displayGroup.id} className="section-block feature-group-block">
+    <div className="ability-section-heading feature-display-heading">
+      <h3>{displayGroup.label}</h3>
+    </div>
 
             {nonChoiceFeatures.length > 0 && (
               <div className="ability-icon-grid">
@@ -380,10 +381,31 @@ function SpellsAbilitiesTab({
         <div className="section-block">
           <div className="ability-section-heading">
             <h3>Spells and cantrips</h3>
-            <span>
-              {selectedSpellIds.length}/{availableSpells.length}
-            </span>
+            <span>{selectedSpellIds.length}</span>
           </div>
+
+          {activeSpellChoiceRules.length > 0 && (
+            <div className="spell-choice-rule-list">
+              {activeSpellChoiceRules
+                .slice()
+                .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder)
+                .map((rule) => {
+                  const selectedInRule = getSelectedSpellIdsForRule(
+                    selectedSpellIds,
+                    rule
+                  );
+
+                  return (
+                    <div key={rule.id} className="spell-choice-rule-pill">
+                      <strong>{rule.displayGroupLabel}</strong>
+                      <span>
+                        {selectedInRule.length}/{rule.max}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
 
           <div className="spell-book">
             {spellRanks.map((rank) => {
@@ -401,6 +423,20 @@ function SpellsAbilitiesTab({
                     {spellsForRank.map((spell) => {
                       const isSelected = selectedSpellIds.includes(spell.id);
                       const isFixed = spell.tags?.includes("fixed") ?? false;
+                      const isRitual = isRitualSpell(spell);
+
+                      const choiceRule = getSpellChoiceRuleForSpell(
+                        spell.id,
+                        activeSpellChoiceRules
+                      );
+
+                      const groupFull = isSpellChoiceGroupFull(
+                        spell.id,
+                        selectedSpellIds,
+                        activeSpellChoiceRules
+                      );
+
+                      const isDisabled = isFixed || groupFull;
 
                       return (
                         <button
@@ -409,15 +445,17 @@ function SpellsAbilitiesTab({
                             "spell-icon-button",
                             isSelected ? "selected-spell" : "",
                             isFixed ? "fixed-ability" : "",
+                            groupFull ? "choice-disabled-soft" : "",
                           ].join(" ")}
                           type="button"
-                          disabled={isFixed}
+                          disabled={isDisabled}
                           onClick={() =>
                             setSelectedSpellIds((current) =>
                               toggleSpellSelection(
                                 spell.id,
                                 current,
-                                availableSpellIds
+                                availableSpellIds,
+                                activeSpellChoiceRules
                               )
                             )
                           }
@@ -440,6 +478,11 @@ function SpellsAbilitiesTab({
                               <img src={concentrationIcon} alt="Concentration" />
                             </span>
                           )}
+                          {isRitual && (
+  <span className="spell-ritual-badge" title="Ritual spell">
+    <img src={ritualIcon} alt="Ritual" />
+  </span>
+)}
 
                           <span className="spell-tooltip">
                             <strong>{spell.name}</strong>
@@ -484,6 +527,24 @@ function SpellsAbilitiesTab({
 
                             {spell.costs.requiresConcentration && (
                               <span>Requires concentration</span>
+                            )}
+                            {isRitual && <span>Ritual spell</span>}
+
+                            {choiceRule && (
+                              <span>
+                                <b>Choice:</b> {choiceRule.label}{" "}
+                                {
+                                  getSelectedSpellIdsForRule(
+                                    selectedSpellIds,
+                                    choiceRule
+                                  ).length
+                                }
+                                /{choiceRule.max}
+                              </span>
+                            )}
+
+                            {groupFull && !isSelected && (
+                              <span>Choice limit reached</span>
                             )}
 
                             {isFixed && <span>Granted automatically</span>}

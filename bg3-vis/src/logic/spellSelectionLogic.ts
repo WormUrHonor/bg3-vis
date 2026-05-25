@@ -1,4 +1,9 @@
 import type { BG3Spell } from "../data/bg3Spells";
+import type { ActiveSpellChoiceRule } from "../data/spellChoiceRules";
+import {
+  getSelectedSpellIdsForRule,
+  getSpellChoiceRuleForSpell,
+} from "../data/spellChoiceRules";
 import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 
@@ -20,15 +25,42 @@ export function getAvailableSpellIdsForBuild(
 
 export function cleanSelectedSpellIds(
   selectedSpellIds: string[],
-  availableSpellIds: string[]
+  availableSpellIds: string[],
+  activeSpellChoiceRules: ActiveSpellChoiceRule[] = []
 ): string[] {
-  return selectedSpellIds.filter((spellId) => availableSpellIds.includes(spellId));
+  const availableSelectedIds = selectedSpellIds.filter((spellId) =>
+    availableSpellIds.includes(spellId)
+  );
+
+  if (activeSpellChoiceRules.length === 0) {
+    return availableSelectedIds;
+  }
+
+  const cleanedIds: string[] = [];
+
+  for (const spellId of availableSelectedIds) {
+    const rule = getSpellChoiceRuleForSpell(spellId, activeSpellChoiceRules);
+
+    if (!rule) {
+      cleanedIds.push(spellId);
+      continue;
+    }
+
+    const alreadySelectedInRule = getSelectedSpellIdsForRule(cleanedIds, rule);
+
+    if (alreadySelectedInRule.length < rule.max) {
+      cleanedIds.push(spellId);
+    }
+  }
+
+  return cleanedIds;
 }
 
 export function toggleSpellSelection(
   spellId: string,
   selectedSpellIds: string[],
-  availableSpellIds: string[]
+  availableSpellIds: string[],
+  activeSpellChoiceRules: ActiveSpellChoiceRule[] = []
 ): string[] {
   if (!availableSpellIds.includes(spellId)) {
     return selectedSpellIds;
@@ -36,6 +68,16 @@ export function toggleSpellSelection(
 
   if (selectedSpellIds.includes(spellId)) {
     return selectedSpellIds.filter((id) => id !== spellId);
+  }
+
+  const rule = getSpellChoiceRuleForSpell(spellId, activeSpellChoiceRules);
+
+  if (rule) {
+    const selectedInRule = getSelectedSpellIdsForRule(selectedSpellIds, rule);
+
+    if (selectedInRule.length >= rule.max) {
+      return selectedSpellIds;
+    }
   }
 
   return [...selectedSpellIds, spellId];

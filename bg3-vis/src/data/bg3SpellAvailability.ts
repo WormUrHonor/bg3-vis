@@ -105,6 +105,7 @@ export const spellAvailability: Record<string, SpellSource[]> = {
   guidance: [
     cantripSource("Cleric"),
     cantripSource("Druid"),
+    source("Fighter", 3, "Arcane Archer"),
   ],
   light: [
     cantripSource("Bard"),
@@ -113,6 +114,7 @@ export const spellAvailability: Record<string, SpellSource[]> = {
     cantripSource("Wizard"),
     thirdCasterCantrip("Rogue", "Arcane Trickster"),
     thirdCasterCantrip("Fighter", "Eldritch Knight"),
+    source("Fighter", 3, "Arcane Archer"),
   ],
   "mage-hand": [
     cantripSource("Bard"),
@@ -173,6 +175,7 @@ export const spellAvailability: Record<string, SpellSource[]> = {
     cantripSource("Cleric"),
     cantripSource("Warlock"),
     cantripSource("Wizard"),
+     thirdCasterCantrip("Fighter", "Eldritch Knight"),
   ],
   "true-strike": [
     cantripSource("Bard"),
@@ -181,6 +184,7 @@ export const spellAvailability: Record<string, SpellSource[]> = {
     cantripSource("Wizard"),
     thirdCasterCantrip("Rogue", "Arcane Trickster"),
     thirdCasterCantrip("Fighter", "Eldritch Knight"),
+    source("Fighter", 3, "Arcane Archer"),
   ],
   "vicious-mockery": [
     cantripSource("Bard"),
