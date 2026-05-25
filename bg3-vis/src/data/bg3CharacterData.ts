@@ -182,7 +182,7 @@ export const classSkillRules: Record<ClassName, { choose: number; options: Skill
 };
 
 export const subclassesByClass: Record<ClassName, string[]> = {
-  Barbarian: ["Berserker", "Wildheart", "Wild Magic"],
+  Barbarian: ["Berserker", "Giant", "Wildheart", "Wild Magic"],
   Bard: ["College of Lore", "College of Valour", "College of Swords"],
   Cleric: ["Life Domain", "Light Domain", "Trickery Domain", "Knowledge Domain", "Nature Domain", "Tempest Domain", "War Domain"],
   Druid: ["Circle of the Land", "Circle of the Moon", "Circle of the Spores"],

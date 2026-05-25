@@ -1,1 +1,0 @@
-  //{ key: "long", label: "Long-range", innerRadius: 218, outerRadius: 240, labelRadius: 229 },
