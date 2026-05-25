@@ -747,3 +747,71 @@ select {
   font-size: 0.96rem;
   font-weight: 700;
 }
+.ability-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ability-section-heading h3 {
+  margin: 0;
+}
+
+.ability-section-heading span {
+  flex-shrink: 0;
+  color: #f7d995;
+  background: rgba(216, 178, 104, 0.12);
+  border: 1px solid rgba(216, 178, 104, 0.28);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ability-icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.spell-icon-button.selected-spell {
+  border-color: rgba(247, 217, 149, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(247, 217, 149, 0.35),
+    0 0 16px rgba(216, 178, 104, 0.42),
+    inset 0 0 12px rgba(255, 225, 160, 0.18);
+}
+
+.spell-icon-button.fixed-ability {
+  border-color: rgba(145, 190, 255, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(145, 190, 255, 0.22),
+    0 0 14px rgba(93, 130, 190, 0.34),
+    inset 0 0 12px rgba(170, 205, 255, 0.16);
+  cursor: default;
+  opacity: 1;
+}
+
+.spell-icon-button.choice-disabled-soft {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.ability-kind-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(20, 14, 10, 0.82);
+  border: 1px solid rgba(216, 178, 104, 0.3);
+  color: #f4ddb1;
+  font-size: 0.58rem;
+  line-height: 13px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px #000;
+}

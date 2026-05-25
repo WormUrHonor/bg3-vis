@@ -6,6 +6,14 @@ import ClassScoresTab from "./ClassScoresTab";
 import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
 import DataCircle from "./DataCircle";
 
+import { bg3ClassFeatures } from "../data/bg3ClassFeatures";
+import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvailability";
+
+import {
+  cleanSelectedClassFeatureIds,
+  getFixedClassFeatureIds,
+} from "../logic/classFeatureSelectionLogic";
+
 import type {
   AbilityScore,
   Background,
@@ -47,11 +55,64 @@ import {
   getFeatSkillProficiencies,
 } from "../logic/featLogic";
 
-const tabs: { id: TabId; label: string }[] = [
-  { id: "character", label: "Character" },
-  { id: "classScores", label: "Class & Scores" },
-  { id: "spellsAbilities", label: "Spells & Abilities" },
-];
+function getSpellsAbilitiesTabLabel(
+  selectedClass: ClassName | "",
+  selectedSubclass: string
+): string {
+  if (selectedClass === "Fighter" && selectedSubclass === "Battle Master") {
+    return "Manoeuvres";
+  }
+
+  if (selectedClass === "Fighter") {
+    return "Fighter Features";
+  }
+
+  if (selectedClass === "Warlock") {
+    return "Spells & Invocations";
+  }
+
+  if (selectedClass === "Monk") {
+    return "Ki Actions";
+  }
+
+  if (selectedClass === "Barbarian") {
+    return "Rage Actions";
+  }
+
+  if (selectedClass === "Rogue") {
+    return "Rogue Actions";
+  }
+
+  if (selectedClass === "Bard") {
+    return "Spells & Inspiration";
+  }
+
+  if (selectedClass === "Cleric") {
+    return "Spells & Divinity";
+  }
+
+  if (selectedClass === "Druid") {
+    return "Spells & Wild Shape";
+  }
+
+  if (selectedClass === "Paladin") {
+    return "Spells & Smites";
+  }
+
+  if (selectedClass === "Ranger") {
+    return "Spells & Ranger";
+  }
+
+  if (selectedClass === "Sorcerer") {
+    return "Spells & Metamagic";
+  }
+
+  if (selectedClass === "Wizard") {
+    return "Spells & Wizard";
+  }
+
+  return "Spells & Abilities";
+}
 
 function BuildPlanner() {
   const [activeTab, setActiveTab] = useState<TabId>("character");
@@ -92,7 +153,19 @@ function BuildPlanner() {
   >([]);
 
   const [selectedSpellIds, setSelectedSpellIds] = useState<string[]>([]);
+  const [selectedClassFeatureIds, setSelectedClassFeatureIds] = useState<
+    string[]
+  >([]);
   const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "character", label: "Character" },
+    { id: "classScores", label: "Class & Scores" },
+    {
+      id: "spellsAbilities",
+      label: getSpellsAbilitiesTabLabel(selectedClass, selectedSubclass),
+    },
+  ];
 
   const lockedBackgroundSkills: Skill[] = selectedBackground
     ? backgroundSkills[selectedBackground]
@@ -159,11 +232,26 @@ function BuildPlanner() {
     selectedWarlockInvocations
   );
 
+  const availableClassFeatures = getAvailableClassFeaturesForBuild(
+    bg3ClassFeatures,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel
+  );
+
+  const fixedClassFeatureIds = getFixedClassFeatureIds(availableClassFeatures);
+
   useEffect(() => {
     setSelectedSpellIds((current) =>
       cleanSelectedSpellIds(current, availableSpellIds)
     );
   }, [availableSpellIds.join("|")]);
+
+  useEffect(() => {
+    setSelectedClassFeatureIds((current) =>
+      cleanSelectedClassFeatureIds(current, availableClassFeatures)
+    );
+  }, [availableClassFeatures.map((feature) => feature.id).join("|")]);
 
   useEffect(() => {
     const featLevels = getFeatLevelsForClass(selectedClass, selectedLevel);
@@ -191,6 +279,7 @@ function BuildPlanner() {
     rangerNaturalExplorer,
     selectedWarlockInvocations,
     selectedSpellIds,
+    selectedClassFeatureIds,
     baseAbilityScores,
     bonusPlusTwo,
     bonusPlusOne,
@@ -205,6 +294,7 @@ function BuildPlanner() {
 
   function handleClassChange(value: string) {
     const className = value as ClassName | "";
+
     setSelectedClass(className);
     setSelectedSubclass("");
     setSelectedClassSkills([]);
@@ -216,6 +306,7 @@ function BuildPlanner() {
     setRangerNaturalExplorer("");
     setSelectedWarlockInvocations([]);
     setSelectedSpellIds([]);
+    setSelectedClassFeatureIds([]);
   }
 
   function handleEvaluateBuild() {
@@ -288,6 +379,13 @@ function BuildPlanner() {
               <span>Spells</span>
               <strong>{selectedSpellIds.length}</strong>
             </div>
+
+            <div className="summary-row">
+              <span>Features</span>
+              <strong>
+                {fixedClassFeatureIds.length + selectedClassFeatureIds.length}
+              </strong>
+            </div>
           </aside>
 
           <section className="main-panel">
@@ -358,6 +456,10 @@ function BuildPlanner() {
                 selectedWarlockInvocations={selectedWarlockInvocations}
                 selectedSpellIds={selectedSpellIds}
                 setSelectedSpellIds={setSelectedSpellIds}
+                availableClassFeatures={availableClassFeatures}
+                selectedClassFeatureIds={selectedClassFeatureIds}
+                fixedClassFeatureIds={fixedClassFeatureIds}
+                setSelectedClassFeatureIds={setSelectedClassFeatureIds}
               />
             )}
           </section>
