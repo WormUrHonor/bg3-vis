@@ -186,7 +186,7 @@ export const subclassesByClass: Record<ClassName, string[]> = {
   Bard: ["College of Lore", "College of Valour", "College of Swords"],
   Cleric: ["Life Domain", "Light Domain", "Trickery Domain", "Knowledge Domain", "Nature Domain", "Tempest Domain", "War Domain"],
   Druid: ["Circle of the Land", "Circle of the Moon", "Circle of the Spores"],
-  Fighter: ["Battle Master", "Champion", "Eldritch Knight"],
+Fighter: ["Arcane Archer", "Battle Master", "Champion", "Eldritch Knight"],
   Monk: ["Way of the Open Hand", "Way of Shadow", "Way of the Four Elements"],
   Paladin: ["Oath of the Ancients", "Oath of Devotion", "Oath of Vengeance", "Oathbreaker"],
   Ranger: ["Hunter", "Beast Master", "Gloom Stalker"],

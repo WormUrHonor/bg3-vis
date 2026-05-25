@@ -117,9 +117,23 @@ export function lineRange(
 export function availableTo(
   className: ClassName,
   minLevel: number,
-  subclass?: string
+  subclassOrMaxLevel?: string | number,
+  maxLevel?: number
 ): ClassFeatureAvailability {
-  return { className, minLevel, subclass };
+  if (typeof subclassOrMaxLevel === "number") {
+    return {
+      className,
+      minLevel,
+      maxLevel: subclassOrMaxLevel,
+    };
+  }
+
+  return {
+    className,
+    minLevel,
+    subclass: subclassOrMaxLevel,
+    maxLevel,
+  };
 }
 
 export type FeatureOptions = {
@@ -127,6 +141,8 @@ export type FeatureOptions = {
   displayGroup?: ClassFeatureDisplayGroup;
   requires?: string[];
   dependencyMode?: ClassFeatureDependencyMode;
+  conflictsWith?: string[];
+  isInformational?: boolean;
 };
 
 export function feature(
@@ -152,6 +168,7 @@ export function feature(
     description,
     availability,
     isFixed,
+    isInformational: options.isInformational,
 
     choiceGroupId: options.choiceGroup?.id,
     choiceGroupLabel: options.choiceGroup?.label,
@@ -163,6 +180,7 @@ export function feature(
 
     requiredFeatureIds: options.requires,
     dependencyMode: options.dependencyMode,
+    conflictsWithFeatureIds: options.conflictsWith,
 
     range,
     roles,

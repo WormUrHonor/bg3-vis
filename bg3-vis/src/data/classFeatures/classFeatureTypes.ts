@@ -22,6 +22,7 @@ export type ClassFeatureDependencyMode = "all" | "any";
 export type ClassFeatureAvailability = {
   className: ClassName;
   minLevel: number;
+  maxLevel?: number;
   subclass?: string;
 };
 
@@ -48,6 +49,7 @@ export type BG3ClassFeature = {
 
   availability: ClassFeatureAvailability[];
   isFixed: boolean;
+  isInformational?: boolean;
 
   choiceGroupId?: string;
   choiceGroupLabel?: string;
@@ -59,6 +61,7 @@ export type BG3ClassFeature = {
 
   requiredFeatureIds?: string[];
   dependencyMode?: ClassFeatureDependencyMode;
+  conflictsWithFeatureIds?: string[];
 
   range: BG3Spell["range"];
   roles: AbilityRole[];

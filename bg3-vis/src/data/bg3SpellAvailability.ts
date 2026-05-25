@@ -165,7 +165,6 @@ export const spellAvailability: Record<string, SpellSource[]> = {
   ],
   thaumaturgy: [
     cantripSource("Cleric"),
-    source("Barbarian", 3, "Giant"),
   ],
   "thorn-whip": [
     cantripSource("Druid"),
@@ -364,7 +363,6 @@ export const spellAvailability: Record<string, SpellSource[]> = {
     full("Cleric", 1, "Nature Domain"),
     half("Ranger", 1),
     source("Paladin", 3, "Oath of the Ancients"),
-    source("Barbarian", 3, "Wildheart"),
   ],
   "tashas-hideous-laughter": [
     full("Bard", 1),

@@ -105,6 +105,7 @@ const makeWildheartAspect = (
       displayGroup: animalAspectGroup,
     }
   ),
+
   feature(
     `barbarian-wildheart-aspect-${idBase}-level-10`,
     `Additional Aspect: ${name}`,
@@ -121,6 +122,7 @@ const makeWildheartAspect = (
     {
       choiceGroup: animalAspectLevel10Choice,
       displayGroup: animalAspectGroup,
+      conflictsWith: [`barbarian-wildheart-aspect-${idBase}-level-6`],
     }
   ),
 ];
@@ -130,7 +132,7 @@ const barbarianFeatures = [
     "barbarian-rage",
     "Rage",
     "bonus-action",
-    [availableTo(BARBARIAN, 1)],
+    [availableTo(BARBARIAN, 1, 2)],
     true,
     "Enter a rage. While raging, melee, improvised, and thrown weapon attacks deal extra damage. You also gain Resistance to physical damage and Advantage on Strength Checks and Strength Saving Throws.",
     ["support-buff", "defense-protection", "single-target-damage"],
@@ -397,6 +399,25 @@ const barbarianFeatures = [
   ),
 
   feature(
+    "barbarian-berserker-maintain-intimidating-presence",
+    "Maintain Intimidating Presence",
+    "action",
+    [availableTo(BARBARIAN, 10, "Berserker")],
+    true,
+    "Prolong the Fear caused by Intimidating Presence.",
+    ["control"],
+    [],
+    ["action"],
+    ["none"],
+    range9m,
+    ["barbarian", "berserker", "class-action"],
+    {
+      displayGroup: berserkerGroup,
+      requires: ["barbarian-berserker-intimidating-presence"],
+    }
+  ),
+
+  feature(
     "barbarian-giant-giants-rage",
     "Giant's Rage",
     "subclass-feature",
@@ -427,6 +448,24 @@ const barbarianFeatures = [
     ["none"],
     self,
     ["barbarian", "giant", "passive"],
+    {
+      displayGroup: giantGroup,
+    }
+  ),
+
+  feature(
+    "barbarian-giant-thaumaturgy",
+    "Thaumaturgy",
+    "subclass-feature",
+    [availableTo(BARBARIAN, 3, "Giant")],
+    true,
+    "Gain Advantage on Intimidation and Performance Checks. This cantrip is granted automatically by the Giant subclass and is not a selectable cantrip choice.",
+    ["narrative-interaction", "support-buff"],
+    [],
+    ["action"],
+    ["cantrip"],
+    self,
+    ["barbarian", "giant", "fixed-cantrip"],
     {
       displayGroup: giantGroup,
     }
@@ -492,7 +531,7 @@ const barbarianFeatures = [
     "subclass-feature",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Enter a Rage that releases the magic roiling inside you, causing a random magical effect.",
+    "Enter a Rage that releases the magic roiling inside you, causing one random Wild Magic effect.",
     ["support-buff", "area-damage", "control"],
     ["Variable"],
     ["bonus-action"],
@@ -618,7 +657,7 @@ const barbarianFeatures = [
     "subclass-feature",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Magic infuses your weapon. It deals additional Force damage and gains the Light and Thrown properties. If thrown, it reappears in your hand at the end of your turn.",
+    "Random Wild Magic effect. Magic infuses your weapon. It deals additional Force damage and gains the Light and Thrown properties. If thrown, it reappears in your hand at the end of your turn.",
     ["support-buff", "single-target-damage"],
     ["Force", "Weapon"],
     ["passive"],
@@ -627,6 +666,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -636,7 +676,7 @@ const barbarianFeatures = [
     "subclass-feature",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Enemies that hit you take Force damage in retaliation.",
+    "Random Wild Magic effect. Enemies that hit you take Force damage in retaliation.",
     ["single-target-damage", "defense-protection"],
     ["Force"],
     ["reaction"],
@@ -645,6 +685,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -654,7 +695,7 @@ const barbarianFeatures = [
     "subclass-feature",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "You and allies within 3m gain a bonus to Armour Class.",
+    "Random Wild Magic effect. You and allies within 3m gain a bonus to Armour Class.",
     ["support-buff", "defense-protection"],
     [],
     ["passive"],
@@ -663,6 +704,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -672,7 +714,7 @@ const barbarianFeatures = [
     "bonus-action",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Summon a spectral flumph within 10m. It explodes at the end of your turn, dealing Force damage in a 4.5m area.",
+    "Random Wild Magic effect. Each turn, you can summon a spectral flumph within 10m as a Bonus Action. It explodes at the end of your turn, dealing Force damage in a 4.5m area.",
     ["summon", "area-damage"],
     ["Force"],
     ["bonus-action"],
@@ -681,6 +723,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -690,7 +733,7 @@ const barbarianFeatures = [
     "bonus-action",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Shoot a Bolt of Light from your chest at a target within 10m, dealing Radiant damage and potentially Blinding it.",
+    "Random Wild Magic effect. Each turn, you can shoot a Bolt of Light at a target within 10m as a Bonus Action, dealing Radiant damage and potentially Blinding it.",
     ["single-target-damage", "control"],
     ["Radiant"],
     ["bonus-action"],
@@ -699,6 +742,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -708,7 +752,7 @@ const barbarianFeatures = [
     "subclass-feature",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Flowers and vines spread outward from you in a 4.5m radius, creating Difficult Terrain for everyone other than you.",
+    "Random Wild Magic effect. Flowers and vines spread outward from you in a 4.5m radius, creating Difficult Terrain for everyone other than you.",
     ["control"],
     [],
     ["passive"],
@@ -717,6 +761,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -726,7 +771,7 @@ const barbarianFeatures = [
     "bonus-action",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Teleport to an unoccupied space you can see within 18m.",
+    "Random Wild Magic effect. Each turn, you can teleport to an unoccupied space you can see within 18m as a Bonus Action.",
     ["mobility-positioning"],
     [],
     ["bonus-action"],
@@ -735,6 +780,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -744,7 +790,7 @@ const barbarianFeatures = [
     "subclass-feature",
     [availableTo(BARBARIAN, 3, "Wild Magic")],
     true,
-    "Shadowy tendrils lash outwards. Creatures within 9m can take Necrotic damage, and you gain temporary Hit Points.",
+    "Random Wild Magic effect. Shadowy tendrils lash outwards. Creatures within 9m can take Necrotic damage, and you gain temporary Hit Points.",
     ["area-damage", "defense-protection"],
     ["Necrotic"],
     ["passive"],
@@ -753,6 +799,7 @@ const barbarianFeatures = [
     ["barbarian", "wild-magic", "wild-magic-effect"],
     {
       displayGroup: wildMagicEffectsGroup,
+      isInformational: true,
     }
   ),
 
@@ -1150,9 +1197,12 @@ export const barbarianClassModule: ClassFeatureModule = {
       "Passive_Barbarian_Berserker_MindlessRage.png",
     "barbarian-berserker-intimidating-presence":
       "Action_Barbarian_Berserker_IntimidatingPresence.png",
+    "barbarian-berserker-maintain-intimidating-presence":
+      "Action_Barbarian_Berserker_MaintainIntimidatingPresence.webp",
 
     "barbarian-giant-giants-rage": "Action_Barbarian_Giant_GiantsRage.png",
     "barbarian-giant-vapraks-greed": "Passive_Barbarian_Giant_VapraksGreed.png",
+    "barbarian-giant-thaumaturgy": "Spell_Transmutation_Thaumaturgy.png",
     "barbarian-giant-boot-of-the-giants":
       "Action_Barbarian_Giant_BootOfTheGiants.png",
     "barbarian-giant-elemental-cleaver":

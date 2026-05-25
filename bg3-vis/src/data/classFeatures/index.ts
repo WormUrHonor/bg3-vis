@@ -2,21 +2,14 @@
 import type { BG3ClassFeature, ClassFeatureModule } from "./classFeatureTypes";
 
 import { barbarianClassModule } from "./barbarian";
-import { bardClassModule } from "./bard";
-import { clericClassModule } from "./cleric";
-import { druidClassModule } from "./druid";
 import { fighterClassModule } from "./fighter";
-import { monkClassModule } from "./monk";
-import { paladinClassModule } from "./paladin";
-import { rangerClassModule } from "./ranger";
-import { rogueClassModule } from "./rogue";
-import { sorcererClassModule } from "./sorcerer";
-import { warlockClassModule } from "./warlock";
-import { wizardClassModule } from "./wizard";
 
 export type {
   BG3ClassFeature,
   ClassFeatureAvailability,
+  ClassFeatureChoiceGroup,
+  ClassFeatureDependencyMode,
+  ClassFeatureDisplayGroup,
   ClassFeatureKind,
   ClassFeatureModule,
   ClassFeatureRange,
@@ -24,17 +17,7 @@ export type {
 
 export const classFeatureModules: ClassFeatureModule[] = [
   barbarianClassModule,
-  bardClassModule,
-  clericClassModule,
-  druidClassModule,
   fighterClassModule,
-  monkClassModule,
-  paladinClassModule,
-  rangerClassModule,
-  rogueClassModule,
-  sorcererClassModule,
-  warlockClassModule,
-  wizardClassModule,
 ];
 
 export const bg3ClassFeatures: BG3ClassFeature[] = classFeatureModules.flatMap(

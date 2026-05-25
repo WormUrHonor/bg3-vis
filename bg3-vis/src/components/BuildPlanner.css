@@ -814,4 +814,56 @@ select {
   line-height: 13px;
   font-weight: 800;
   text-shadow: 0 1px 2px #000;
+}.feature-group-block {
+  position: relative;
+}
+
+.choice-subgroup {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(216, 178, 104, 0.14);
+}
+
+.choice-subgroup:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.choice-subgroup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.choice-subgroup-header strong {
+  color: #f2e7d2;
+  font-size: 0.92rem;
+}
+
+.choice-subgroup-header span {
+  flex-shrink: 0;
+  color: #f7d995;
+  background: rgba(216, 178, 104, 0.12);
+  border: 1px solid rgba(216, 178, 104, 0.28);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.spell-icon-button.informational-ability {
+  border-color: rgba(170, 145, 215, 0.46);
+  box-shadow:
+    0 0 0 1px rgba(170, 145, 215, 0.12),
+    inset 0 0 12px rgba(170, 145, 215, 0.1);
+  opacity: 0.86;
+  cursor: default;
+}
+
+.spell-icon-button.informational-ability .ability-kind-badge {
+  color: #d8c5ff;
+  border-color: rgba(190, 165, 235, 0.36);
 }

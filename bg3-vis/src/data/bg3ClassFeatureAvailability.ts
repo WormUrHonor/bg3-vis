@@ -11,7 +11,10 @@ function classLevelSubclassMatch(
 
   return feature.availability.some((source) => {
     const classMatches = source.className === selectedClass;
-    const levelMatches = selectedLevel >= source.minLevel;
+    const minLevelMatches = selectedLevel >= source.minLevel;
+    const maxLevelMatches =
+      source.maxLevel === undefined || selectedLevel <= source.maxLevel;
+    const levelMatches = minLevelMatches && maxLevelMatches;
     const subclassMatches = !source.subclass || source.subclass === selectedSubclass;
 
     return classMatches && levelMatches && subclassMatches;
@@ -55,6 +58,7 @@ export function getAvailableClassFeaturesForBuild(
 
     for (const feature of baseAvailableFeatures) {
       if (!feature.isFixed) continue;
+      if (feature.isInformational) continue;
       if (activeFeatureIds.has(feature.id)) continue;
       if (!dependencyMatch(feature, Array.from(activeFeatureIds))) continue;
 

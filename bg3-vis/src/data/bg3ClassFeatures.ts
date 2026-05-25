@@ -9,6 +9,9 @@
 export type {
   BG3ClassFeature,
   ClassFeatureAvailability,
+  ClassFeatureChoiceGroup,
+  ClassFeatureDependencyMode,
+  ClassFeatureDisplayGroup,
   ClassFeatureKind,
   ClassFeatureModule,
   ClassFeatureRange,

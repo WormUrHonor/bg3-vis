@@ -22,6 +22,13 @@ type SpellsAbilitiesTabProps = {
   setSelectedClassFeatureIds: Dispatch<SetStateAction<string[]>>;
 };
 
+type FeatureDisplayGroup = {
+  id: string;
+  label: string;
+  order: number;
+  features: BG3ClassFeature[];
+};
+
 function toRoman(value: number): string {
   if (value === 0) return "C";
 
@@ -47,53 +54,18 @@ function getClassAbilityTabTitle(
     return "Manoeuvres & Fighter Features";
   }
 
-  if (selectedClass === "Fighter") {
-    return "Fighter Features";
-  }
-
-  if (selectedClass === "Warlock") {
-    return "Spells, Invocations & Features";
-  }
-
-  if (selectedClass === "Monk") {
-    return "Ki Actions & Monk Features";
-  }
-
-  if (selectedClass === "Barbarian") {
-    return "Rage Actions & Barbarian Features";
-  }
-
-  if (selectedClass === "Rogue") {
-    return "Rogue Actions & Features";
-  }
-
-  if (selectedClass === "Bard") {
-    return "Spells, Inspirations & Bard Features";
-  }
-
-  if (selectedClass === "Cleric") {
-    return "Spells, Channel Divinity & Cleric Features";
-  }
-
-  if (selectedClass === "Druid") {
-    return "Spells, Wild Shape & Druid Features";
-  }
-
-  if (selectedClass === "Paladin") {
-    return "Spells, Smites & Paladin Features";
-  }
-
-  if (selectedClass === "Ranger") {
-    return "Spells & Ranger Features";
-  }
-
-  if (selectedClass === "Sorcerer") {
-    return "Spells, Metamagic & Sorcerer Features";
-  }
-
-  if (selectedClass === "Wizard") {
-    return "Spells & Wizard Features";
-  }
+  if (selectedClass === "Fighter") return "Fighter Features";
+  if (selectedClass === "Barbarian") return "Rage Actions & Barbarian Features";
+  if (selectedClass === "Warlock") return "Spells, Invocations & Features";
+  if (selectedClass === "Monk") return "Ki Actions & Monk Features";
+  if (selectedClass === "Rogue") return "Rogue Actions & Features";
+  if (selectedClass === "Bard") return "Spells, Inspirations & Bard Features";
+  if (selectedClass === "Cleric") return "Spells, Channel Divinity & Cleric Features";
+  if (selectedClass === "Druid") return "Spells, Wild Shape & Druid Features";
+  if (selectedClass === "Paladin") return "Spells, Smites & Paladin Features";
+  if (selectedClass === "Ranger") return "Spells & Ranger Features";
+  if (selectedClass === "Sorcerer") return "Spells, Metamagic & Sorcerer Features";
+  if (selectedClass === "Wizard") return "Spells & Wizard Features";
 
   return `${selectedClass} Spells & Features`;
 }
@@ -104,6 +76,93 @@ function formatCost(actions: string[], resources: string[]): string {
   if (items.length === 0) return "none";
 
   return items.join(", ");
+}
+
+function getKindBadge(feature: BG3ClassFeature): string {
+  if (feature.isInformational) return "i";
+  if (feature.kind === "passive") return "P";
+  if (feature.kind === "reaction") return "R";
+  if (feature.kind === "manoeuvre") return "M";
+  if (feature.kind === "bonus-action") return "B";
+  return "A";
+}
+
+function getFallbackDisplayGroup(feature: BG3ClassFeature): {
+  id: string;
+  label: string;
+  order: number;
+} {
+  if (feature.isInformational) {
+    return {
+      id: "informational-effects",
+      label: "Possible Effects",
+      order: 850,
+    };
+  }
+
+  if (feature.isFixed) {
+    return {
+      id: "granted-features",
+      label: "Granted Features",
+      order: 900,
+    };
+  }
+
+  return {
+    id: feature.choiceGroupId ?? "class-choices",
+    label: feature.choiceGroupLabel ?? "Class Choices",
+    order: 950,
+  };
+}
+
+function groupClassFeatures(features: BG3ClassFeature[]): FeatureDisplayGroup[] {
+  const groups = new Map<string, FeatureDisplayGroup>();
+
+  for (const feature of features) {
+    const fallback = getFallbackDisplayGroup(feature);
+
+    const id = feature.displayGroupId ?? fallback.id;
+    const label = feature.displayGroupLabel ?? fallback.label;
+    const order = feature.displayGroupOrder ?? fallback.order;
+
+    const existingGroup = groups.get(id);
+
+    if (existingGroup) {
+      existingGroup.features.push(feature);
+    } else {
+      groups.set(id, {
+        id,
+        label,
+        order,
+        features: [feature],
+      });
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.order !== b.order) return a.order - b.order;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function getChoiceGroupsInDisplayGroup(features: BG3ClassFeature[]) {
+  return Array.from(
+    new Map(
+      features
+        .filter((feature) => feature.choiceGroupId)
+        .map((feature) => [
+          feature.choiceGroupId,
+          {
+            id: feature.choiceGroupId as string,
+            label: feature.choiceGroupLabel ?? "Choices",
+            max: feature.choiceGroupMax ?? 1,
+            features: features.filter(
+              (item) => item.choiceGroupId === feature.choiceGroupId
+            ),
+          },
+        ])
+    ).values()
+  );
 }
 
 function SpellsAbilitiesTab({
@@ -129,32 +188,95 @@ function SpellsAbilitiesTab({
   );
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
+  const featureDisplayGroups = groupClassFeatures(availableClassFeatures);
 
   const selectedSpellCount = selectedSpellIds.length;
-  const fixedFeatureCount = fixedClassFeatureIds.length;
   const selectedFeatureCount = selectedClassFeatureIds.length;
+  const fixedFeatureCount = fixedClassFeatureIds.length;
 
-  const fixedFeatures = availableClassFeatures.filter((feature) => feature.isFixed);
-  const selectableFeatures = availableClassFeatures.filter((feature) => !feature.isFixed);
+  function renderFeatureButton(feature: BG3ClassFeature, groupFull = false) {
+    const isInformational = feature.isInformational ?? false;
+    const isFixed =
+      !isInformational &&
+      (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
+    const isSelected = selectedClassFeatureIds.includes(feature.id);
+    const isDisabled = isInformational || isFixed || groupFull;
 
-  const choiceGroups = Array.from(
-    new Map(
-      selectableFeatures
-        .filter((feature) => feature.choiceGroupId)
-        .map((feature) => [
-          feature.choiceGroupId,
-          {
-            id: feature.choiceGroupId as string,
-            label: feature.choiceGroupLabel ?? "Choices",
-            max: feature.choiceGroupMax ?? 1,
-          },
-        ])
-    ).values()
-  );
+    return (
+      <button
+        key={feature.id}
+        className={[
+          "spell-icon-button",
+          isSelected ? "selected-spell" : "",
+          isFixed ? "fixed-ability" : "",
+          isInformational ? "informational-ability" : "",
+          groupFull ? "choice-disabled-soft" : "",
+        ].join(" ")}
+        type="button"
+        disabled={isDisabled}
+        onClick={() =>
+          setSelectedClassFeatureIds((current) =>
+            toggleClassFeatureSelection(
+              feature.id,
+              current,
+              availableClassFeatures
+            )
+          )
+        }
+      >
+        <img
+          src={getClassFeatureIcon(feature)}
+          alt={feature.name}
+          className="spell-icon-image"
+        />
 
-  const ungroupedSelectableFeatures = selectableFeatures.filter(
-    (feature) => !feature.choiceGroupId
-  );
+        <span className="ability-kind-badge">{getKindBadge(feature)}</span>
+
+        <span className="spell-tooltip">
+          <strong>{feature.name}</strong>
+
+          {feature.description && (
+            <span className="spell-description">{feature.description}</span>
+          )}
+
+          <span>
+            <b>Type:</b> {feature.kind.replaceAll("-", " ")}
+          </span>
+
+          {feature.range && (
+            <span>
+              <b>Range:</b> {feature.range.label}
+            </span>
+          )}
+
+          {feature.roles.length > 0 && (
+            <span>
+              <b>Role:</b>{" "}
+              {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+            </span>
+          )}
+
+          {feature.damageTypes.length > 0 && (
+            <span>
+              <b>Damage:</b> {feature.damageTypes.join(", ")}
+            </span>
+          )}
+
+          <span>
+            <b>Cost:</b>{" "}
+            {formatCost(feature.costs.actions, feature.costs.resources)}
+          </span>
+
+          {feature.requiredFeatureIds && feature.requiredFeatureIds.length > 0 && (
+            <span>Granted by selected feature</span>
+          )}
+
+          {isInformational && <span>Possible effect</span>}
+          {isFixed && <span>Granted automatically</span>}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <div className="tab-content">
@@ -162,8 +284,9 @@ function SpellsAbilitiesTab({
         <div>
           <h2>{getClassAbilityTabTitle(selectedClass, selectedSubclass)}</h2>
           <p className="panel-intro compact-intro">
-            Select available spells, cantrips, class actions, passives, and subclass-specific
-            choices. Fixed features are shown as already granted.
+            Select available spells, cantrips, class actions, passives, and
+            subclass-specific choices. Fixed features are shown as already
+            granted, while informational entries describe possible outcomes.
           </p>
         </div>
 
@@ -180,230 +303,86 @@ function SpellsAbilitiesTab({
         </div>
       )}
 
-      {selectedClass && availableSpells.length === 0 && availableClassFeatures.length === 0 && (
-        <div className="placeholder-box">
-          No spells or class features are currently available for this class, subclass, and level
-          combination.
-        </div>
-      )}
-
-      {fixedFeatures.length > 0 && (
-        <div className="section-block">
-          <div className="ability-section-heading">
-            <h3>Granted features</h3>
-            <span>Fixed</span>
+      {selectedClass &&
+        availableSpells.length === 0 &&
+        availableClassFeatures.length === 0 && (
+          <div className="placeholder-box">
+            No spells or class features are currently available for this class,
+            subclass, and level combination.
           </div>
+        )}
 
-          <div className="ability-icon-grid">
-            {fixedFeatures.map((feature) => (
-              <button
-                key={feature.id}
-                className="spell-icon-button fixed-ability"
-                type="button"
-                disabled
-              >
-                <img
-                  src={getClassFeatureIcon(feature)}
-                  alt={feature.name}
-                  className="spell-icon-image"
-                />
-
-                <span className="ability-kind-badge">
-                  {feature.kind === "passive" ? "P" : "A"}
-                </span>
-
-                <span className="spell-tooltip">
-                  <strong>{feature.name}</strong>
-
-                  {feature.description && (
-                    <span className="spell-description">{feature.description}</span>
-                  )}
-
-                  <span>
-                    <b>Type:</b> {feature.kind.replaceAll("-", " ")}
-                  </span>
-
-                  {feature.roles.length > 0 && (
-                    <span>
-                      <b>Role:</b>{" "}
-                      {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
-                    </span>
-                  )}
-
-                  {feature.damageTypes.length > 0 && (
-                    <span>
-                      <b>Damage:</b> {feature.damageTypes.join(", ")}
-                    </span>
-                  )}
-
-                  <span>
-                    <b>Cost:</b>{" "}
-                    {formatCost(feature.costs.actions, feature.costs.resources)}
-                  </span>
-
-                  <span>Granted automatically</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {choiceGroups.map((group) => {
-        const featuresForGroup = selectableFeatures.filter(
-          (feature) => feature.choiceGroupId === group.id
+      {featureDisplayGroups.map((displayGroup) => {
+        const choiceGroups = getChoiceGroupsInDisplayGroup(displayGroup.features);
+        const nonChoiceFeatures = displayGroup.features.filter(
+          (feature) => !feature.choiceGroupId
         );
 
-        const selectedInGroup = featuresForGroup.filter((feature) =>
-          selectedClassFeatureIds.includes(feature.id)
+        const selectedOrGrantedInDisplayGroup = displayGroup.features.filter(
+          (feature) =>
+            !feature.isInformational &&
+            (selectedClassFeatureIds.includes(feature.id) ||
+              fixedClassFeatureIds.includes(feature.id))
+        ).length;
+
+        const countableFeaturesInDisplayGroup = displayGroup.features.filter(
+          (feature) => !feature.isInformational
         ).length;
 
         return (
-          <div key={group.id} className="section-block">
+          <div key={displayGroup.id} className="section-block feature-group-block">
             <div className="ability-section-heading">
-              <h3>{group.label}</h3>
+              <h3>{displayGroup.label}</h3>
               <span>
-                {selectedInGroup}/{group.max}
+                {countableFeaturesInDisplayGroup > 0
+                  ? `${selectedOrGrantedInDisplayGroup}/${countableFeaturesInDisplayGroup}`
+                  : "Info"}
               </span>
             </div>
 
-            <div className="ability-icon-grid">
-              {featuresForGroup.map((feature) => {
-                const isSelected = selectedClassFeatureIds.includes(feature.id);
-                const groupFull = selectedInGroup >= group.max && !isSelected;
+            {nonChoiceFeatures.length > 0 && (
+              <div className="ability-icon-grid">
+                {nonChoiceFeatures.map((feature) => renderFeatureButton(feature))}
+              </div>
+            )}
 
-                return (
-                  <button
-                    key={feature.id}
-                    className={[
-                      "spell-icon-button",
-                      isSelected ? "selected-spell" : "",
-                      groupFull ? "choice-disabled-soft" : "",
-                    ].join(" ")}
-                    type="button"
-                    disabled={groupFull}
-                    onClick={() =>
-                      setSelectedClassFeatureIds((current) =>
-                        toggleClassFeatureSelection(
-                          feature.id,
-                          current,
-                          availableClassFeatures
-                        )
-                      )
-                    }
-                  >
-                    <img
-                      src={getClassFeatureIcon(feature)}
-                      alt={feature.name}
-                      className="spell-icon-image"
-                    />
-
-                    <span className="ability-kind-badge">M</span>
-
-                    <span className="spell-tooltip">
-                      <strong>{feature.name}</strong>
-
-                      {feature.description && (
-                        <span className="spell-description">{feature.description}</span>
-                      )}
-
-                      <span>
-                        <b>Type:</b> {feature.kind.replaceAll("-", " ")}
-                      </span>
-
-                      {feature.range && (
-                        <span>
-                          <b>Range:</b> {feature.range.label}
-                        </span>
-                      )}
-
-                      {feature.roles.length > 0 && (
-                        <span>
-                          <b>Role:</b>{" "}
-                          {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
-                        </span>
-                      )}
-
-                      {feature.damageTypes.length > 0 && (
-                        <span>
-                          <b>Damage:</b> {feature.damageTypes.join(", ")}
-                        </span>
-                      )}
-
-                      <span>
-                        <b>Cost:</b>{" "}
-                        {formatCost(feature.costs.actions, feature.costs.resources)}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-
-      {ungroupedSelectableFeatures.length > 0 && (
-        <div className="section-block">
-          <div className="ability-section-heading">
-            <h3>Class choices</h3>
-            <span>{ungroupedSelectableFeatures.length}</span>
-          </div>
-
-          <div className="ability-icon-grid">
-            {ungroupedSelectableFeatures.map((feature) => {
-              const isSelected = selectedClassFeatureIds.includes(feature.id);
+            {choiceGroups.map((choiceGroup) => {
+              const selectedInChoiceGroup = choiceGroup.features.filter((feature) =>
+                selectedClassFeatureIds.includes(feature.id)
+              ).length;
 
               return (
-                <button
-                  key={feature.id}
-                  className={["spell-icon-button", isSelected ? "selected-spell" : ""].join(
-                    " "
-                  )}
-                  type="button"
-                  onClick={() =>
-                    setSelectedClassFeatureIds((current) =>
-                      toggleClassFeatureSelection(
-                        feature.id,
-                        current,
-                        availableClassFeatures
-                      )
-                    )
-                  }
-                >
-                  <img
-                    src={getClassFeatureIcon(feature)}
-                    alt={feature.name}
-                    className="spell-icon-image"
-                  />
-
-                  <span className="ability-kind-badge">
-                    {feature.kind === "passive" ? "P" : "A"}
-                  </span>
-
-                  <span className="spell-tooltip">
-                    <strong>{feature.name}</strong>
-
-                    {feature.description && (
-                      <span className="spell-description">{feature.description}</span>
-                    )}
-
+                <div key={choiceGroup.id} className="choice-subgroup">
+                  <div className="choice-subgroup-header">
+                    <strong>{choiceGroup.label}</strong>
                     <span>
-                      <b>Type:</b> {feature.kind.replaceAll("-", " ")}
+                      {selectedInChoiceGroup}/{choiceGroup.max}
                     </span>
-                  </span>
-                </button>
+                  </div>
+
+                  <div className="ability-icon-grid">
+                    {choiceGroup.features.map((feature) => {
+                      const isSelected = selectedClassFeatureIds.includes(feature.id);
+                      const groupFull =
+                        selectedInChoiceGroup >= choiceGroup.max && !isSelected;
+
+                      return renderFeatureButton(feature, groupFull);
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
-        </div>
-      )}
+        );
+      })}
 
       {availableSpells.length > 0 && (
         <div className="section-block">
           <div className="ability-section-heading">
             <h3>Spells and cantrips</h3>
-            <span>{selectedSpellIds.length}/{availableSpells.length}</span>
+            <span>
+              {selectedSpellIds.length}/{availableSpells.length}
+            </span>
           </div>
 
           <div className="spell-book">
@@ -435,7 +414,11 @@ function SpellsAbilitiesTab({
                           disabled={isFixed}
                           onClick={() =>
                             setSelectedSpellIds((current) =>
-                              toggleSpellSelection(spell.id, current, availableSpellIds)
+                              toggleSpellSelection(
+                                spell.id,
+                                current,
+                                availableSpellIds
+                              )
                             )
                           }
                         >
