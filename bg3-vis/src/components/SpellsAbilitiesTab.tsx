@@ -11,7 +11,6 @@ import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
 import { getSpellIcon } from "../logic/spellIconLogic";
 import { getClassFeatureIcon } from "../logic/classFeatureIconLogic";
 import concentrationIcon from "../assets/UI Icons/20px-Concentration_Icon.png.webp";
-import { getAvailableRogueArcaneTricksterSpells } from "../data/rogueArcaneTricksterSpells";
 import ritualIcon from "../assets/UI Icons/Ritual_Spell_Icon.png";
 import {
   getActiveSpellChoiceRulesForBuild,
@@ -25,6 +24,7 @@ import {
   getAvailableBardMagicalSecretSpells,
   mergeSpellLists,
 } from "../data/bardMagicalSecrets";
+import { getAvailableRogueArcaneTricksterSpells } from "../data/rogueArcaneTricksterSpells";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -80,11 +80,15 @@ function getClassAbilityTabTitle(
   if (selectedClass === "Monk") return "Ki Actions & Monk Features";
   if (selectedClass === "Rogue") return "Rogue Actions & Features";
   if (selectedClass === "Bard") return "Spells, Inspirations & Bard Features";
-  if (selectedClass === "Cleric") return "Spells, Channel Divinity & Cleric Features";
+  if (selectedClass === "Cleric") {
+    return "Spells, Channel Divinity & Cleric Features";
+  }
   if (selectedClass === "Druid") return "Spells, Wild Shape & Druid Features";
   if (selectedClass === "Paladin") return "Spells, Smites & Paladin Features";
   if (selectedClass === "Ranger") return "Spells & Ranger Features";
-  if (selectedClass === "Sorcerer") return "Spells, Metamagic & Sorcerer Features";
+  if (selectedClass === "Sorcerer") {
+    return "Spells, Metamagic & Sorcerer Features";
+  }
   if (selectedClass === "Wizard") return "Spells & Wizard Features";
 
   return `${selectedClass} Spells & Features`;
@@ -113,6 +117,12 @@ function getKindBadge(feature: BG3ClassFeature): string {
   if (feature.kind === "manoeuvre") return "M";
   if (feature.kind === "bonus-action") return "B";
   return "A";
+}
+
+function getChoiceRequirementClass(selectedCount: number, max: number): string {
+  if (selectedCount >= max) return "spell-choice-mini-pill complete";
+  if (selectedCount > 0) return "spell-choice-mini-pill partial";
+  return "spell-choice-mini-pill";
 }
 
 function getFallbackDisplayGroup(feature: BG3ClassFeature): {
@@ -232,6 +242,35 @@ function isMagicalSecretsRule(rule: ActiveSpellChoiceRule): boolean {
   return rule.id.includes("magical-secrets");
 }
 
+function getChoiceRulesForRank(
+  rank: number,
+  rules: ActiveSpellChoiceRule[],
+  availableSpells: BG3Spell[]
+): ActiveSpellChoiceRule[] {
+  return rules.filter((rule) =>
+    availableSpells.some(
+      (spell) => spell.rank === rank && rule.spellIds.includes(spell.id)
+    )
+  );
+}
+
+function renderChoiceCountPill(
+  rule: ActiveSpellChoiceRule,
+  selectedSpellIds: string[]
+) {
+  const selectedInRule = getSelectedSpellIdsForRule(selectedSpellIds, rule);
+
+  return (
+    <span
+      key={rule.id}
+      className={getChoiceRequirementClass(selectedInRule.length, rule.max)}
+      title={`${rule.displayGroupLabel}: ${selectedInRule.length}/${rule.max}`}
+    >
+      {selectedInRule.length}/{rule.max}
+    </span>
+  );
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -249,30 +288,30 @@ function SpellsAbilitiesTab({
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
-const baseAvailableSpells = getAvailableSpellsForBuild(
-  bg3Spells,
-  selectedClass,
-  selectedSubclass,
-  selectedLevel,
-  selectedWarlockInvocations
-);
+  const baseAvailableSpells = getAvailableSpellsForBuild(
+    bg3Spells,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedWarlockInvocations
+  );
 
-const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
-  selectedClass,
-  selectedSubclass,
-  selectedLevel
-);
+  const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
+    selectedClass,
+    selectedSubclass,
+    selectedLevel
+  );
 
-const arcaneTricksterSpells = getAvailableRogueArcaneTricksterSpells(
-  selectedClass,
-  selectedSubclass,
-  selectedLevel
-);
+  const arcaneTricksterSpells = getAvailableRogueArcaneTricksterSpells(
+    selectedClass,
+    selectedSubclass,
+    selectedLevel
+  );
 
-const availableSpells = mergeSpellLists(baseAvailableSpells, [
-  ...magicalSecretSpells,
-  ...arcaneTricksterSpells,
-]);
+  const availableSpells = mergeSpellLists(baseAvailableSpells, [
+    ...magicalSecretSpells,
+    ...arcaneTricksterSpells,
+  ]);
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
 
@@ -283,6 +322,10 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
     selectedLevel,
     spellChoiceMaxOverrides
   );
+
+  const visibleSpellChoiceRules = activeSpellChoiceRules
+    .filter((rule) => rule.spellIds.length > 0)
+    .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder);
 
   const magicalSecretsRules = activeSpellChoiceRules
     .filter(isMagicalSecretsRule)
@@ -377,7 +420,9 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
           {feature.roles.length > 0 && (
             <span>
               <b>Role:</b>{" "}
-              {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+              {feature.roles
+                .map((role) => role.replaceAll("-", " "))
+                .join(", ")}
             </span>
           )}
 
@@ -508,7 +553,9 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
           {spell.roles.length > 0 && (
             <span>
               <b>Role:</b>{" "}
-              {spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+              {spell.roles
+                .map((role) => role.replaceAll("-", " "))
+                .join(", ")}
             </span>
           )}
 
@@ -611,7 +658,10 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
               ).length;
 
               return (
-                <div key={activeGroup.id} className="choice-subgroup active-subgroup">
+                <div
+                  key={activeGroup.id}
+                  className="choice-subgroup active-subgroup"
+                >
                   <div className="choice-subgroup-header">
                     <strong>{activeGroup.label}</strong>
                     <span>
@@ -648,7 +698,9 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
 
                   <div className="ability-icon-grid">
                     {choiceGroup.features.map((feature) => {
-                      const isSelected = selectedClassFeatureIds.includes(feature.id);
+                      const isSelected = selectedClassFeatureIds.includes(
+                        feature.id
+                      );
                       const groupFull =
                         selectedInChoiceGroup >= choiceGroup.max && !isSelected;
 
@@ -664,34 +716,32 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
 
       {availableSpells.length > 0 && (
         <div className="section-block">
-          <div className="ability-section-heading">
-            <h3>Spells and cantrips</h3>
+          <div className="ability-section-heading spell-section-heading-inline">
+            <div className="spell-section-title-row">
+              <h3>Spells and cantrips</h3>
+            </div>
+
             <span>{selectedSpellIds.length}</span>
           </div>
 
           <div className="spell-book">
             {magicalSecretsRules.map((rule) => {
               const spellsForRule = getSpellsForChoiceRule(availableSpells, rule);
-              const selectedInRule = getSelectedSpellIdsForRule(
-                selectedSpellIds,
-                rule
-              );
 
               if (spellsForRule.length === 0) return null;
 
               return (
                 <section key={rule.id} className="spell-rank-section">
-                  <div className="choice-subgroup-header spell-choice-section-header">
-                    <strong>{rule.displayGroupLabel}</strong>
-                    <span>
-                      {selectedInRule.length}/{rule.max}
-                    </span>
+                  <div className="spell-rank-title-row spell-choice-section-header">
+                    <h4>{rule.displayGroupLabel}</h4>
+
+                    <div className="spell-rank-choice-counts">
+                      {renderChoiceCountPill(rule, selectedSpellIds)}
+                    </div>
                   </div>
 
                   <div className="spell-icon-grid">
-                    {spellsForRule.map((spell) =>
-                      renderSpellButton(spell, rule)
-                    )}
+                    {spellsForRule.map((spell) => renderSpellButton(spell, rule))}
                   </div>
                 </section>
               );
@@ -704,9 +754,27 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, [
 
               if (spellsForRank.length === 0) return null;
 
+              const rankChoiceRules = getChoiceRulesForRank(
+                rank,
+                visibleSpellChoiceRules.filter(
+                  (rule) => !isMagicalSecretsRule(rule)
+                ),
+                nonMagicalAvailableSpells
+              );
+
               return (
                 <section key={rank} className="spell-rank-section">
-                  <h4>{rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}</h4>
+                  <div className="spell-rank-title-row">
+                    <h4>{rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}</h4>
+
+                    {rankChoiceRules.length > 0 && (
+                      <div className="spell-rank-choice-counts">
+                        {rankChoiceRules.map((rule) =>
+                          renderChoiceCountPill(rule, selectedSpellIds)
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <div className="spell-icon-grid">
                     {spellsForRank.map((spell) => renderSpellButton(spell))}

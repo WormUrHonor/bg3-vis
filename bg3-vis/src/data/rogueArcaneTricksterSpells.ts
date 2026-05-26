@@ -43,6 +43,19 @@ export const ARCANE_TRICKSTER_ENCHANTMENT_ILLUSION_SPELL_IDS = [
   "phantasmal-force",
 ];
 
+/*
+  These are the unrestricted Arcane Trickster choices.
+
+  Important: this list intentionally excludes the Enchantment / Illusion spells above.
+  BG3 technically allows the unrestricted slot to be spent on any Wizard spell,
+  including Enchantment / Illusion. However, the current generic spell-choice
+  rule system assigns one spell to one visible choice group. If the same spell
+  exists in both groups, the UI can count it against the wrong group or both
+  groups. This keeps the planner stable and prevents illegal over-selection.
+
+  If later we add rule-priority or per-selection source tracking, this can be
+  expanded to include the restricted-school spells too.
+*/
 export const ARCANE_TRICKSTER_ANY_SCHOOL_SPELL_IDS = [
   "burning-hands",
   "chromatic-orb",
@@ -95,7 +108,11 @@ function withTag(spell: BG3Spell, tag: string): BG3Spell {
   };
 }
 
-function getTaggedSpells(spellIds: string[], tag: string, maxRank: number): BG3Spell[] {
+function getTaggedSpells(
+  spellIds: string[],
+  tag: string,
+  maxRank: number
+): BG3Spell[] {
   return spellIds
     .map((spellId) => getSpellById(spellId))
     .filter(isDefined)
