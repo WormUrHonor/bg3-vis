@@ -1,4 +1,10 @@
-﻿import type { AbilityRole, DamageType } from "../bg3Spells";
+﻿import type {
+  AbilityRole,
+  ActionCost,
+  BG3Spell,
+  DamageType,
+  ResourceCost,
+} from "../bg3Spells";
 import type { ClassFeatureModule } from "./classFeatureTypes";
 import {
   availableTo,
@@ -16,6 +22,8 @@ const ARCHFEY = "The Archfey";
 const FIEND = "The Fiend";
 const GREAT_OLD_ONE = "The Great Old One";
 const HEXBLADE = "The Hexblade";
+
+type FeatureRange = BG3Spell["range"];
 
 const pactBoonChoice = {
   id: "warlock-pact-boon",
@@ -57,6 +65,12 @@ const invocationGroup = {
   id: "warlock-eldritch-invocations",
   label: "Eldritch Invocations",
   order: 30,
+};
+
+const invocationGrantedGroup = {
+  id: "warlock-invocation-granted-actions",
+  label: "Invocation Granted Actions",
+  order: 35,
 };
 
 const archfeyGroup = {
@@ -106,6 +120,19 @@ const range9m = {
   shape: "single-target",
 } as const;
 
+const range18mSingle = {
+  label: "18m",
+  meters: 18,
+  category: "long",
+  shape: "single-target",
+} as const;
+
+const cone5m = {
+  label: "5m cone",
+  meters: 5,
+  category: "mid",
+  shape: "cone",
+} as const;
 
 type PactMagicDefinition = {
   idBase: string;
@@ -193,9 +220,9 @@ type InvocationDefinition = {
   description: string;
   roles: AbilityRole[];
   damageTypes: DamageType[];
-  actions: ("action" | "bonus-action" | "reaction" | "passive" | "conditional")[];
-  resources: ("spell-slot" | "pact-magic-slot" | "cantrip" | "short-rest" | "long-rest" | "class-resource" | "none")[];
-  range: Parameters<typeof feature>[8] extends never ? never : any;
+  actions: ActionCost[];
+  resources: ResourceCost[];
+  range: FeatureRange;
   tags?: string[];
 };
 
@@ -210,7 +237,7 @@ const invocationDefinitions: InvocationDefinition[] = [
     damageTypes: ["Force"],
     actions: ["passive"],
     resources: ["none"],
-    range: range18m,
+    range: range18mSingle,
     tags: ["modifies-spell:eldritch-blast"],
   },
   {
@@ -218,26 +245,24 @@ const invocationDefinitions: InvocationDefinition[] = [
     name: "Armour of Shadows",
     minLevel: 2,
     description:
-      "You can cast Mage Armour on yourself at will, without expending a Spell Slot.",
-    roles: ["defense-protection"],
+      "Choose this invocation to gain the ability to cast Mage Armour on yourself at will, without expending a Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: self,
-    tags: ["uses-spell-icon:mage-armour"],
   },
   {
     idBase: "beast-speech",
     name: "Beast Speech",
     minLevel: 2,
     description:
-      "You can cast Speak with Animals on yourself at will, without expending a Spell Slot.",
-    roles: ["narrative-interaction", "investigation-world-interaction"],
+      "Choose this invocation to gain the ability to cast Speak with Animals on yourself at will, without expending a Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: self,
-    tags: ["uses-spell-icon:speak-with-animals"],
   },
   {
     idBase: "beguiling-influence",
@@ -267,36 +292,34 @@ const invocationDefinitions: InvocationDefinition[] = [
     name: "Fiendish Vigour",
     minLevel: 2,
     description:
-      "You can cast False Life on yourself at will as a 1st-level spell, without expending a Spell Slot.",
-    roles: ["defense-protection"],
+      "Choose this invocation to gain the ability to cast False Life on yourself at will, without expending a Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: self,
-    tags: ["uses-spell-icon:false-life"],
   },
   {
     idBase: "mask-of-many-faces",
     name: "Mask of Many Faces",
     minLevel: 2,
     description:
-      "You can cast Disguise Self on yourself at will, without expending a Spell Slot.",
-    roles: ["narrative-interaction"],
+      "Choose this invocation to gain the ability to cast Disguise Self on yourself at will, without expending a Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: self,
-    tags: ["uses-spell-icon:disguise-self"],
   },
   {
     idBase: "one-with-shadows",
     name: "One with Shadows",
     minLevel: 2,
     description:
-      "Learn how to cast One with Shadows, allowing you to become Invisible while obscured.",
-    roles: ["defense-protection", "mobility-positioning"],
+      "Choose this invocation to gain the ability to become Invisible while obscured.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: self,
   },
@@ -310,7 +333,7 @@ const invocationDefinitions: InvocationDefinition[] = [
     damageTypes: ["Force"],
     actions: ["passive"],
     resources: ["none"],
-    range: range18m,
+    range: range18mSingle,
     tags: ["modifies-spell:eldritch-blast"],
   },
   {
@@ -318,112 +341,108 @@ const invocationDefinitions: InvocationDefinition[] = [
     name: "Thief of Five Fates",
     minLevel: 2,
     description:
-      "Once per Long Rest, you can cast Bane using a Warlock Spell Slot.",
-    roles: ["control"],
+      "Choose this invocation to gain the ability to cast Bane once per Long Rest using a Warlock Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
-    resources: ["pact-magic-slot", "long-rest"],
+    actions: ["passive"],
+    resources: ["none"],
     range: range9m,
-    tags: ["uses-spell-icon:bane"],
   },
   {
     idBase: "sign-of-ill-omen",
     name: "Sign of Ill Omen",
     minLevel: 5,
-    description: "You can cast Bestow Curse with a Warlock Spell Slot.",
-    roles: ["control", "single-target-damage"],
-    damageTypes: ["Necrotic"],
-    actions: ["action"],
-    resources: ["pact-magic-slot"],
+    description:
+      "Choose this invocation to gain the ability to cast Bestow Curse with a Warlock Spell Slot.",
+    roles: [],
+    damageTypes: [],
+    actions: ["passive"],
+    resources: ["none"],
     range: touch,
-    tags: ["uses-spell-icon:bestow-curse"],
   },
   {
     idBase: "mire-the-mind",
     name: "Mire the Mind",
     minLevel: 5,
-    description: "You can cast Slow with a Warlock Spell Slot.",
-    roles: ["control"],
+    description:
+      "Choose this invocation to gain the ability to cast Slow with a Warlock Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
-    resources: ["pact-magic-slot"],
+    actions: ["passive"],
+    resources: ["none"],
     range: radiusRange("18m, 6m AoE", 18, "long", 6),
-    tags: ["uses-spell-icon:slow"],
   },
   {
     idBase: "book-of-ancient-secrets",
     name: "Book of Ancient Secrets",
     minLevel: 7,
     description:
-      "Gain Ray of Sickness, Chromatic Orb, and Silence. You can cast them once per Long Rest without expending Spell Slots.",
-    roles: ["single-target-damage", "control", "support-buff"],
-    damageTypes: ["Poison", "Thunder", "Acid", "Cold", "Fire", "Lightning"],
-    actions: ["action"],
-    resources: ["long-rest"],
-    range: range18m,
-    tags: ["warlock", "invocation", "ritual-book"],
+      "Choose this invocation to gain Ray of Sickness, Chromatic Orb, and Silence. Each can be cast once per Long Rest without expending a Spell Slot.",
+    roles: [],
+    damageTypes: [],
+    actions: ["passive"],
+    resources: ["none"],
+    range: self,
   },
   {
     idBase: "dreadful-word",
     name: "Dreadful Word",
     minLevel: 7,
-    description: "You can cast Confusion with a Warlock Spell Slot.",
-    roles: ["control"],
+    description:
+      "Choose this invocation to gain the ability to cast Confusion with a Warlock Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
-    resources: ["pact-magic-slot"],
+    actions: ["passive"],
+    resources: ["none"],
     range: radiusRange("18m, 6m AoE", 18, "long", 6),
-    tags: ["uses-spell-icon:confusion"],
   },
   {
     idBase: "sculptor-of-flesh",
     name: "Sculptor of Flesh",
     minLevel: 7,
-    description: "You can cast Polymorph with a Warlock Spell Slot.",
-    roles: ["control", "support-buff"],
+    description:
+      "Choose this invocation to gain the ability to cast Polymorph with a Warlock Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
-    resources: ["pact-magic-slot"],
-    range: range18m,
-    tags: ["uses-spell-icon:polymorph"],
+    actions: ["passive"],
+    resources: ["none"],
+    range: range18mSingle,
   },
   {
     idBase: "minions-of-chaos",
     name: "Minions of Chaos",
     minLevel: 9,
-    description: "You can cast Conjure Elemental with a Warlock Spell Slot.",
-    roles: ["summon", "single-target-damage", "control"],
-    damageTypes: ["Variable"],
-    actions: ["action"],
-    resources: ["pact-magic-slot"],
-    range: range18m,
-    tags: ["uses-spell-icon:conjure-elemental"],
+    description:
+      "Choose this invocation to gain the ability to cast Conjure Elemental with a Warlock Spell Slot.",
+    roles: [],
+    damageTypes: [],
+    actions: ["passive"],
+    resources: ["none"],
+    range: range18mSingle,
   },
   {
     idBase: "otherworldly-leap",
     name: "Otherworldly Leap",
     minLevel: 9,
     description:
-      "You can cast Enhance Leap without expending a Spell Slot.",
-    roles: ["mobility-positioning"],
+      "Choose this invocation to gain the ability to cast Enhance Leap without expending a Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: touch,
-    tags: ["uses-spell-icon:enhance-leap"],
   },
   {
     idBase: "whispers-of-the-grave",
     name: "Whispers of the Grave",
     minLevel: 9,
     description:
-      "You can cast Speak with Dead without expending a Warlock Spell Slot.",
-    roles: ["narrative-interaction", "investigation-world-interaction"],
+      "Choose this invocation to gain the ability to cast Speak with Dead without expending a Warlock Spell Slot.",
+    roles: [],
     damageTypes: [],
-    actions: ["action"],
+    actions: ["passive"],
     resources: ["none"],
     range: self,
-    tags: ["uses-spell-icon:speak-with-dead"],
   },
   {
     idBase: "lifedrinker",
@@ -488,8 +507,8 @@ const warlockFeatures = [
     [availableTo(WARLOCK, 11)],
     true,
     "Choose one 6th-level Warlock spell. It can be cast once per Long Rest without expending a Spell Slot.",
-    ["support-buff", "single-target-damage", "area-damage", "control", "summon"],
-    ["Variable"],
+    ["support-buff"],
+    [],
     ["passive"],
     ["long-rest"],
     self,
@@ -506,8 +525,8 @@ const warlockFeatures = [
     [availableTo(WARLOCK, 3)],
     false,
     "Choose Pact of the Blade. You can summon or bind a pact weapon, making it magical and using your Spellcasting Ability Modifier for attacks.",
-    ["single-target-damage", "support-buff"],
-    ["Weapon"],
+    [],
+    [],
     ["passive"],
     ["none"],
     melee,
@@ -525,8 +544,8 @@ const warlockFeatures = [
     [availableTo(WARLOCK, 3)],
     false,
     "Choose Pact of the Chain. Gain the service of a familiar, including special familiar options such as Imp and Quasit.",
-    ["summon", "single-target-damage", "control"],
-    ["Variable"],
+    [],
+    [],
     ["passive"],
     ["none"],
     range18m,
@@ -544,8 +563,8 @@ const warlockFeatures = [
     [availableTo(WARLOCK, 3)],
     false,
     "Choose Pact of the Tome. Your Book of Shadows grants Guidance, Vicious Mockery, and Thorn Whip.",
-    ["support-buff", "control", "single-target-damage"],
-    ["Psychic", "Piercing"],
+    [],
+    [],
     ["passive"],
     ["none"],
     range18m,
@@ -593,72 +612,73 @@ const warlockFeatures = [
       requires: ["warlock-pact-of-the-blade"],
     }
   ),
-feature(
-  "warlock-pact-chain-find-familiar",
-  "Find Familiar",
-  "action",
-  [availableTo(WARLOCK, 3)],
-  true,
-  "Summon a familiar granted by Pact of the Chain.",
-  ["summon", "investigation-world-interaction"],
-  [],
-  ["action"],
-  ["none"],
-  range18m,
-  ["warlock", "pact-of-the-chain", "ritual", "uses-spell-icon:find-familiar"],
-  {
-    displayGroup: pactGrantedGroup,
-    requires: ["warlock-pact-of-the-chain"],
-  }
-),
 
-feature(
-  "warlock-pact-chain-find-familiar-imp",
-  "Find Familiar: Imp",
-  "action",
-  [availableTo(WARLOCK, 3)],
-  true,
-  "Summon an Imp familiar through Pact of the Chain.",
-  ["summon", "single-target-damage", "control"],
-  ["Poison", "Piercing"],
-  ["action"],
-  ["none"],
-  range18m,
-  [
-    "warlock",
-    "pact-of-the-chain",
-    "ritual",
-    "uses-spell-icon:find-familiar-imp",
-  ],
-  {
-    displayGroup: pactGrantedGroup,
-    requires: ["warlock-pact-of-the-chain"],
-  }
-),
+  feature(
+    "warlock-pact-chain-find-familiar",
+    "Find Familiar",
+    "action",
+    [availableTo(WARLOCK, 3)],
+    true,
+    "Summon a familiar granted by Pact of the Chain.",
+    ["summon", "investigation-world-interaction"],
+    [],
+    ["action"],
+    ["none"],
+    range18m,
+    ["warlock", "pact-of-the-chain", "ritual", "uses-spell-icon:find-familiar"],
+    {
+      displayGroup: pactGrantedGroup,
+      requires: ["warlock-pact-of-the-chain"],
+    }
+  ),
 
-feature(
-  "warlock-pact-chain-find-familiar-quasit",
-  "Find Familiar: Quasit",
-  "action",
-  [availableTo(WARLOCK, 3)],
-  true,
-  "Summon a Quasit familiar through Pact of the Chain.",
-  ["summon", "single-target-damage", "control"],
-  ["Slashing", "Poison"],
-  ["action"],
-  ["none"],
-  range18m,
-  [
-    "warlock",
-    "pact-of-the-chain",
-    "ritual",
-    "uses-spell-icon:find-familiar-quasit",
-  ],
-  {
-    displayGroup: pactGrantedGroup,
-    requires: ["warlock-pact-of-the-chain"],
-  }
-),
+  feature(
+    "warlock-pact-chain-find-familiar-imp",
+    "Find Familiar: Imp",
+    "action",
+    [availableTo(WARLOCK, 3)],
+    true,
+    "Summon an Imp familiar through Pact of the Chain.",
+    ["summon", "single-target-damage", "control"],
+    ["Poison", "Piercing"],
+    ["action"],
+    ["none"],
+    range18m,
+    [
+      "warlock",
+      "pact-of-the-chain",
+      "ritual",
+      "uses-spell-icon:find-familiar-imp",
+    ],
+    {
+      displayGroup: pactGrantedGroup,
+      requires: ["warlock-pact-of-the-chain"],
+    }
+  ),
+
+  feature(
+    "warlock-pact-chain-find-familiar-quasit",
+    "Find Familiar: Quasit",
+    "action",
+    [availableTo(WARLOCK, 3)],
+    true,
+    "Summon a Quasit familiar through Pact of the Chain.",
+    ["summon", "single-target-damage", "control"],
+    ["Slashing", "Poison"],
+    ["action"],
+    ["none"],
+    range18m,
+    [
+      "warlock",
+      "pact-of-the-chain",
+      "ritual",
+      "uses-spell-icon:find-familiar-quasit",
+    ],
+    {
+      displayGroup: pactGrantedGroup,
+      requires: ["warlock-pact-of-the-chain"],
+    }
+  ),
 
   feature(
     "warlock-pact-tome-guidance",
@@ -767,7 +787,12 @@ feature(
     ["action"],
     ["long-rest"],
     range18m,
-    ["warlock", "deepened-pact", "pact-of-the-tome", "uses-spell-icon:animate-dead"],
+    [
+      "warlock",
+      "deepened-pact",
+      "pact-of-the-tome",
+      "uses-spell-icon:animate-dead",
+    ],
     {
       displayGroup: pactGrantedGroup,
       requires: ["warlock-pact-of-the-tome"],
@@ -786,7 +811,12 @@ feature(
     ["action"],
     ["long-rest"],
     range18m,
-    ["warlock", "deepened-pact", "pact-of-the-tome", "uses-spell-icon:haste"],
+    [
+      "warlock",
+      "deepened-pact",
+      "pact-of-the-tome",
+      "uses-spell-icon:haste",
+    ],
     {
       displayGroup: pactGrantedGroup,
       requires: ["warlock-pact-of-the-tome"],
@@ -805,7 +835,12 @@ feature(
     ["action"],
     ["long-rest"],
     radiusRange("18m, 2m AoE", 18, "long", 2),
-    ["warlock", "deepened-pact", "pact-of-the-tome", "uses-spell-icon:call-lightning"],
+    [
+      "warlock",
+      "deepened-pact",
+      "pact-of-the-tome",
+      "uses-spell-icon:call-lightning",
+    ],
     {
       displayGroup: pactGrantedGroup,
       requires: ["warlock-pact-of-the-tome"],
@@ -813,6 +848,339 @@ feature(
   ),
 
   ...invocationDefinitions.map(makeInvocationFeature),
+
+  feature(
+    "warlock-invocation-armour-of-shadows-mage-armour",
+    "Mage Armour",
+    "action",
+    [availableTo(WARLOCK, 2)],
+    true,
+    "Granted by Armour of Shadows. Cast Mage Armour on yourself at will, without expending a Spell Slot.",
+    ["defense-protection"],
+    [],
+    ["action"],
+    ["none"],
+    self,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:mage-armour"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-armour-of-shadows"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-beast-speech-speak-with-animals",
+    "Speak with Animals",
+    "action",
+    [availableTo(WARLOCK, 2)],
+    true,
+    "Granted by Beast Speech. Cast Speak with Animals on yourself at will, without expending a Spell Slot.",
+    ["narrative-interaction", "investigation-world-interaction"],
+    [],
+    ["action"],
+    ["none"],
+    self,
+    [
+      "warlock",
+      "invocation-granted-action",
+      "ritual",
+      "uses-spell-icon:speak-with-animals",
+    ],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-beast-speech"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-fiendish-vigour-false-life",
+    "False Life",
+    "action",
+    [availableTo(WARLOCK, 2)],
+    true,
+    "Granted by Fiendish Vigour. Cast False Life on yourself at will, without expending a Spell Slot.",
+    ["defense-protection"],
+    [],
+    ["action"],
+    ["none"],
+    self,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:false-life"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-fiendish-vigour"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-mask-of-many-faces-disguise-self",
+    "Disguise Self",
+    "action",
+    [availableTo(WARLOCK, 2)],
+    true,
+    "Granted by Mask of Many Faces. Cast Disguise Self on yourself at will, without expending a Spell Slot.",
+    ["narrative-interaction"],
+    [],
+    ["action"],
+    ["none"],
+    self,
+    [
+      "warlock",
+      "invocation-granted-action",
+      "ritual",
+      "uses-spell-icon:disguise-self",
+    ],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-mask-of-many-faces"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-one-with-shadows-action",
+    "One with Shadows",
+    "action",
+    [availableTo(WARLOCK, 2)],
+    true,
+    "Granted by One with Shadows. Become Invisible while obscured.",
+    ["defense-protection", "mobility-positioning"],
+    [],
+    ["action"],
+    ["none"],
+    self,
+    ["warlock", "invocation-granted-action"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-one-with-shadows"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-thief-of-five-fates-bane",
+    "Bane",
+    "action",
+    [availableTo(WARLOCK, 2)],
+    true,
+    "Granted by Thief of Five Fates. Cast Bane once per Long Rest using a Warlock Spell Slot.",
+    ["control"],
+    [],
+    ["action"],
+    ["pact-magic-slot", "long-rest"],
+    range9m,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:bane"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-thief-of-five-fates"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-sign-of-ill-omen-bestow-curse",
+    "Bestow Curse",
+    "action",
+    [availableTo(WARLOCK, 5)],
+    true,
+    "Granted by Sign of Ill Omen. Cast Bestow Curse with a Warlock Spell Slot.",
+    ["control", "single-target-damage"],
+    ["Necrotic"],
+    ["action"],
+    ["pact-magic-slot"],
+    touch,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:bestow-curse"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-sign-of-ill-omen"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-mire-the-mind-slow",
+    "Slow",
+    "action",
+    [availableTo(WARLOCK, 5)],
+    true,
+    "Granted by Mire the Mind. Cast Slow with a Warlock Spell Slot.",
+    ["control"],
+    [],
+    ["action"],
+    ["pact-magic-slot"],
+    radiusRange("18m, 6m AoE", 18, "long", 6),
+    ["warlock", "invocation-granted-action", "uses-spell-icon:slow"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-mire-the-mind"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-book-of-ancient-secrets-ray-of-sickness",
+    "Ray of Sickness",
+    "action",
+    [availableTo(WARLOCK, 7)],
+    true,
+    "Granted by Book of Ancient Secrets. Cast Ray of Sickness once per Long Rest without expending a Spell Slot.",
+    ["single-target-damage", "control"],
+    ["Poison"],
+    ["action"],
+    ["long-rest"],
+    range18mSingle,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:ray-of-sickness"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-book-of-ancient-secrets"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-book-of-ancient-secrets-chromatic-orb",
+    "Chromatic Orb",
+    "action",
+    [availableTo(WARLOCK, 7)],
+    true,
+    "Granted by Book of Ancient Secrets. Cast Chromatic Orb once per Long Rest without expending a Spell Slot.",
+    ["single-target-damage"],
+    ["Thunder", "Acid", "Cold", "Fire", "Lightning", "Poison"],
+    ["action"],
+    ["long-rest"],
+    range18mSingle,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:chromatic-orb"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-book-of-ancient-secrets"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-book-of-ancient-secrets-silence",
+    "Silence",
+    "action",
+    [availableTo(WARLOCK, 7)],
+    true,
+    "Granted by Book of Ancient Secrets. Cast Silence once per Long Rest without expending a Spell Slot.",
+    ["control", "defense-protection"],
+    [],
+    ["action"],
+    ["long-rest"],
+    radiusRange("18m, 6m AoE", 18, "long", 6),
+    [
+      "warlock",
+      "invocation-granted-action",
+      "ritual",
+      "uses-spell-icon:silence",
+    ],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-book-of-ancient-secrets"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-dreadful-word-confusion",
+    "Confusion",
+    "action",
+    [availableTo(WARLOCK, 7)],
+    true,
+    "Granted by Dreadful Word. Cast Confusion with a Warlock Spell Slot.",
+    ["control"],
+    [],
+    ["action"],
+    ["pact-magic-slot"],
+    radiusRange("18m, 6m AoE", 18, "long", 6),
+    ["warlock", "invocation-granted-action", "uses-spell-icon:confusion"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-dreadful-word"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-sculptor-of-flesh-polymorph",
+    "Polymorph",
+    "action",
+    [availableTo(WARLOCK, 7)],
+    true,
+    "Granted by Sculptor of Flesh. Cast Polymorph with a Warlock Spell Slot.",
+    ["control", "support-buff"],
+    [],
+    ["action"],
+    ["pact-magic-slot"],
+    range18mSingle,
+    ["warlock", "invocation-granted-action", "uses-spell-icon:polymorph"],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-sculptor-of-flesh"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-minions-of-chaos-conjure-elemental",
+    "Conjure Elemental",
+    "action",
+    [availableTo(WARLOCK, 9)],
+    true,
+    "Granted by Minions of Chaos. Cast Conjure Elemental with a Warlock Spell Slot.",
+    ["summon", "single-target-damage", "control"],
+    ["Variable"],
+    ["action"],
+    ["pact-magic-slot"],
+    range18mSingle,
+    [
+      "warlock",
+      "invocation-granted-action",
+      "uses-spell-icon:conjure-elemental",
+    ],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-minions-of-chaos"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-otherworldly-leap-enhance-leap",
+    "Enhance Leap",
+    "action",
+    [availableTo(WARLOCK, 9)],
+    true,
+    "Granted by Otherworldly Leap. Cast Enhance Leap without expending a Spell Slot.",
+    ["mobility-positioning"],
+    [],
+    ["action"],
+    ["none"],
+    touch,
+    [
+      "warlock",
+      "invocation-granted-action",
+      "ritual",
+      "uses-spell-icon:enhance-leap",
+    ],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-otherworldly-leap"],
+    }
+  ),
+
+  feature(
+    "warlock-invocation-whispers-of-the-grave-speak-with-dead",
+    "Speak with Dead",
+    "action",
+    [availableTo(WARLOCK, 9)],
+    true,
+    "Granted by Whispers of the Grave. Cast Speak with Dead without expending a Warlock Spell Slot.",
+    ["narrative-interaction", "investigation-world-interaction"],
+    [],
+    ["action"],
+    ["none"],
+    self,
+    [
+      "warlock",
+      "invocation-granted-action",
+      "ritual",
+      "uses-spell-icon:speak-with-dead",
+    ],
+    {
+      displayGroup: invocationGrantedGroup,
+      requires: ["warlock-invocation-whispers-of-the-grave"],
+    }
+  ),
 
   feature(
     "warlock-archfey-fey-presence",
@@ -839,10 +1207,10 @@ feature(
     [availableTo(WARLOCK, 6, ARCHFEY)],
     true,
     "Upon taking damage, you can become Invisible with Cloaking Mist. On your next turn, you can cast Misty Step, which breaks the invisibility.",
-    ["defense-protection", "mobility-positioning"],
+    [],
     [],
     ["passive"],
-    ["short-rest"],
+    ["none"],
     self,
     ["warlock", "archfey"],
     {
@@ -880,7 +1248,7 @@ feature(
     [],
     ["bonus-action"],
     ["short-rest"],
-    range18m,
+    range18mSingle,
     ["warlock", "archfey", "granted-action", "uses-spell-icon:misty-step"],
     {
       displayGroup: archfeyGroup,
@@ -989,7 +1357,7 @@ feature(
     [],
     ["reaction"],
     ["short-rest"],
-    range18m,
+    range18mSingle,
     ["warlock", "great-old-one"],
     {
       displayGroup: greatOldOneGroup,
@@ -1013,23 +1381,24 @@ feature(
       displayGroup: greatOldOneGroup,
     }
   ),
-feature(
-  "warlock-great-old-one-thought-shield-psychic-reflection",
-  "Thought Shield: Psychic Reflection",
-  "passive",
-  [availableTo(WARLOCK, 10, GREAT_OLD_ONE)],
-  true,
-  "When you take Psychic damage, your attacker takes the same damage.",
-  ["single-target-damage", "defense-protection"],
-  ["Psychic"],
-  ["conditional"],
-  ["none"],
-  range18m,
-  ["warlock", "great-old-one"],
-  {
-    displayGroup: greatOldOneGroup,
-  }
-),
+
+  feature(
+    "warlock-great-old-one-thought-shield-psychic-reflection",
+    "Thought Shield: Psychic Reflection",
+    "passive",
+    [availableTo(WARLOCK, 10, GREAT_OLD_ONE)],
+    true,
+    "When you take Psychic damage, your attacker takes the same damage.",
+    ["single-target-damage", "defense-protection"],
+    ["Psychic"],
+    ["conditional"],
+    ["none"],
+    range18mSingle,
+    ["warlock", "great-old-one"],
+    {
+      displayGroup: greatOldOneGroup,
+    }
+  ),
 
   feature(
     "warlock-hexblade-hex-warrior",
@@ -1038,8 +1407,8 @@ feature(
     [availableTo(WARLOCK, 1, HEXBLADE)],
     true,
     "Gain proficiency with Medium Armour, Shields, and Martial Weapons. You also gain Bind Hexed Weapon.",
-    ["support-buff", "defense-protection", "single-target-damage"],
-    ["Weapon"],
+    [],
+    [],
     ["passive"],
     ["none"],
     self,
@@ -1079,7 +1448,7 @@ feature(
     ["Weapon"],
     ["bonus-action"],
     ["short-rest"],
-    range18m,
+    range18mSingle,
     ["warlock", "hexblade", "class-action"],
     {
       displayGroup: hexbladeGroup,
@@ -1097,7 +1466,7 @@ feature(
     ["Necrotic"],
     ["reaction"],
     ["none"],
-    range18m,
+    range18mSingle,
     ["warlock", "hexblade"],
     {
       displayGroup: hexbladeGroup,
@@ -1115,7 +1484,7 @@ feature(
     [],
     ["reaction"],
     ["none"],
-    range18m,
+    range18mSingle,
     ["warlock", "hexblade"],
     {
       displayGroup: hexbladeGroup,
@@ -1176,6 +1545,39 @@ export const warlockClassModule: ClassFeatureModule = {
     "warlock-deepened-pact-tome-haste": "Spell_Transmutation_Haste.png",
     "warlock-deepened-pact-tome-call-lightning":
       "Spell_Conjuration_CallLightning.png",
+
+    "warlock-invocation-armour-of-shadows-mage-armour":
+      "Spell_Abjuration_MageArmour.png",
+    "warlock-invocation-beast-speech-speak-with-animals":
+      "Spell_Divination_SpeakWithAnimals.png",
+    "warlock-invocation-fiendish-vigour-false-life":
+      "Spell_Necromancy_FalseLife.png",
+    "warlock-invocation-mask-of-many-faces-disguise-self":
+      "Spell_Illusion_DisguiseSelf.png",
+    "warlock-invocation-one-with-shadows-action":
+      "Action_Warlock_Invocation_OneWithShadows.png",
+    "warlock-invocation-thief-of-five-fates-bane":
+      "Spell_Enchantment_Bane.png",
+    "warlock-invocation-sign-of-ill-omen-bestow-curse":
+      "Spell_Necromancy_BestowCurse.png",
+    "warlock-invocation-mire-the-mind-slow":
+      "Spell_Transmutation_Slow.png",
+    "warlock-invocation-book-of-ancient-secrets-ray-of-sickness":
+      "Spell_Necromancy_RayOfSickness.png",
+    "warlock-invocation-book-of-ancient-secrets-chromatic-orb":
+      "Spell_Evocation_ChromaticOrb.png",
+    "warlock-invocation-book-of-ancient-secrets-silence":
+      "Spell_Illusion_Silence.png",
+    "warlock-invocation-dreadful-word-confusion":
+      "Spell_Enchantment_Confusion.png",
+    "warlock-invocation-sculptor-of-flesh-polymorph":
+      "Spell_Transmutation_Polymorph.png",
+    "warlock-invocation-minions-of-chaos-conjure-elemental":
+      "Spell_Conjuration_ConjureElemental.png",
+    "warlock-invocation-otherworldly-leap-enhance-leap":
+      "Spell_Transmutation_EnhanceLeap.png",
+    "warlock-invocation-whispers-of-the-grave-speak-with-dead":
+      "Spell_Necromancy_SpeakWithDead.png",
 
     "warlock-archfey-fey-presence": "Action_Warlock_Archfey_FeyPresence.png",
     "warlock-archfey-misty-escape": "Passive_Warlock_Archfey_MistyEscape.png",
