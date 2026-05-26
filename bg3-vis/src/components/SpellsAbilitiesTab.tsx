@@ -64,6 +64,27 @@ function toRoman(value: number): string {
   return romanByNumber[value] ?? String(value);
 }
 
+function getWarlockInvocationMax(selectedLevel: number): number {
+  if (selectedLevel < 2) return 0;
+  if (selectedLevel < 5) return 2;
+  if (selectedLevel < 7) return 3;
+  if (selectedLevel < 9) return 4;
+  if (selectedLevel < 12) return 5;
+  return 6;
+}
+
+function getEffectiveClassFeatureChoiceMax(
+  choiceGroupId: string,
+  defaultMax: number,
+  selectedLevel: number
+): number {
+  if (choiceGroupId === "warlock-eldritch-invocations") {
+    return getWarlockInvocationMax(selectedLevel);
+  }
+
+  return defaultMax;
+}
+
 function getClassAbilityTabTitle(
   selectedClass: ClassName | "",
   selectedSubclass: string
@@ -80,15 +101,19 @@ function getClassAbilityTabTitle(
   if (selectedClass === "Monk") return "Ki Actions & Monk Features";
   if (selectedClass === "Rogue") return "Rogue Actions & Features";
   if (selectedClass === "Bard") return "Spells, Inspirations & Bard Features";
+
   if (selectedClass === "Cleric") {
     return "Spells, Channel Divinity & Cleric Features";
   }
+
   if (selectedClass === "Druid") return "Spells, Wild Shape & Druid Features";
   if (selectedClass === "Paladin") return "Spells, Smites & Paladin Features";
   if (selectedClass === "Ranger") return "Spells & Ranger Features";
+
   if (selectedClass === "Sorcerer") {
     return "Spells, Metamagic & Sorcerer Features";
   }
+
   if (selectedClass === "Wizard") return "Spells & Wizard Features";
 
   return `${selectedClass} Spells & Features`;
@@ -120,6 +145,7 @@ function getKindBadge(feature: BG3ClassFeature): string {
 }
 
 function getChoiceRequirementClass(selectedCount: number, max: number): string {
+  if (max <= 0) return "spell-choice-mini-pill";
   if (selectedCount >= max) return "spell-choice-mini-pill complete";
   if (selectedCount > 0) return "spell-choice-mini-pill partial";
   return "spell-choice-mini-pill";
@@ -593,8 +619,8 @@ function SpellsAbilitiesTab({
           <h2>{getClassAbilityTabTitle(selectedClass, selectedSubclass)}</h2>
           <p className="panel-intro compact-intro">
             Select available spells, cantrips, class actions, passives, and
-            subclass-specific choices. Fixed features are shown as already granted,
-            while toggles can be set active for the visualisation.
+            subclass-specific choices. Fixed features are shown as already
+            granted, while toggles can be set active for the visualisation.
           </p>
         </div>
 
@@ -624,8 +650,12 @@ function SpellsAbilitiesTab({
         )}
 
       {featureDisplayGroups.map((displayGroup) => {
-        const choiceGroups = getChoiceGroupsInDisplayGroup(displayGroup.features);
-        const activeGroups = getActiveGroupsInDisplayGroup(displayGroup.features);
+        const choiceGroups = getChoiceGroupsInDisplayGroup(
+          displayGroup.features
+        );
+        const activeGroups = getActiveGroupsInDisplayGroup(
+          displayGroup.features
+        );
 
         const groupedFeatureIds = new Set([
           ...choiceGroups.flatMap((group) =>
@@ -641,14 +671,19 @@ function SpellsAbilitiesTab({
         );
 
         return (
-          <div key={displayGroup.id} className="section-block feature-group-block">
+          <div
+            key={displayGroup.id}
+            className="section-block feature-group-block"
+          >
             <div className="ability-section-heading feature-display-heading">
               <h3>{displayGroup.label}</h3>
             </div>
 
             {nonGroupedFeatures.length > 0 && (
               <div className="ability-icon-grid">
-                {nonGroupedFeatures.map((feature) => renderFeatureButton(feature))}
+                {nonGroupedFeatures.map((feature) =>
+                  renderFeatureButton(feature)
+                )}
               </div>
             )}
 
@@ -671,11 +706,17 @@ function SpellsAbilitiesTab({
 
                   <div className="ability-icon-grid">
                     {activeGroup.features.map((feature) => {
-                      const isActive = activeClassFeatureIds.includes(feature.id);
+                      const isActive = activeClassFeatureIds.includes(
+                        feature.id
+                      );
                       const activeGroupFull =
                         activeInGroup >= activeGroup.max && !isActive;
 
-                      return renderFeatureButton(feature, false, activeGroupFull);
+                      return renderFeatureButton(
+                        feature,
+                        false,
+                        activeGroupFull
+                      );
                     })}
                   </div>
                 </div>
@@ -683,16 +724,23 @@ function SpellsAbilitiesTab({
             })}
 
             {choiceGroups.map((choiceGroup) => {
-              const selectedInChoiceGroup = choiceGroup.features.filter((feature) =>
-                selectedClassFeatureIds.includes(feature.id)
+              const selectedInChoiceGroup = choiceGroup.features.filter(
+                (feature) => selectedClassFeatureIds.includes(feature.id)
               ).length;
+
+              const effectiveChoiceGroupMax =
+                getEffectiveClassFeatureChoiceMax(
+                  choiceGroup.id,
+                  choiceGroup.max,
+                  selectedLevel
+                );
 
               return (
                 <div key={choiceGroup.id} className="choice-subgroup">
                   <div className="choice-subgroup-header">
                     <strong>{choiceGroup.label}</strong>
                     <span>
-                      {selectedInChoiceGroup}/{choiceGroup.max}
+                      {selectedInChoiceGroup}/{effectiveChoiceGroupMax}
                     </span>
                   </div>
 
@@ -701,8 +749,10 @@ function SpellsAbilitiesTab({
                       const isSelected = selectedClassFeatureIds.includes(
                         feature.id
                       );
+
                       const groupFull =
-                        selectedInChoiceGroup >= choiceGroup.max && !isSelected;
+                        selectedInChoiceGroup >= effectiveChoiceGroupMax &&
+                        !isSelected;
 
                       return renderFeatureButton(feature, groupFull);
                     })}
@@ -726,7 +776,10 @@ function SpellsAbilitiesTab({
 
           <div className="spell-book">
             {magicalSecretsRules.map((rule) => {
-              const spellsForRule = getSpellsForChoiceRule(availableSpells, rule);
+              const spellsForRule = getSpellsForChoiceRule(
+                availableSpells,
+                rule
+              );
 
               if (spellsForRule.length === 0) return null;
 
@@ -741,7 +794,9 @@ function SpellsAbilitiesTab({
                   </div>
 
                   <div className="spell-icon-grid">
-                    {spellsForRule.map((spell) => renderSpellButton(spell, rule))}
+                    {spellsForRule.map((spell) =>
+                      renderSpellButton(spell, rule)
+                    )}
                   </div>
                 </section>
               );
@@ -765,7 +820,9 @@ function SpellsAbilitiesTab({
               return (
                 <section key={rank} className="spell-rank-section">
                   <div className="spell-rank-title-row">
-                    <h4>{rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}</h4>
+                    <h4>
+                      {rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}
+                    </h4>
 
                     {rankChoiceRules.length > 0 && (
                       <div className="spell-rank-choice-counts">

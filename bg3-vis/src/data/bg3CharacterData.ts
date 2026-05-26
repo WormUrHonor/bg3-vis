@@ -192,7 +192,7 @@ export const subclassesByClass: Record<ClassName, string[]> = {
   Ranger: ["Hunter", "Beast Master", "Gloom Stalker", "Swarmkeeper"],
   Rogue: ["Arcane Trickster", "Assassin", "Thief", "Swashbuckler"],
   Sorcerer: ["Draconic Bloodline", "Wild Magic", "Storm Sorcery"],
-  Warlock: ["The Fiend", "The Great Old One", "The Archfey"],
+Warlock: ["The Archfey", "The Fiend", "The Great Old One", "The Hexblade"],
   Wizard: ["Abjuration School", "Conjuration School", "Divination School", "Enchantment School", "Evocation School", "Illusion School", "Necromancy School", "Transmutation School"],
 };
 

@@ -11,7 +11,7 @@ import { paladinClassModule } from "./paladin";
 import { rangerClassModule } from "./ranger";
 import { rogueClassModule } from "./rogue";
 // import { sorcererClassModule } from "./sorcerer";
-// import { warlockClassModule } from "./warlock";
+import { warlockClassModule } from "./warlock";
 // import { wizardClassModule } from "./wizard";
 
 export type {
@@ -37,7 +37,7 @@ export const classFeatureModules: ClassFeatureModule[] = [
   rangerClassModule,
   rogueClassModule,
   // sorcererClassModule,
-  // warlockClassModule,
+  warlockClassModule,
   // wizardClassModule,
 ];
 
