@@ -742,6 +742,7 @@ export const bardClassModule: ClassFeatureModule = {
       "Passive_Bard_BardicInspirationCharges.png",
     "bard-bardic-inspiration-charges-5-d10":
       "Passive_Bard_BardicInspirationCharges.png",
+
     "bard-bardic-inspiration": "Action_Bard_BardicInspiration.png",
     "bard-spellcasting": "Passive_Bard_Spellcasting.png",
     "bard-song-of-rest": "Action_Bard_SongOfRest.png",
@@ -754,7 +755,9 @@ export const bardClassModule: ClassFeatureModule = {
     "bard-improved-bardic-inspiration-d10":
       "Passive_Bard_ImprovedBardicInspiration.png",
     "bard-countercharm": "Action_Bard_Countercharm.png",
+
     "bard-magical-secrets-level-10": "Passive_Bard_MagicalSecrets.png",
+    "bard-lore-magical-secrets-level-6": "Passive_Bard_MagicalSecrets.png",
 
     "bard-glamour-mantle-of-inspiration-5":
       "Action_Bard_Glamour_MantleOfInspiration.png",
@@ -768,7 +771,6 @@ export const bardClassModule: ClassFeatureModule = {
     "bard-lore-bonus-proficiencies":
       "Passive_Bard_Lore_BonusProficiencies.png",
     "bard-lore-cutting-words": "Reaction_Bard_Lore_CuttingWords.png",
-    "bard-lore-magical-secrets-level-6": "Passive_Bard_MagicalSecrets.png",
 
     "bard-swords-medium-armour-and-scimitars":
       "Passive_Bard_Swords_BonusProficiencies.png",
@@ -786,12 +788,15 @@ export const bardClassModule: ClassFeatureModule = {
       "Action_Bard_Swords_MobileFlourishRanged.png",
     "bard-swords-extra-attack": "Passive_ExtraAttack.png",
 
+    "bard-swords-fighting-style-duelling":
+      "Passive_Bard_Swords_FightingStyle_duelling.png",
+    "bard-swords-fighting-style-two-weapon-fighting":
+      "Passive_Bard_Swords_FightingStyle_two-weapon-fighting.png",
+
     "bard-valour-bonus-proficiencies":
       "Passive_Bard_Valour_BonusProficiencies.png",
     "bard-valour-combat-inspiration":
       "Action_Bard_Valour_CombatInspiration.png",
     "bard-valour-extra-attack": "Passive_ExtraAttack.png",
-
-    ...swordsFightingStyleIconEntries,
   },
 };
