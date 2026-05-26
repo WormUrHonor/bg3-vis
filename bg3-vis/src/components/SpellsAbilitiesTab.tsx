@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { bg3Spells } from "../data/bg3Spells";
+import { bg3Spells, type BG3Spell } from "../data/bg3Spells";
 import type { BG3ClassFeature } from "../data/bg3ClassFeatures";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 import { toggleSpellSelection } from "../logic/spellSelectionLogic";
@@ -17,11 +17,13 @@ import {
   getSelectedSpellIdsForRule,
   getSpellChoiceRuleForSpell,
   isSpellChoiceGroupFull,
+  type ActiveSpellChoiceRule,
 } from "../data/spellChoiceRules";
 import {
+  BARD_MAGICAL_SECRET_TAG,
   getAvailableBardMagicalSecretSpells,
   mergeSpellLists,
-} from "../data/bardMagicalSecrets.ts";
+} from "../data/bardMagicalSecrets";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -210,6 +212,25 @@ function getActiveGroupsInDisplayGroup(features: BG3ClassFeature[]) {
   );
 }
 
+function getSpellLevelSortValue(spell: BG3Spell): string {
+  return `${spell.rank.toString().padStart(2, "0")}-${spell.name}`;
+}
+
+function getSpellsForChoiceRule(
+  availableSpells: BG3Spell[],
+  rule: ActiveSpellChoiceRule
+): BG3Spell[] {
+  return availableSpells
+    .filter((spell) => rule.spellIds.includes(spell.id))
+    .sort((a, b) =>
+      getSpellLevelSortValue(a).localeCompare(getSpellLevelSortValue(b))
+    );
+}
+
+function isMagicalSecretsRule(rule: ActiveSpellChoiceRule): boolean {
+  return rule.id.includes("magical-secrets");
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -227,21 +248,24 @@ function SpellsAbilitiesTab({
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
-const baseAvailableSpells = getAvailableSpellsForBuild(
-  bg3Spells,
-  selectedClass,
-  selectedSubclass,
-  selectedLevel,
-  selectedWarlockInvocations
-);
+  const baseAvailableSpells = getAvailableSpellsForBuild(
+    bg3Spells,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedWarlockInvocations
+  );
 
-const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
-  selectedClass,
-  selectedSubclass,
-  selectedLevel
-);
+  const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
+    selectedClass,
+    selectedSubclass,
+    selectedLevel
+  );
 
-const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells);
+  const availableSpells = mergeSpellLists(
+    baseAvailableSpells,
+    magicalSecretSpells
+  );
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
 
@@ -251,6 +275,14 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells
     selectedSubclass,
     selectedLevel,
     spellChoiceMaxOverrides
+  );
+
+  const magicalSecretsRules = activeSpellChoiceRules
+    .filter(isMagicalSecretsRule)
+    .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder);
+
+  const nonMagicalAvailableSpells = availableSpells.filter(
+    (spell) => !hasSpellTag(spell, BARD_MAGICAL_SECRET_TAG)
   );
 
   const featureDisplayGroups = groupClassFeatures(availableClassFeatures);
@@ -274,9 +306,7 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells
     const isActive = activeClassFeatureIds.includes(feature.id);
 
     const isDisabled =
-      isInformational ||
-      groupFull ||
-      (isFixed && !isActiveToggle);
+      isInformational || groupFull || (isFixed && !isActiveToggle);
 
     function handleClick() {
       if (isActiveToggle) {
@@ -304,7 +334,9 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells
           isActive ? "active-ability" : "",
           isFixed ? "fixed-ability" : "",
           isInformational ? "informational-ability" : "",
-          groupFull || (activeGroupFull && !isActive) ? "choice-disabled-soft" : "",
+          groupFull || (activeGroupFull && !isActive)
+            ? "choice-disabled-soft"
+            : "",
         ].join(" ")}
         type="button"
         disabled={isDisabled}
@@ -364,6 +396,137 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells
           {activeGroupFull && !isActive && (
             <span>Click to replace the current active toggle</span>
           )}
+        </span>
+      </button>
+    );
+  }
+
+  function renderSpellButton(spell: BG3Spell, rule?: ActiveSpellChoiceRule) {
+    const isSelected = selectedSpellIds.includes(spell.id);
+    const isFixed = hasSpellTag(spell, "fixed");
+    const isRitual = hasSpellTag(spell, "ritual");
+
+    const selectedInRule = rule
+      ? getSelectedSpellIdsForRule(selectedSpellIds, rule)
+      : [];
+
+    const groupFull = rule
+      ? selectedInRule.length >= rule.max && !isSelected
+      : isSpellChoiceGroupFull(
+          spell.id,
+          selectedSpellIds,
+          activeSpellChoiceRules
+        );
+
+    const choiceRule =
+      rule ?? getSpellChoiceRuleForSpell(spell.id, activeSpellChoiceRules);
+
+    const isDisabled = isFixed || groupFull;
+
+    return (
+      <button
+        key={rule ? `${rule.id}-${spell.id}` : spell.id}
+        className={[
+          "spell-icon-button",
+          isSelected ? "selected-spell" : "",
+          isFixed ? "fixed-ability" : "",
+          groupFull ? "choice-disabled-soft" : "",
+        ].join(" ")}
+        type="button"
+        disabled={isDisabled}
+        onClick={() =>
+          setSelectedSpellIds((current) =>
+            toggleSpellSelection(
+              spell.id,
+              current,
+              availableSpellIds,
+              activeSpellChoiceRules
+            )
+          )
+        }
+      >
+        <img
+          src={getSpellIcon(spell)}
+          alt={spell.name}
+          className="spell-icon-image"
+        />
+
+        <span className="spell-rank-badge">
+          {spell.rank === 0 ? "C" : toRoman(spell.rank)}
+        </span>
+
+        {spell.costs.requiresConcentration && (
+          <span
+            className="spell-concentration-badge"
+            title="Requires concentration"
+          >
+            <img src={concentrationIcon} alt="Concentration" />
+          </span>
+        )}
+
+        {isRitual && (
+          <span className="spell-ritual-badge" title="Ritual spell">
+            <img src={ritualIcon} alt="Ritual" />
+          </span>
+        )}
+
+        <span className="spell-tooltip">
+          <strong>{spell.name}</strong>
+
+          {spell.description && (
+            <span className="spell-description">{spell.description}</span>
+          )}
+
+          {choiceRule && (
+            <span>
+              <b>Choice:</b> {choiceRule.displayGroupLabel}{" "}
+              {
+                getSelectedSpellIdsForRule(selectedSpellIds, choiceRule).length
+              }
+              /{choiceRule.max}
+            </span>
+          )}
+
+          <span>
+            <b>Level:</b>{" "}
+            {spell.rank === 0 ? "Cantrip" : toRoman(spell.rank)}
+          </span>
+
+          {spell.range && (
+            <span>
+              <b>Range:</b> {spell.range.label}
+            </span>
+          )}
+
+          {spell.roles.length > 0 && (
+            <span>
+              <b>Role:</b>{" "}
+              {spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+            </span>
+          )}
+
+          {spell.damageTypes.length > 0 && (
+            <span>
+              <b>Damage:</b> {spell.damageTypes.join(", ")}
+            </span>
+          )}
+
+          {(spell.costs.actions.length > 0 ||
+            spell.costs.resources.length > 0) && (
+            <span>
+              <b>Cost:</b>{" "}
+              {formatCost(spell.costs.actions, spell.costs.resources)}
+            </span>
+          )}
+
+          {spell.costs.requiresConcentration && (
+            <span>Requires concentration</span>
+          )}
+
+          {isRitual && <span>Ritual spell</span>}
+
+          {groupFull && !isSelected && <span>Choice limit reached</span>}
+          {isFixed && <span>Granted automatically</span>}
         </span>
       </button>
     );
@@ -499,32 +662,36 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells
             <span>{selectedSpellIds.length}</span>
           </div>
 
-          {activeSpellChoiceRules.length > 0 && (
-            <div className="spell-choice-rule-list">
-              {activeSpellChoiceRules
-                .slice()
-                .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder)
-                .map((rule) => {
-                  const selectedInRule = getSelectedSpellIdsForRule(
-                    selectedSpellIds,
-                    rule
-                  );
-
-                  return (
-                    <div key={rule.id} className="spell-choice-rule-pill">
-                      <strong>{rule.displayGroupLabel}</strong>
-                      <span>
-                        {selectedInRule.length}/{rule.max}
-                      </span>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-
           <div className="spell-book">
+            {magicalSecretsRules.map((rule) => {
+              const spellsForRule = getSpellsForChoiceRule(availableSpells, rule);
+              const selectedInRule = getSelectedSpellIdsForRule(
+                selectedSpellIds,
+                rule
+              );
+
+              if (spellsForRule.length === 0) return null;
+
+              return (
+                <section key={rule.id} className="spell-rank-section">
+                  <div className="choice-subgroup-header spell-choice-section-header">
+                    <strong>{rule.displayGroupLabel}</strong>
+                    <span>
+                      {selectedInRule.length}/{rule.max}
+                    </span>
+                  </div>
+
+                  <div className="spell-icon-grid">
+                    {spellsForRule.map((spell) =>
+                      renderSpellButton(spell, rule)
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+
             {spellRanks.map((rank) => {
-              const spellsForRank = availableSpells.filter(
+              const spellsForRank = nonMagicalAvailableSpells.filter(
                 (spell) => spell.rank === rank
               );
 
@@ -535,140 +702,7 @@ const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells
                   <h4>{rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}</h4>
 
                   <div className="spell-icon-grid">
-                    {spellsForRank.map((spell) => {
-                      const isSelected = selectedSpellIds.includes(spell.id);
-                      const isFixed = hasSpellTag(spell, "fixed");
-                      const isRitual = hasSpellTag(spell, "ritual");
-
-                      const choiceRule = getSpellChoiceRuleForSpell(
-                        spell.id,
-                        activeSpellChoiceRules
-                      );
-
-                      const groupFull = isSpellChoiceGroupFull(
-                        spell.id,
-                        selectedSpellIds,
-                        activeSpellChoiceRules
-                      );
-
-                      const isDisabled = isFixed || groupFull;
-
-                      return (
-                        <button
-                          key={spell.id}
-                          className={[
-                            "spell-icon-button",
-                            isSelected ? "selected-spell" : "",
-                            isFixed ? "fixed-ability" : "",
-                            groupFull ? "choice-disabled-soft" : "",
-                          ].join(" ")}
-                          type="button"
-                          disabled={isDisabled}
-                          onClick={() =>
-                            setSelectedSpellIds((current) =>
-                              toggleSpellSelection(
-                                spell.id,
-                                current,
-                                availableSpellIds,
-                                activeSpellChoiceRules
-                              )
-                            )
-                          }
-                        >
-                          <img
-                            src={getSpellIcon(spell)}
-                            alt={spell.name}
-                            className="spell-icon-image"
-                          />
-
-                          <span className="spell-rank-badge">
-                            {spell.rank === 0 ? "C" : toRoman(spell.rank)}
-                          </span>
-
-                          {spell.costs.requiresConcentration && (
-                            <span
-                              className="spell-concentration-badge"
-                              title="Requires concentration"
-                            >
-                              <img src={concentrationIcon} alt="Concentration" />
-                            </span>
-                          )}
-
-                          {isRitual && (
-                            <span className="spell-ritual-badge" title="Ritual spell">
-                              <img src={ritualIcon} alt="Ritual" />
-                            </span>
-                          )}
-
-                          <span className="spell-tooltip">
-                            <strong>{spell.name}</strong>
-
-                            {spell.description && (
-                              <span className="spell-description">
-                                {spell.description}
-                              </span>
-                            )}
-
-                            {spell.range && (
-                              <span>
-                                <b>Range:</b> {spell.range.label}
-                              </span>
-                            )}
-
-                            {spell.roles.length > 0 && (
-                              <span>
-                                <b>Role:</b>{" "}
-                                {spell.roles
-                                  .map((role) => role.replaceAll("-", " "))
-                                  .join(", ")}
-                              </span>
-                            )}
-
-                            {spell.damageTypes.length > 0 && (
-                              <span>
-                                <b>Damage:</b> {spell.damageTypes.join(", ")}
-                              </span>
-                            )}
-
-                            {(spell.costs.actions.length > 0 ||
-                              spell.costs.resources.length > 0) && (
-                              <span>
-                                <b>Cost:</b>{" "}
-                                {formatCost(
-                                  spell.costs.actions,
-                                  spell.costs.resources
-                                )}
-                              </span>
-                            )}
-
-                            {spell.costs.requiresConcentration && (
-                              <span>Requires concentration</span>
-                            )}
-
-                            {isRitual && <span>Ritual spell</span>}
-
-                            {choiceRule && (
-                              <span>
-                                <b>Choice:</b> {choiceRule.label}{" "}
-                                {
-                                  getSelectedSpellIdsForRule(
-                                    selectedSpellIds,
-                                    choiceRule
-                                  ).length
-                                }
-                                /{choiceRule.max}
-                              </span>
-                            )}
-
-                            {groupFull && !isSelected && (
-                              <span>Choice limit reached</span>
-                            )}
-
-                            {isFixed && <span>Granted automatically</span>}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {spellsForRank.map((spell) => renderSpellButton(spell))}
                   </div>
                 </section>
               );

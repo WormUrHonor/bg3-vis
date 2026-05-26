@@ -842,3 +842,10 @@ select {
   background: rgba(80, 190, 130, 0.035);
   border-top-color: rgba(135, 235, 180, 0.18);
 }
+.spell-choice-section-header {
+  margin-bottom: 10px;
+}
+
+.spell-choice-section-header strong {
+  color: rgba(244, 221, 181, 0.96);
+}
