@@ -73,6 +73,13 @@ function getWarlockInvocationMax(selectedLevel: number): number {
   return 6;
 }
 
+function getSorcererMetamagicMax(selectedLevel: number): number {
+  if (selectedLevel < 2) return 0;
+  if (selectedLevel < 3) return 2;
+  if (selectedLevel < 10) return 3;
+  return 4;
+}
+
 function getEffectiveClassFeatureChoiceMax(
   choiceGroupId: string,
   defaultMax: number,
@@ -80,6 +87,10 @@ function getEffectiveClassFeatureChoiceMax(
 ): number {
   if (choiceGroupId === "warlock-eldritch-invocations") {
     return getWarlockInvocationMax(selectedLevel);
+  }
+
+  if (choiceGroupId === "sorcerer-metamagic") {
+    return getSorcererMetamagicMax(selectedLevel);
   }
 
   return defaultMax;

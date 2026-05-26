@@ -196,7 +196,12 @@ Druid: [
   Paladin: ["Oath of the Ancients", "Oath of Devotion", "Oath of Vengeance", "Oathbreaker", "Oath of the Crown"],
   Ranger: ["Hunter", "Beast Master", "Gloom Stalker", "Swarmkeeper"],
   Rogue: ["Arcane Trickster", "Assassin", "Thief", "Swashbuckler"],
-  Sorcerer: ["Draconic Bloodline", "Wild Magic", "Storm Sorcery"],
+Sorcerer: [
+  "Draconic Bloodline",
+  "Shadow Magic",
+  "Storm Sorcery",
+  "Wild Magic",
+],
 Warlock: ["The Archfey", "The Fiend", "The Great Old One", "The Hexblade"],
   Wizard: ["Abjuration School", "Conjuration School", "Divination School", "Enchantment School", "Evocation School", "Illusion School", "Necromancy School", "Transmutation School"],
 };
