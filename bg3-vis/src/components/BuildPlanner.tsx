@@ -237,17 +237,26 @@ function BuildPlanner() {
     selectedWarlockInvocations
   );
 
-  const availableClassFeatures = useMemo(
-    () =>
-      getAvailableClassFeaturesForBuild(
-        bg3ClassFeatures,
-        selectedClass,
-        selectedSubclass,
-        selectedLevel,
-        selectedClassFeatureIds
-      ),
-    [selectedClass, selectedSubclass, selectedLevel, selectedClassFeatureIds]
-  );
+const availableClassFeatures = useMemo(
+  () =>
+    getAvailableClassFeaturesForBuild(
+      bg3ClassFeatures,
+      selectedClass,
+      selectedSubclass,
+      selectedLevel,
+      selectedClassFeatureIds,
+      rangerFavouredEnemy,
+      rangerNaturalExplorer
+    ),
+  [
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedClassFeatureIds,
+    rangerFavouredEnemy,
+    rangerNaturalExplorer,
+  ]
+);
 
   const availableClassFeatureKey = availableClassFeatures
     .map((feature) => feature.id)

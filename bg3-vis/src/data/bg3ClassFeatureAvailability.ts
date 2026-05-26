@@ -1,11 +1,17 @@
 import type { BG3ClassFeature } from "./bg3ClassFeatures";
-import type { ClassName } from "../types/buildPlannerTypes";
+import type {
+  ClassName,
+  RangerFavouredEnemy,
+  RangerNaturalExplorer,
+} from "../types/buildPlannerTypes";
 
 function availabilityMatches(
   feature: BG3ClassFeature,
   selectedClass: ClassName | "",
   selectedSubclass: string,
-  selectedLevel: number
+  selectedLevel: number,
+  selectedRangerFavouredEnemy: RangerFavouredEnemy | "",
+  selectedRangerNaturalExplorer: RangerNaturalExplorer | ""
 ): boolean {
   return feature.availability.some((availability) => {
     if (!selectedClass) return false;
@@ -22,6 +28,20 @@ function availabilityMatches(
     if (
       availability.subclass !== undefined &&
       availability.subclass !== selectedSubclass
+    ) {
+      return false;
+    }
+
+    if (
+      availability.rangerFavouredEnemy !== undefined &&
+      availability.rangerFavouredEnemy !== selectedRangerFavouredEnemy
+    ) {
+      return false;
+    }
+
+    if (
+      availability.rangerNaturalExplorer !== undefined &&
+      availability.rangerNaturalExplorer !== selectedRangerNaturalExplorer
     ) {
       return false;
     }
@@ -54,10 +74,19 @@ export function getAvailableClassFeaturesForBuild(
   selectedClass: ClassName | "",
   selectedSubclass: string,
   selectedLevel: number,
-  selectedFeatureIds: string[] = []
+  selectedFeatureIds: string[] = [],
+  selectedRangerFavouredEnemy: RangerFavouredEnemy | "" = "",
+  selectedRangerNaturalExplorer: RangerNaturalExplorer | "" = ""
 ): BG3ClassFeature[] {
   const availabilityMatchedFeatures = features.filter((feature) =>
-    availabilityMatches(feature, selectedClass, selectedSubclass, selectedLevel)
+    availabilityMatches(
+      feature,
+      selectedClass,
+      selectedSubclass,
+      selectedLevel,
+      selectedRangerFavouredEnemy,
+      selectedRangerNaturalExplorer
+    )
   );
 
   const fixedFeatureIds = availabilityMatchedFeatures

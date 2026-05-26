@@ -461,6 +461,29 @@ const rangerFeatures = [
       displayGroup: coreGroup,
     }
   ),
+  feature(
+  "ranger-beast-tamer-find-familiar",
+  "Find Familiar",
+  "subclass-feature",
+  [
+    {
+      className: RANGER,
+      minLevel: 1,
+      rangerNaturalExplorer: "Beast Tamer",
+    },
+  ],
+  true,
+  "Granted by Beast Tamer. Cast Find Familiar as a ritual once per Short Rest.",
+  ["summon", "investigation-world-interaction"],
+  [],
+  ["action"],
+  ["short-rest"],
+  range18m,
+  ["ranger", "natural-explorer", "fixed-ritual"],
+  {
+    displayGroup: subclassSpellGroup,
+  }
+),
   
   ...fightingStyleDefinitions.map(makeFightingStyle),
 
@@ -1245,6 +1268,7 @@ export const rangerClassModule: ClassFeatureModule = {
   },
   features: rangerFeatures,
   iconFileByFeatureId: {
+    "ranger-beast-tamer-find-familiar": "Spell_Conjuration_FindFamiliar.png",
     "ranger-spellcasting": "Passive_Ranger_Spellcasting.png",
     "ranger-extra-attack": "Passive_ExtraAttack.png",
     "ranger-lands-stride-difficult-terrain":

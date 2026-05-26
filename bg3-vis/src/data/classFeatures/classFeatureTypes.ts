@@ -1,4 +1,8 @@
-﻿import type { ClassName } from "../../types/buildPlannerTypes";
+﻿import type {
+  ClassName,
+  RangerFavouredEnemy,
+  RangerNaturalExplorer,
+} from "../../types/buildPlannerTypes";
 import type {
   AbilityRole,
   ActionCost,
@@ -24,6 +28,8 @@ export type ClassFeatureAvailability = {
   minLevel: number;
   maxLevel?: number;
   subclass?: string;
+  rangerFavouredEnemy?: RangerFavouredEnemy;
+  rangerNaturalExplorer?: RangerNaturalExplorer;
 };
 
 export type ClassFeatureRange = BG3Spell["range"];
