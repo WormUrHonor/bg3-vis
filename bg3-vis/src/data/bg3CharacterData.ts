@@ -183,12 +183,12 @@ export const classSkillRules: Record<ClassName, { choose: number; options: Skill
 
 export const subclassesByClass: Record<ClassName, string[]> = {
   Barbarian: ["Berserker", "Giant", "Wildheart", "Wild Magic"],
-  Bard: ["College of Lore", "College of Valour", "College of Swords"],
+  Bard: ["College of Lore", "College of Valour", "College of Swords", "College of Glamour"],
   Cleric: ["Life Domain", "Light Domain", "Trickery Domain", "Knowledge Domain", "Nature Domain", "Tempest Domain", "War Domain"],
   Druid: ["Circle of the Land", "Circle of the Moon", "Circle of the Spores"],
   Fighter: ["Arcane Archer", "Battle Master", "Champion", "Eldritch Knight"],
   Monk: ["Way of the Drunken Master", "Way of the Four Elements", "Way of the Open Hand", "Way of Shadow",],
-  Paladin: ["Oath of the Ancients", "Oath of Devotion", "Oath of Vengeance", "Oathbreaker"],
+  Paladin: ["Oath of the Ancients", "Oath of Devotion", "Oath of Vengeance", "Oathbreaker", "Oath of the Crown"],
   Ranger: ["Hunter", "Beast Master", "Gloom Stalker", "Swarmkeeper"],
   Rogue: ["Arcane Trickster", "Assassin", "Thief"],
   Sorcerer: ["Draconic Bloodline", "Wild Magic", "Storm Sorcery"],

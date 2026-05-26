@@ -1,99 +1,79 @@
 import type { BG3ClassFeature } from "../data/bg3ClassFeatures";
-import { classFeatureIconFileById } from "../data/bg3ClassFeatures";
+import { getSpellById } from "../data/bg3Spells";
+import { getSpellIcon } from "./spellIconLogic";
 
-const featureIconModules = import.meta.glob(
-  "../assets/Feature Icons/*.{png,webp}",
-  {
-    eager: true,
-    query: "?url",
-    import: "default",
-  }
-) as Record<string, string>;
+const featureIconModules = import.meta.glob("../assets/Feature Icons/*.{png,webp}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 
-const spellIconModules = import.meta.glob(
-  "../assets/Spell Icons/*.{png,webp}",
-  {
-    eager: true,
-    query: "?url",
-    import: "default",
-  }
-) as Record<string, string>;
+const featureIconFileById: Record<string, string> = {
+  "fighter-second-wind": "Action_Fighter_SecondWind.png",
+  "fighter-action-surge": "Action_Fighter_ActionSurge.png",
+  "fighter-battle-master-superiority-dice": "Passive_Fighter_SuperiorityDice.png",
+  "fighter-manoeuvre-disarming-attack": "Action_BattleMaster_DisarmingAttack.png",
+  "fighter-manoeuvre-pushing-attack": "Action_BattleMaster_PushingAttack.png",
+  "fighter-manoeuvre-riposte": "Action_BattleMaster_Riposte.png",
 
-const fallbackFeatureIcon =
-  featureIconModules["../assets/Feature Icons/Action_Fighter_ActionSurge.png"];
+  "barbarian-rage": "Action_Barbarian_Rage.png",
+  "barbarian-unarmoured-defence": "Passive_Barbarian_UnarmouredDefence.png",
+  "barbarian-reckless-attack": "Action_Barbarian_RecklessAttack.png",
+  "barbarian-danger-sense": "Passive_Barbarian_DangerSense.png",
+  "barbarian-extra-attack": "Passive_ExtraAttack.png",
+  "barbarian-fast-movement": "Passive_Barbarian_FastMovement.png",
+  "barbarian-feral-instinct": "Passive_Barbarian_FeralInstinct.png",
+  "barbarian-brutal-critical": "Passive_Barbarian_BrutalCritical.png",
+  "barbarian-relentless-rage": "Passive_Barbarian_RelentlessRage.png",
+};
 
-const fallbackSpellIcon =
-  spellIconModules["../assets/Spell Icons/Spell_Evocation_MagicMissile.png"];
+const fallbackIcon =
+  featureIconModules["../assets/Feature Icons/Action_Fighter_ActionSurge.png"] ??
+  Object.values(featureIconModules)[0];
 
-function normalizeFileName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/(\.png|\.webp|\.jpg|\.jpeg)+$/i, "")
-    .replace(/[^a-z0-9]+/g, "");
-}
-
-function getFileNameFromModuleKey(moduleKey: string): string {
-  return moduleKey.split("/").at(-1) ?? moduleKey;
-}
-
-function findIconByFileName(
-  fileName: string,
-  modules: Record<string, string>
-): string | undefined {
-  const exactKey = Object.keys(modules).find((moduleKey) =>
-    moduleKey.endsWith(`/${fileName}`)
+function getDynamicSpellIcon(feature: BG3ClassFeature): string | undefined {
+  const spellIconTag = feature.tags?.find((tag) =>
+    tag.startsWith("uses-spell-icon:")
   );
 
-  if (exactKey) return modules[exactKey];
+  if (!spellIconTag) return undefined;
 
-  const wanted = normalizeFileName(fileName);
+  const spellId = spellIconTag.replace("uses-spell-icon:", "");
+  const spell = getSpellById(spellId);
 
-  const fuzzyKey = Object.keys(modules).find((moduleKey) => {
-    const availableFileName = getFileNameFromModuleKey(moduleKey);
-    return normalizeFileName(availableFileName) === wanted;
-  });
+  if (!spell) {
+    console.warn(`Missing spell for dynamic class feature icon: ${spellId}`);
+    return undefined;
+  }
 
-  return fuzzyKey ? modules[fuzzyKey] : undefined;
-}
-
-function findIconByFeatureName(
-  feature: BG3ClassFeature,
-  modules: Record<string, string>
-): string | undefined {
-  const wanted = normalizeFileName(feature.name);
-
-  const fuzzyKey = Object.keys(modules).find((moduleKey) => {
-    const availableFileName = getFileNameFromModuleKey(moduleKey);
-    return normalizeFileName(availableFileName).includes(wanted);
-  });
-
-  return fuzzyKey ? modules[fuzzyKey] : undefined;
+  return getSpellIcon(spell);
 }
 
 export function getClassFeatureIcon(feature: BG3ClassFeature): string {
-  const mappedFileName = classFeatureIconFileById[feature.id];
+  const dynamicSpellIcon = getDynamicSpellIcon(feature);
 
-  if (mappedFileName) {
-    const featureIcon = findIconByFileName(mappedFileName, featureIconModules);
-    if (featureIcon) return featureIcon;
-
-    const spellIcon = findIconByFileName(mappedFileName, spellIconModules);
-    if (spellIcon) return spellIcon;
-
-    console.warn(
-      `Mapped class feature icon file not found: ${mappedFileName} for ${feature.id} (${feature.name})`
-    );
-  } else {
-    console.warn(
-      `Missing class feature icon mapping for: ${feature.id} (${feature.name})`
-    );
+  if (dynamicSpellIcon) {
+    return dynamicSpellIcon;
   }
 
-  const featureNameFallback = findIconByFeatureName(feature, featureIconModules);
-  if (featureNameFallback) return featureNameFallback;
+  const fileName = featureIconFileById[feature.id];
 
-  const spellNameFallback = findIconByFeatureName(feature, spellIconModules);
-  if (spellNameFallback) return spellNameFallback;
+  if (!fileName) {
+    console.warn(`Missing feature icon mapping for: ${feature.id} (${feature.name})`);
+    return fallbackIcon;
+  }
 
-  return fallbackFeatureIcon ?? fallbackSpellIcon;
+  const pngModuleKey = `../assets/Feature Icons/${fileName}`;
+  const webpModuleKey = fileName.endsWith(".webp")
+    ? `../assets/Feature Icons/${fileName}`
+    : `../assets/Feature Icons/${fileName}.webp`;
+
+  const icon = featureIconModules[pngModuleKey] ?? featureIconModules[webpModuleKey];
+
+  if (!icon) {
+    console.warn(`Mapped feature icon file not found: ${fileName} for ${feature.id}`);
+    return fallbackIcon;
+  }
+
+  return icon;
 }

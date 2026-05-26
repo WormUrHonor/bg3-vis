@@ -1,5 +1,9 @@
 import type { ClassName } from "../types/buildPlannerTypes";
 import type { BG3Spell } from "./bg3Spells";
+import {
+  BARD_MAGICAL_SECRET_TAG,
+  MAGICAL_SECRET_SPELL_IDS,
+} from "./bardMagicalSecrets";
 
 export type SpellChoiceRuleDefinition = {
   id: string;
@@ -10,6 +14,8 @@ export type SpellChoiceRuleDefinition = {
   maxLevel?: number;
   spellIds?: string[];
   ranks?: number[];
+  includeTags?: string[];
+  excludeTags?: string[];
   maxByLevel: {
     minLevel: number;
     max: number;
@@ -48,31 +54,110 @@ const eldritchKnightCantripIds = [
 
 export const spellChoiceRuleDefinitions: SpellChoiceRuleDefinition[] = [
   {
-  id: "paladin-prepared-spells",
-  label: "Paladin Prepared Spells",
-  className: "Paladin",
-  minLevel: 2,
-  ranks: [1, 2, 3],
-  maxByLevel: [
-    { minLevel: 2, max: 2 },
-  ],
-  displayGroupLabel: "Paladin Prepared Spell Choices",
-  displayGroupOrder: 20,
-},
-  {
+    id: "bard-cantrips",
+    label: "Bard Cantrips",
+    className: "Bard",
+    minLevel: 1,
+    ranks: [0],
+    excludeTags: [BARD_MAGICAL_SECRET_TAG],
+    maxByLevel: [
+      { minLevel: 1, max: 2 },
+      { minLevel: 4, max: 3 },
+      { minLevel: 10, max: 4 },
+    ],
+    displayGroupLabel: "Bard Cantrip Choices",
+    displayGroupOrder: 10,
+  },
 
+  {
+    id: "bard-known-spells",
+    label: "Bard Known Spells",
+    className: "Bard",
+    minLevel: 1,
+    ranks: [1, 2, 3, 4, 5, 6],
+    excludeTags: [BARD_MAGICAL_SECRET_TAG],
+    maxByLevel: [
+      { minLevel: 1, max: 4 },
+      { minLevel: 2, max: 5 },
+      { minLevel: 3, max: 6 },
+      { minLevel: 4, max: 7 },
+      { minLevel: 5, max: 8 },
+      { minLevel: 6, max: 9 },
+      { minLevel: 7, max: 10 },
+      { minLevel: 8, max: 11 },
+      { minLevel: 9, max: 12 },
+      { minLevel: 10, max: 13 },
+      { minLevel: 11, max: 14 },
+      { minLevel: 12, max: 15 },
+    ],
+    displayGroupLabel: "Bard Spell Choices",
+    displayGroupOrder: 20,
+  },
+
+  {
+    id: "bard-lore-magical-secrets-level-6",
+    label: "Lore Magical Secrets",
+    className: "Bard",
+    subclass: "College of Lore",
+    minLevel: 6,
+    ranks: [0, 1, 2, 3],
+    spellIds: MAGICAL_SECRET_SPELL_IDS,
+    includeTags: [BARD_MAGICAL_SECRET_TAG],
+    maxByLevel: [{ minLevel: 6, max: 2 }],
+    displayGroupLabel: "Lore Magical Secrets",
+    displayGroupOrder: 30,
+  },
+
+  {
+    id: "bard-magical-secrets-level-10",
+    label: "Magical Secrets",
+    className: "Bard",
+    minLevel: 10,
+    ranks: [0, 1, 2, 3, 4, 5],
+    spellIds: MAGICAL_SECRET_SPELL_IDS,
+    includeTags: [BARD_MAGICAL_SECRET_TAG],
+    maxByLevel: [{ minLevel: 10, max: 2 }],
+    displayGroupLabel: "Magical Secrets",
+    displayGroupOrder: 40,
+  },
+
+  {
+    id: "paladin-prepared-spells",
+    label: "Paladin Prepared Spells",
+    className: "Paladin",
+    minLevel: 2,
+    ranks: [1, 2, 3],
+    maxByLevel: [{ minLevel: 2, max: 2 }],
+    displayGroupLabel: "Paladin Prepared Spell Choices",
+    displayGroupOrder: 20,
+  },
+
+  {
+    id: "ranger-known-spells",
+    label: "Ranger Known Spells",
+    className: "Ranger",
+    minLevel: 2,
+    ranks: [1, 2, 3],
+    maxByLevel: [
+      { minLevel: 2, max: 2 },
+      { minLevel: 3, max: 3 },
+      { minLevel: 5, max: 4 },
+      { minLevel: 7, max: 5 },
+      { minLevel: 9, max: 6 },
+      { minLevel: 11, max: 7 },
+    ],
+    displayGroupLabel: "Ranger Spell Choices",
+    displayGroupOrder: 20,
+  },
+
+  {
     id: "fighter-arcane-archer-cantrip",
     label: "Arcane Archer Cantrip",
     className: "Fighter",
     subclass: "Arcane Archer",
     minLevel: 3,
     spellIds: ["guidance", "light", "true-strike"],
-    maxByLevel: [
-      {
-        minLevel: 3,
-        max: 1,
-      },
-    ],
+    maxByLevel: [{ minLevel: 3, max: 1 }],
     displayGroupLabel: "Arcane Archer Cantrip Choice",
     displayGroupOrder: 10,
   },
@@ -85,35 +170,13 @@ export const spellChoiceRuleDefinitions: SpellChoiceRuleDefinition[] = [
     minLevel: 3,
     spellIds: eldritchKnightCantripIds,
     maxByLevel: [
-      {
-        minLevel: 3,
-        max: 2,
-      },
-      {
-        minLevel: 10,
-        max: 3,
-      },
+      { minLevel: 3, max: 2 },
+      { minLevel: 10, max: 3 },
     ],
     displayGroupLabel: "Eldritch Knight Cantrip Choices",
     displayGroupOrder: 10,
   },
-{
-  id: "ranger-known-spells",
-  label: "Ranger Known Spells",
-  className: "Ranger",
-  minLevel: 2,
-  ranks: [1, 2, 3],
-  maxByLevel: [
-    { minLevel: 2, max: 2 },
-    { minLevel: 3, max: 3 },
-    { minLevel: 5, max: 4 },
-    { minLevel: 7, max: 5 },
-    { minLevel: 9, max: 6 },
-    { minLevel: 11, max: 7 },
-  ],
-  displayGroupLabel: "Ranger Spell Choices",
-  displayGroupOrder: 20,
-},
+
   {
     id: "fighter-eldritch-knight-spells",
     label: "Eldritch Knight Spells",
@@ -122,30 +185,12 @@ export const spellChoiceRuleDefinitions: SpellChoiceRuleDefinition[] = [
     minLevel: 3,
     ranks: [1, 2],
     maxByLevel: [
-      {
-        minLevel: 3,
-        max: 3,
-      },
-      {
-        minLevel: 4,
-        max: 4,
-      },
-      {
-        minLevel: 7,
-        max: 5,
-      },
-      {
-        minLevel: 8,
-        max: 6,
-      },
-      {
-        minLevel: 10,
-        max: 7,
-      },
-      {
-        minLevel: 11,
-        max: 8,
-      },
+      { minLevel: 3, max: 3 },
+      { minLevel: 4, max: 4 },
+      { minLevel: 7, max: 5 },
+      { minLevel: 8, max: 6 },
+      { minLevel: 10, max: 7 },
+      { minLevel: 11, max: 8 },
     ],
     displayGroupLabel: "Eldritch Knight Spell Choices",
     displayGroupOrder: 20,
@@ -187,23 +232,41 @@ function getMaxForLevel(
   return matchingEntries[0]?.max ?? 0;
 }
 
+function spellHasTag(spell: BG3Spell, tagName: string): boolean {
+  return spell.tags?.some((tag) => tag === tagName) ?? false;
+}
+
 function getSpellIdsForRule(
   rule: SpellChoiceRuleDefinition,
   availableSpells: BG3Spell[]
 ): string[] {
-  const availableSpellIds = new Set(availableSpells.map((spell) => spell.id));
+  return availableSpells
+    .filter((spell) => {
+      if (rule.ranks && !rule.ranks.includes(spell.rank)) {
+        return false;
+      }
 
-  if (rule.spellIds) {
-    return rule.spellIds.filter((spellId) => availableSpellIds.has(spellId));
-  }
+      if (rule.spellIds && !rule.spellIds.includes(spell.id)) {
+        return false;
+      }
 
-  if (rule.ranks) {
-    return availableSpells
-      .filter((spell) => rule.ranks?.includes(spell.rank))
-      .map((spell) => spell.id);
-  }
+      if (
+        rule.includeTags &&
+        !rule.includeTags.every((tag) => spellHasTag(spell, tag))
+      ) {
+        return false;
+      }
 
-  return [];
+      if (
+        rule.excludeTags &&
+        rule.excludeTags.some((tag) => spellHasTag(spell, tag))
+      ) {
+        return false;
+      }
+
+      return true;
+    })
+    .map((spell) => spell.id);
 }
 
 export function getActiveSpellChoiceRulesForBuild(

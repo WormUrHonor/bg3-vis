@@ -18,6 +18,10 @@ import {
   getSpellChoiceRuleForSpell,
   isSpellChoiceGroupFull,
 } from "../data/spellChoiceRules";
+import {
+  getAvailableBardMagicalSecretSpells,
+  mergeSpellLists,
+} from "../data/bardMagicalSecrets.ts";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -223,13 +227,21 @@ function SpellsAbilitiesTab({
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
-  const availableSpells = getAvailableSpellsForBuild(
-    bg3Spells,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedWarlockInvocations
-  );
+const baseAvailableSpells = getAvailableSpellsForBuild(
+  bg3Spells,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  selectedWarlockInvocations
+);
+
+const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
+  selectedClass,
+  selectedSubclass,
+  selectedLevel
+);
+
+const availableSpells = mergeSpellLists(baseAvailableSpells, magicalSecretSpells);
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
 
