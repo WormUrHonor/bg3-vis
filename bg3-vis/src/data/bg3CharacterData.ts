@@ -203,7 +203,17 @@ Sorcerer: [
   "Wild Magic",
 ],
 Warlock: ["The Archfey", "The Fiend", "The Great Old One", "The Hexblade"],
-  Wizard: ["Abjuration School", "Conjuration School", "Divination School", "Enchantment School", "Evocation School", "Illusion School", "Necromancy School", "Transmutation School"],
+  Wizard: [
+  "Abjuration School",
+  "Bladesinging",
+  "Conjuration School",
+  "Divination School",
+  "Enchantment School",
+  "Evocation School",
+  "Illusion School",
+  "Necromancy School",
+  "Transmutation School",
+],
 };
 
 export const rangerFavouredEnemies: RangerFavouredEnemy[] = [

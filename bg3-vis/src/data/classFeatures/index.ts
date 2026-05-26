@@ -12,7 +12,7 @@ import { rangerClassModule } from "./ranger";
 import { rogueClassModule } from "./rogue";
 import { sorcererClassModule } from "./sorcerer";
 import { warlockClassModule } from "./warlock";
-// import { wizardClassModule } from "./wizard";
+import { wizardClassModule } from "./wizard";
 
 export type {
   BG3ClassFeature,
@@ -38,7 +38,7 @@ export const classFeatureModules: ClassFeatureModule[] = [
   rogueClassModule,
   sorcererClassModule,
   warlockClassModule,
-  // wizardClassModule,
+  wizardClassModule,
 ];
 
 export const bg3ClassFeatures: BG3ClassFeature[] = classFeatureModules.flatMap(
