@@ -1,41 +1,52 @@
-import type { ClassName } from "../types/buildPlannerTypes";
 import type { BG3ClassFeature } from "./bg3ClassFeatures";
+import type { ClassName } from "../types/buildPlannerTypes";
 
-function classLevelSubclassMatch(
+function availabilityMatches(
   feature: BG3ClassFeature,
   selectedClass: ClassName | "",
   selectedSubclass: string,
   selectedLevel: number
 ): boolean {
-  if (!selectedClass) return false;
+  return feature.availability.some((availability) => {
+    if (!selectedClass) return false;
+    if (availability.className !== selectedClass) return false;
+    if (selectedLevel < availability.minLevel) return false;
 
-  return feature.availability.some((source) => {
-    const classMatches = source.className === selectedClass;
-    const minLevelMatches = selectedLevel >= source.minLevel;
-    const maxLevelMatches =
-      source.maxLevel === undefined || selectedLevel <= source.maxLevel;
-    const levelMatches = minLevelMatches && maxLevelMatches;
-    const subclassMatches = !source.subclass || source.subclass === selectedSubclass;
+    if (
+      availability.maxLevel !== undefined &&
+      selectedLevel > availability.maxLevel
+    ) {
+      return false;
+    }
 
-    return classMatches && levelMatches && subclassMatches;
+    if (
+      availability.subclass !== undefined &&
+      availability.subclass !== selectedSubclass
+    ) {
+      return false;
+    }
+
+    return true;
   });
 }
 
-function dependencyMatch(
+function dependenciesMatch(
   feature: BG3ClassFeature,
-  activeFeatureIds: string[]
+  ownedFeatureIds: string[]
 ): boolean {
-  const requiredIds = feature.requiredFeatureIds ?? [];
+  const requiredFeatureIds = feature.requiredFeatureIds ?? [];
 
-  if (requiredIds.length === 0) return true;
+  if (requiredFeatureIds.length === 0) return true;
 
-  const mode = feature.dependencyMode ?? "all";
-
-  if (mode === "any") {
-    return requiredIds.some((id) => activeFeatureIds.includes(id));
+  if (feature.dependencyMode === "any") {
+    return requiredFeatureIds.some((featureId) =>
+      ownedFeatureIds.includes(featureId)
+    );
   }
 
-  return requiredIds.every((id) => activeFeatureIds.includes(id));
+  return requiredFeatureIds.every((featureId) =>
+    ownedFeatureIds.includes(featureId)
+  );
 }
 
 export function getAvailableClassFeaturesForBuild(
@@ -43,48 +54,21 @@ export function getAvailableClassFeaturesForBuild(
   selectedClass: ClassName | "",
   selectedSubclass: string,
   selectedLevel: number,
-  selectedClassFeatureIds: string[] = []
+  selectedFeatureIds: string[] = []
 ): BG3ClassFeature[] {
-  const baseAvailableFeatures = features.filter((feature) =>
-    classLevelSubclassMatch(feature, selectedClass, selectedSubclass, selectedLevel)
+  const availabilityMatchedFeatures = features.filter((feature) =>
+    availabilityMatches(feature, selectedClass, selectedSubclass, selectedLevel)
   );
 
-  const activeFeatureIds = new Set<string>(selectedClassFeatureIds);
+  const fixedFeatureIds = availabilityMatchedFeatures
+    .filter((feature) => feature.isFixed && !feature.isInformational)
+    .map((feature) => feature.id);
 
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-
-    for (const feature of baseAvailableFeatures) {
-      if (!feature.isFixed) continue;
-      if (feature.isInformational) continue;
-      if (activeFeatureIds.has(feature.id)) continue;
-      if (!dependencyMatch(feature, Array.from(activeFeatureIds))) continue;
-
-      activeFeatureIds.add(feature.id);
-      changed = true;
-    }
-  }
-
-  return baseAvailableFeatures.filter((feature) =>
-    dependencyMatch(feature, Array.from(activeFeatureIds))
+  const ownedFeatureIds = Array.from(
+    new Set([...fixedFeatureIds, ...selectedFeatureIds])
   );
-}
 
-export function isClassFeatureAvailableForBuild(
-  feature: BG3ClassFeature,
-  features: BG3ClassFeature[],
-  selectedClass: ClassName | "",
-  selectedSubclass: string,
-  selectedLevel: number,
-  selectedClassFeatureIds: string[] = []
-): boolean {
-  return getAvailableClassFeaturesForBuild(
-    features,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedClassFeatureIds
-  ).some((availableFeature) => availableFeature.id === feature.id);
+  return availabilityMatchedFeatures.filter((feature) =>
+    dependenciesMatch(feature, ownedFeatureIds)
+  );
 }

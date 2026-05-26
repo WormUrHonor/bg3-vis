@@ -34,6 +34,12 @@ export type ClassFeatureChoiceGroup = {
   max: number;
 };
 
+export type ClassFeatureActiveGroup = {
+  id: string;
+  label: string;
+  max: number;
+};
+
 export type ClassFeatureDisplayGroup = {
   id: string;
   label: string;
@@ -54,6 +60,10 @@ export type BG3ClassFeature = {
   choiceGroupId?: string;
   choiceGroupLabel?: string;
   choiceGroupMax?: number;
+
+  activeGroupId?: string;
+  activeGroupLabel?: string;
+  activeGroupMax?: number;
 
   displayGroupId?: string;
   displayGroupLabel?: string;

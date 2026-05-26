@@ -62,6 +62,12 @@ const kiGroup = {
   order: 20,
 };
 
+const manifestationActiveGroup = {
+  id: "monk-open-hand-active-manifestation",
+  label: "Active Manifestation",
+  max: 1,
+};
+
 const drunkenMasterGroup = {
   id: "monk-drunken-master",
   label: "Drunken Master Features",
@@ -1042,7 +1048,8 @@ const monkFeatures = [
     ["monk", "open-hand", "ki-action"],
     {
       displayGroup: openHandGroup,
-    }
+    activeGroup: manifestationActiveGroup,
+}
   ),
 
   feature(
@@ -1081,59 +1088,62 @@ const monkFeatures = [
     }
   ),
 
-  feature(
-    "monk-open-hand-manifestation-of-body",
-    "Manifestation of Body",
-    "toggle",
-    [availableTo(MONK, 6, OPEN_HAND)],
-    true,
-    "Toggleable passive. Your unarmed attacks deal additional Necrotic damage. Only one Manifestation can be active at once in-game.",
-    ["single-target-damage"],
-    ["Necrotic"],
-    ["passive"],
-    ["none"],
-    self,
-    ["monk", "open-hand", "toggle"],
-    {
-      displayGroup: openHandGroup,
-    }
-  ),
+feature(
+  "monk-open-hand-manifestation-of-body",
+  "Manifestation of Body",
+  "toggle",
+  [availableTo(MONK, 6, OPEN_HAND)],
+  true,
+  "Toggleable passive. Your unarmed attacks deal additional Necrotic damage. Only one Manifestation can be active at once in-game.",
+  ["single-target-damage"],
+  ["Necrotic"],
+  ["passive"],
+  ["none"],
+  self,
+  ["monk", "open-hand", "toggle"],
+  {
+    displayGroup: openHandGroup,
+    activeGroup: manifestationActiveGroup,
+  }
+),
 
-  feature(
-    "monk-open-hand-manifestation-of-mind",
-    "Manifestation of Mind",
-    "toggle",
-    [availableTo(MONK, 6, OPEN_HAND)],
-    true,
-    "Toggleable passive. Your unarmed attacks deal additional Psychic damage. Only one Manifestation can be active at once in-game.",
-    ["single-target-damage"],
-    ["Psychic"],
-    ["passive"],
-    ["none"],
-    self,
-    ["monk", "open-hand", "toggle"],
-    {
-      displayGroup: openHandGroup,
-    }
-  ),
+feature(
+  "monk-open-hand-manifestation-of-mind",
+  "Manifestation of Mind",
+  "toggle",
+  [availableTo(MONK, 6, OPEN_HAND)],
+  true,
+  "Toggleable passive. Your unarmed attacks deal additional Psychic damage. Only one Manifestation can be active at once in-game.",
+  ["single-target-damage"],
+  ["Psychic"],
+  ["passive"],
+  ["none"],
+  self,
+  ["monk", "open-hand", "toggle"],
+  {
+    displayGroup: openHandGroup,
+    activeGroup: manifestationActiveGroup,
+  }
+),
 
-  feature(
-    "monk-open-hand-manifestation-of-soul",
-    "Manifestation of Soul",
-    "toggle",
-    [availableTo(MONK, 6, OPEN_HAND)],
-    true,
-    "Toggleable passive. Your unarmed attacks deal additional Radiant damage. Only one Manifestation can be active at once in-game.",
-    ["single-target-damage"],
-    ["Radiant"],
-    ["passive"],
-    ["none"],
-    self,
-    ["monk", "open-hand", "toggle"],
-    {
-      displayGroup: openHandGroup,
-    }
-  ),
+feature(
+  "monk-open-hand-manifestation-of-soul",
+  "Manifestation of Soul",
+  "toggle",
+  [availableTo(MONK, 6, OPEN_HAND)],
+  true,
+  "Toggleable passive. Your unarmed attacks deal additional Radiant damage. Only one Manifestation can be active at once in-game.",
+  ["single-target-damage"],
+  ["Radiant"],
+  ["passive"],
+  ["none"],
+  self,
+  ["monk", "open-hand", "toggle"],
+  {
+    displayGroup: openHandGroup,
+    activeGroup: manifestationActiveGroup,
+  }
+),
 
   feature(
     "monk-open-hand-wholeness-of-body",

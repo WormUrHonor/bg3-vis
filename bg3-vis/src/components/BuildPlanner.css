@@ -825,3 +825,20 @@ select {
     gap: 4px;
   }
 }
+.spell-icon-button.active-ability {
+  border-color: rgba(135, 235, 180, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(135, 235, 180, 0.34),
+    0 0 16px rgba(80, 190, 130, 0.38),
+    inset 0 0 12px rgba(150, 255, 195, 0.16);
+}
+
+.spell-icon-button.active-ability .ability-kind-badge {
+  color: #c8ffd9;
+  border-color: rgba(135, 235, 180, 0.46);
+}
+
+.active-subgroup {
+  background: rgba(80, 190, 130, 0.035);
+  border-top-color: rgba(135, 235, 180, 0.18);
+}

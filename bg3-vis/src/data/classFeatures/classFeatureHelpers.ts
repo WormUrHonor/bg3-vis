@@ -7,6 +7,7 @@ import type {
 } from "../bg3Spells";
 import type {
   BG3ClassFeature,
+  ClassFeatureActiveGroup,
   ClassFeatureAvailability,
   ClassFeatureChoiceGroup,
   ClassFeatureDependencyMode,
@@ -138,6 +139,7 @@ export function availableTo(
 
 export type FeatureOptions = {
   choiceGroup?: ClassFeatureChoiceGroup;
+  activeGroup?: ClassFeatureActiveGroup;
   displayGroup?: ClassFeatureDisplayGroup;
   requires?: string[];
   dependencyMode?: ClassFeatureDependencyMode;
@@ -173,6 +175,10 @@ export function feature(
     choiceGroupId: options.choiceGroup?.id,
     choiceGroupLabel: options.choiceGroup?.label,
     choiceGroupMax: options.choiceGroup?.max,
+
+    activeGroupId: options.activeGroup?.id,
+    activeGroupLabel: options.activeGroup?.label,
+    activeGroupMax: options.activeGroup?.max,
 
     displayGroupId: options.displayGroup?.id,
     displayGroupLabel: options.displayGroup?.label,

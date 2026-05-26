@@ -84,7 +84,23 @@ export const spellChoiceRuleDefinitions: SpellChoiceRuleDefinition[] = [
     displayGroupLabel: "Eldritch Knight Cantrip Choices",
     displayGroupOrder: 10,
   },
-
+{
+  id: "ranger-known-spells",
+  label: "Ranger Known Spells",
+  className: "Ranger",
+  minLevel: 2,
+  ranks: [1, 2, 3],
+  maxByLevel: [
+    { minLevel: 2, max: 2 },
+    { minLevel: 3, max: 3 },
+    { minLevel: 5, max: 4 },
+    { minLevel: 7, max: 5 },
+    { minLevel: 9, max: 6 },
+    { minLevel: 11, max: 7 },
+  ],
+  displayGroupLabel: "Ranger Spell Choices",
+  displayGroupOrder: 20,
+},
   {
     id: "fighter-eldritch-knight-spells",
     label: "Eldritch Knight Spells",

@@ -6,16 +6,17 @@ import { barbarianClassModule } from "./barbarian";
 // import { clericClassModule } from "./cleric";
 // import { druidClassModule } from "./druid";
 import { fighterClassModule } from "./fighter";
+import { monkClassModule } from "./monk";
 // import { paladinClassModule } from "./paladin";
-// import { rangerClassModule } from "./ranger";
+import { rangerClassModule } from "./ranger";
 // import { rogueClassModule } from "./rogue";
 // import { sorcererClassModule } from "./sorcerer";
 // import { warlockClassModule } from "./warlock";
 // import { wizardClassModule } from "./wizard";
-import { monkClassModule } from "./monk";
 
 export type {
   BG3ClassFeature,
+  ClassFeatureActiveGroup,
   ClassFeatureAvailability,
   ClassFeatureChoiceGroup,
   ClassFeatureDependencyMode,
@@ -33,7 +34,7 @@ export const classFeatureModules: ClassFeatureModule[] = [
   fighterClassModule,
   monkClassModule,
   // paladinClassModule,
-  // rangerClassModule,
+  rangerClassModule,
   // rogueClassModule,
   // sorcererClassModule,
   // warlockClassModule,

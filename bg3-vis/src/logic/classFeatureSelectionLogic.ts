@@ -21,6 +21,19 @@ export function cleanSelectedClassFeatureIds(
   );
 }
 
+export function cleanActiveClassFeatureIds(
+  activeFeatureIds: string[],
+  availableFeatures: BG3ClassFeature[]
+): string[] {
+  const activeCapableIds = availableFeatures
+    .filter((feature) => feature.activeGroupId && !feature.isInformational)
+    .map((feature) => feature.id);
+
+  return activeFeatureIds.filter((featureId) =>
+    activeCapableIds.includes(featureId)
+  );
+}
+
 function hasFeatureConflict(
   feature: BG3ClassFeature,
   selectedFeatureIds: string[],
@@ -77,4 +90,40 @@ export function toggleClassFeatureSelection(
   }
 
   return [...selectedFeatureIds, featureId];
+}
+
+export function toggleActiveClassFeatureSelection(
+  featureId: string,
+  activeFeatureIds: string[],
+  availableFeatures: BG3ClassFeature[]
+): string[] {
+  const feature = availableFeatures.find((item) => item.id === featureId);
+
+  if (!feature || feature.isInformational || !feature.activeGroupId) {
+    return activeFeatureIds;
+  }
+
+  if (activeFeatureIds.includes(featureId)) {
+    return activeFeatureIds.filter((id) => id !== featureId);
+  }
+
+  const max = feature.activeGroupMax ?? 1;
+
+  const activeInSameGroup = activeFeatureIds.filter((activeId) => {
+    const activeFeature = availableFeatures.find((item) => item.id === activeId);
+
+    return activeFeature?.activeGroupId === feature.activeGroupId;
+  });
+
+  if (activeInSameGroup.length >= max) {
+    const activeInDifferentGroups = activeFeatureIds.filter((activeId) => {
+      const activeFeature = availableFeatures.find((item) => item.id === activeId);
+
+      return activeFeature?.activeGroupId !== feature.activeGroupId;
+    });
+
+    return [...activeInDifferentGroups, featureId];
+  }
+
+  return [...activeFeatureIds, featureId];
 }

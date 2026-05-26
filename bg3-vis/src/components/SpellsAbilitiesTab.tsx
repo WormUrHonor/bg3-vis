@@ -3,7 +3,10 @@ import { bg3Spells } from "../data/bg3Spells";
 import type { BG3ClassFeature } from "../data/bg3ClassFeatures";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 import { toggleSpellSelection } from "../logic/spellSelectionLogic";
-import { toggleClassFeatureSelection } from "../logic/classFeatureSelectionLogic";
+import {
+  toggleActiveClassFeatureSelection,
+  toggleClassFeatureSelection,
+} from "../logic/classFeatureSelectionLogic";
 import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
 import { getSpellIcon } from "../logic/spellIconLogic";
 import { getClassFeatureIcon } from "../logic/classFeatureIconLogic";
@@ -27,6 +30,8 @@ type SpellsAbilitiesTabProps = {
   selectedClassFeatureIds: string[];
   fixedClassFeatureIds: string[];
   setSelectedClassFeatureIds: Dispatch<SetStateAction<string[]>>;
+  activeClassFeatureIds: string[];
+  setActiveClassFeatureIds: Dispatch<SetStateAction<string[]>>;
 };
 
 type FeatureDisplayGroup = {
@@ -84,12 +89,17 @@ function formatCost(actions: string[], resources: string[]): string {
 
   return items.join(", ");
 }
-function isRitualSpell(spell: { tags?: string[] }): boolean {
-  return spell.tags?.some((tag) => tag.toLowerCase() === "ritual") ?? false;
+
+function hasSpellTag(spell: { tags?: string[] }, tagName: string): boolean {
+  return (
+    spell.tags?.some((tag) => tag.toLowerCase() === tagName.toLowerCase()) ??
+    false
+  );
 }
 
 function getKindBadge(feature: BG3ClassFeature): string {
   if (feature.isInformational) return "i";
+  if (feature.activeGroupId) return "T";
   if (feature.kind === "passive") return "P";
   if (feature.kind === "reaction") return "R";
   if (feature.kind === "manoeuvre") return "M";
@@ -175,6 +185,26 @@ function getChoiceGroupsInDisplayGroup(features: BG3ClassFeature[]) {
   );
 }
 
+function getActiveGroupsInDisplayGroup(features: BG3ClassFeature[]) {
+  return Array.from(
+    new Map(
+      features
+        .filter((feature) => feature.activeGroupId)
+        .map((feature) => [
+          feature.activeGroupId,
+          {
+            id: feature.activeGroupId as string,
+            label: feature.activeGroupLabel ?? "Active Toggle",
+            max: feature.activeGroupMax ?? 1,
+            features: features.filter(
+              (item) => item.activeGroupId === feature.activeGroupId
+            ),
+          },
+        ])
+    ).values()
+  );
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -186,6 +216,8 @@ function SpellsAbilitiesTab({
   selectedClassFeatureIds,
   fixedClassFeatureIds,
   setSelectedClassFeatureIds,
+  activeClassFeatureIds,
+  setActiveClassFeatureIds,
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
@@ -211,90 +243,116 @@ function SpellsAbilitiesTab({
   const selectedSpellCount = selectedSpellIds.length;
   const selectedFeatureCount = selectedClassFeatureIds.length;
   const fixedFeatureCount = fixedClassFeatureIds.length;
+  const activeFeatureCount = activeClassFeatureIds.length;
 
-  function renderFeatureButton(feature: BG3ClassFeature, groupFull = false) {
-    const isInformational = feature.isInformational ?? false;
-    const isFixed =
-      !isInformational &&
-      (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
-    const isSelected = selectedClassFeatureIds.includes(feature.id);
-    const isDisabled = isInformational || isFixed || groupFull;
+ function renderFeatureButton(
+  feature: BG3ClassFeature,
+  groupFull = false,
+  activeGroupFull = false
+) {
+  const isInformational = feature.isInformational ?? false;
+  const isActiveToggle = Boolean(feature.activeGroupId);
+  const isFixed =
+    !isInformational &&
+    (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
+  const isSelected = selectedClassFeatureIds.includes(feature.id);
+  const isActive = activeClassFeatureIds.includes(feature.id);
 
-    return (
-      <button
-        key={feature.id}
-        className={[
-          "spell-icon-button",
-          isSelected ? "selected-spell" : "",
-          isFixed ? "fixed-ability" : "",
-          isInformational ? "informational-ability" : "",
-          groupFull ? "choice-disabled-soft" : "",
-        ].join(" ")}
-        type="button"
-        disabled={isDisabled}
-        onClick={() =>
-          setSelectedClassFeatureIds((current) =>
-            toggleClassFeatureSelection(
-              feature.id,
-              current,
-              availableClassFeatures
-            )
-          )
-        }
-      >
-        <img
-          src={getClassFeatureIcon(feature)}
-          alt={feature.name}
-          className="spell-icon-image"
-        />
+  const isDisabled =
+    isInformational ||
+    groupFull ||
+    (isFixed && !isActiveToggle);
 
-        <span className="ability-kind-badge">{getKindBadge(feature)}</span>
+  function handleClick() {
+    if (isActiveToggle) {
+      setActiveClassFeatureIds((current) =>
+        toggleActiveClassFeatureSelection(
+          feature.id,
+          current,
+          availableClassFeatures
+        )
+      );
+      return;
+    }
 
-        <span className="spell-tooltip">
-          <strong>{feature.name}</strong>
-
-          {feature.description && (
-            <span className="spell-description">{feature.description}</span>
-          )}
-
-          <span>
-            <b>Type:</b> {feature.kind.replaceAll("-", " ")}
-          </span>
-
-          {feature.range && (
-            <span>
-              <b>Range:</b> {feature.range.label}
-            </span>
-          )}
-
-          {feature.roles.length > 0 && (
-            <span>
-              <b>Role:</b>{" "}
-              {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
-            </span>
-          )}
-
-          {feature.damageTypes.length > 0 && (
-            <span>
-              <b>Damage:</b> {feature.damageTypes.join(", ")}
-            </span>
-          )}
-
-          <span>
-            <b>Cost:</b>{" "}
-            {formatCost(feature.costs.actions, feature.costs.resources)}
-          </span>
-
-          {feature.requiredFeatureIds && feature.requiredFeatureIds.length > 0 && (
-            <span>Granted by selected feature</span>
-          )}
-
-          {isInformational && <span>Possible effect</span>}
-          {isFixed && <span>Granted automatically</span>}
-        </span>
-      </button>
+    setSelectedClassFeatureIds((current) =>
+      toggleClassFeatureSelection(feature.id, current, availableClassFeatures)
     );
   }
+
+  return (
+    <button
+      key={feature.id}
+      className={[
+        "spell-icon-button",
+        isSelected ? "selected-spell" : "",
+        isActive ? "active-ability" : "",
+        isFixed ? "fixed-ability" : "",
+        isInformational ? "informational-ability" : "",
+        groupFull || (activeGroupFull && !isActive) ? "choice-disabled-soft" : "",
+      ].join(" ")}
+      type="button"
+      disabled={isDisabled}
+      onClick={handleClick}
+    >
+      <img
+        src={getClassFeatureIcon(feature)}
+        alt={feature.name}
+        className="spell-icon-image"
+      />
+
+      <span className="ability-kind-badge">{getKindBadge(feature)}</span>
+
+      <span className="spell-tooltip">
+        <strong>{feature.name}</strong>
+
+        {feature.description && (
+          <span className="spell-description">{feature.description}</span>
+        )}
+
+        <span>
+          <b>Type:</b> {feature.kind.replaceAll("-", " ")}
+        </span>
+
+        {feature.range && (
+          <span>
+            <b>Range:</b> {feature.range.label}
+          </span>
+        )}
+
+        {feature.roles.length > 0 && (
+          <span>
+            <b>Role:</b>{" "}
+            {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+          </span>
+        )}
+
+        {feature.damageTypes.length > 0 && (
+          <span>
+            <b>Damage:</b> {feature.damageTypes.join(", ")}
+          </span>
+        )}
+
+        <span>
+          <b>Cost:</b>{" "}
+          {formatCost(feature.costs.actions, feature.costs.resources)}
+        </span>
+
+        {feature.requiredFeatureIds && feature.requiredFeatureIds.length > 0 && (
+          <span>Granted by selected feature</span>
+        )}
+
+        {isInformational && <span>Possible effect</span>}
+        {isFixed && <span>Granted automatically</span>}
+        {isActiveToggle && <span>Can be set active for the visualisation</span>}
+        {isActive && <span>Currently active</span>}
+        {activeGroupFull && !isActive && (
+          <span>Click to replace the current active toggle</span>
+        )}
+      </span>
+    </button>
+  );
+}
 
   return (
     <div className="tab-content">
@@ -303,14 +361,17 @@ function SpellsAbilitiesTab({
           <h2>{getClassAbilityTabTitle(selectedClass, selectedSubclass)}</h2>
           <p className="panel-intro compact-intro">
             Select available spells, cantrips, class actions, passives, and
-            subclass-specific choices. Fixed features are shown as already
-            granted, while informational entries describe possible outcomes.
+            subclass-specific choices. Fixed features are shown as already granted,
+            while toggles can be set active for the visualisation.
           </p>
         </div>
 
         {selectedClass && (
           <span className="section-count-pill">
-            {selectedSpellCount + selectedFeatureCount + fixedFeatureCount}
+            {selectedSpellCount +
+              selectedFeatureCount +
+              fixedFeatureCount +
+              activeFeatureCount}
           </span>
         )}
       </div>
@@ -332,20 +393,59 @@ function SpellsAbilitiesTab({
 
       {featureDisplayGroups.map((displayGroup) => {
         const choiceGroups = getChoiceGroupsInDisplayGroup(displayGroup.features);
-        const nonChoiceFeatures = displayGroup.features.filter(
-          (feature) => !feature.choiceGroupId
-        );
-return (
-  <div key={displayGroup.id} className="section-block feature-group-block">
-    <div className="ability-section-heading feature-display-heading">
-      <h3>{displayGroup.label}</h3>
-    </div>
+        const activeGroups = getActiveGroupsInDisplayGroup(displayGroup.features);
 
-            {nonChoiceFeatures.length > 0 && (
+        const groupedFeatureIds = new Set([
+          ...choiceGroups.flatMap((group) =>
+            group.features.map((feature) => feature.id)
+          ),
+          ...activeGroups.flatMap((group) =>
+            group.features.map((feature) => feature.id)
+          ),
+        ]);
+
+        const nonGroupedFeatures = displayGroup.features.filter(
+          (feature) => !groupedFeatureIds.has(feature.id)
+        );
+
+        return (
+          <div key={displayGroup.id} className="section-block feature-group-block">
+            <div className="ability-section-heading feature-display-heading">
+              <h3>{displayGroup.label}</h3>
+            </div>
+
+            {nonGroupedFeatures.length > 0 && (
               <div className="ability-icon-grid">
-                {nonChoiceFeatures.map((feature) => renderFeatureButton(feature))}
+                {nonGroupedFeatures.map((feature) => renderFeatureButton(feature))}
               </div>
             )}
+
+            {activeGroups.map((activeGroup) => {
+              const activeInGroup = activeGroup.features.filter((feature) =>
+                activeClassFeatureIds.includes(feature.id)
+              ).length;
+
+              return (
+                <div key={activeGroup.id} className="choice-subgroup active-subgroup">
+                  <div className="choice-subgroup-header">
+                    <strong>{activeGroup.label}</strong>
+                    <span>
+                      {activeInGroup}/{activeGroup.max}
+                    </span>
+                  </div>
+
+                  <div className="ability-icon-grid">
+                    {activeGroup.features.map((feature) => {
+                      const isActive = activeClassFeatureIds.includes(feature.id);
+                      const activeGroupFull =
+                        activeInGroup >= activeGroup.max && !isActive;
+
+                      return renderFeatureButton(feature, false, activeGroupFull);
+                    })}
+                  </div>
+                </div>
+              );
+            })}
 
             {choiceGroups.map((choiceGroup) => {
               const selectedInChoiceGroup = choiceGroup.features.filter((feature) =>
@@ -422,8 +522,8 @@ return (
                   <div className="spell-icon-grid">
                     {spellsForRank.map((spell) => {
                       const isSelected = selectedSpellIds.includes(spell.id);
-                      const isFixed = spell.tags?.includes("fixed") ?? false;
-                      const isRitual = isRitualSpell(spell);
+                      const isFixed = hasSpellTag(spell, "fixed");
+                      const isRitual = hasSpellTag(spell, "ritual");
 
                       const choiceRule = getSpellChoiceRuleForSpell(
                         spell.id,
@@ -478,11 +578,12 @@ return (
                               <img src={concentrationIcon} alt="Concentration" />
                             </span>
                           )}
+
                           {isRitual && (
-  <span className="spell-ritual-badge" title="Ritual spell">
-    <img src={ritualIcon} alt="Ritual" />
-  </span>
-)}
+                            <span className="spell-ritual-badge" title="Ritual spell">
+                              <img src={ritualIcon} alt="Ritual" />
+                            </span>
+                          )}
 
                           <span className="spell-tooltip">
                             <strong>{spell.name}</strong>
@@ -528,6 +629,7 @@ return (
                             {spell.costs.requiresConcentration && (
                               <span>Requires concentration</span>
                             )}
+
                             {isRitual && <span>Ritual spell</span>}
 
                             {choiceRule && (

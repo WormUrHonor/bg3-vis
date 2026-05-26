@@ -80,6 +80,12 @@ const animalAspectGroup = {
   order: 60,
 };
 
+const elementalCleaverActiveGroup = {
+  id: "barbarian-giant-active-elemental-cleaver",
+  label: "Active Elemental Cleaver Damage",
+  max: 1,
+};
+
 const makeWildheartAspect = (
   idBase: string,
   name: string,
@@ -489,23 +495,123 @@ const barbarianFeatures = [
     }
   ),
 
-  feature(
-    "barbarian-giant-elemental-cleaver",
-    "Elemental Cleaver",
-    "subclass-feature",
-    [availableTo(BARBARIAN, 6, "Giant")],
-    true,
-    "Channel primordial might into your weapon. Until the end of Rage, it deals additional Acid, Cold, Fire, Lightning, or Thunder damage and gains the Thrown property. If thrown, it immediately reappears in your hand.",
-    ["support-buff", "single-target-damage"],
-    ["Acid", "Cold", "Fire", "Lightning", "Thunder"],
-    ["bonus-action"],
-    ["none"],
-    touch,
-    ["barbarian", "giant", "class-action"],
-    {
-      displayGroup: giantGroup,
-    }
-  ),
+feature(
+  "barbarian-giant-elemental-cleaver",
+  "Elemental Cleaver",
+  "subclass-feature",
+  [availableTo(BARBARIAN, 6, "Giant")],
+  true,
+  "Channel primordial might into your weapon. Until the end of Rage, it deals additional Acid, Cold, Fire, Lightning, or Thunder damage and gains the Thrown property. If thrown, it immediately reappears in your hand.",
+  ["support-buff", "single-target-damage"],
+  ["Variable"],
+  ["bonus-action"],
+  ["none"],
+  touch,
+  ["barbarian", "giant", "class-action"],
+  {
+    displayGroup: giantGroup,
+  }
+),
+
+feature(
+  "barbarian-giant-elemental-cleaver-acid",
+  "Elemental Cleaver: Acid",
+  "toggle",
+  [availableTo(BARBARIAN, 6, "Giant")],
+  true,
+  "Active Elemental Cleaver assumption for the visualisation. Your weapon deals additional Acid damage while Elemental Cleaver is active.",
+  ["single-target-damage"],
+  ["Acid"],
+  ["passive"],
+  ["none"],
+  touch,
+  ["barbarian", "giant", "elemental-cleaver-mode"],
+  {
+    displayGroup: giantGroup,
+    activeGroup: elementalCleaverActiveGroup,
+    requires: ["barbarian-giant-elemental-cleaver"],
+  }
+),
+
+feature(
+  "barbarian-giant-elemental-cleaver-cold",
+  "Elemental Cleaver: Cold",
+  "toggle",
+  [availableTo(BARBARIAN, 6, "Giant")],
+  true,
+  "Active Elemental Cleaver assumption for the visualisation. Your weapon deals additional Cold damage while Elemental Cleaver is active.",
+  ["single-target-damage"],
+  ["Cold"],
+  ["passive"],
+  ["none"],
+  touch,
+  ["barbarian", "giant", "elemental-cleaver-mode"],
+  {
+    displayGroup: giantGroup,
+    activeGroup: elementalCleaverActiveGroup,
+    requires: ["barbarian-giant-elemental-cleaver"],
+  }
+),
+
+feature(
+  "barbarian-giant-elemental-cleaver-fire",
+  "Elemental Cleaver: Fire",
+  "toggle",
+  [availableTo(BARBARIAN, 6, "Giant")],
+  true,
+  "Active Elemental Cleaver assumption for the visualisation. Your weapon deals additional Fire damage while Elemental Cleaver is active.",
+  ["single-target-damage"],
+  ["Fire"],
+  ["passive"],
+  ["none"],
+  touch,
+  ["barbarian", "giant", "elemental-cleaver-mode"],
+  {
+    displayGroup: giantGroup,
+    activeGroup: elementalCleaverActiveGroup,
+    requires: ["barbarian-giant-elemental-cleaver"],
+  }
+),
+
+feature(
+  "barbarian-giant-elemental-cleaver-lightning",
+  "Elemental Cleaver: Lightning",
+  "toggle",
+  [availableTo(BARBARIAN, 6, "Giant")],
+  true,
+  "Active Elemental Cleaver assumption for the visualisation. Your weapon deals additional Lightning damage while Elemental Cleaver is active.",
+  ["single-target-damage"],
+  ["Lightning"],
+  ["passive"],
+  ["none"],
+  touch,
+  ["barbarian", "giant", "elemental-cleaver-mode"],
+  {
+    displayGroup: giantGroup,
+    activeGroup: elementalCleaverActiveGroup,
+    requires: ["barbarian-giant-elemental-cleaver"],
+  }
+),
+
+feature(
+  "barbarian-giant-elemental-cleaver-thunder",
+  "Elemental Cleaver: Thunder",
+  "toggle",
+  [availableTo(BARBARIAN, 6, "Giant")],
+  true,
+  "Active Elemental Cleaver assumption for the visualisation. Your weapon deals additional Thunder damage while Elemental Cleaver is active.",
+  ["single-target-damage"],
+  ["Thunder"],
+  ["passive"],
+  ["none"],
+  touch,
+  ["barbarian", "giant", "elemental-cleaver-mode"],
+  {
+    displayGroup: giantGroup,
+    activeGroup: elementalCleaverActiveGroup,
+    requires: ["barbarian-giant-elemental-cleaver"],
+  }
+),
 
   feature(
     "barbarian-giant-mighty-impel",
@@ -1208,7 +1314,16 @@ export const barbarianClassModule: ClassFeatureModule = {
     "barbarian-giant-elemental-cleaver":
       "Action_Barbarian_Giant_ElementalCleaver.png",
     "barbarian-giant-mighty-impel": "Action_Barbarian_Giant_MightyImpel.png",
-
+"barbarian-giant-elemental-cleaver-acid":
+  "Action_Barbarian_Giant_ElementalCleaver.png",
+"barbarian-giant-elemental-cleaver-cold":
+  "Action_Barbarian_Giant_ElementalCleaver_C.webp",
+"barbarian-giant-elemental-cleaver-fire":
+  "Action_Barbarian_Giant_ElementalCleaver_F.webp",
+"barbarian-giant-elemental-cleaver-lightning":
+  "Action_Barbarian_Giant_ElementalCleaver_L.webp",
+"barbarian-giant-elemental-cleaver-thunder":
+  "Action_Barbarian_Giant_ElementalCleaver_T.webp",
     "barbarian-wild-magic-rage": "Action_Barbarian_WildMagic_Rage.png",
     "barbarian-wild-magic-magic-awareness":
       "Action_Barbarian_WildMagic_MagicAwareness.png",

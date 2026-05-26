@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./BuildPlanner.css";
 
 import CharacterTab from "./CharacterTab";
@@ -10,6 +10,7 @@ import { bg3ClassFeatures } from "../data/bg3ClassFeatures";
 import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvailability";
 
 import {
+  cleanActiveClassFeatureIds,
   cleanSelectedClassFeatureIds,
   getFixedClassFeatureIds,
 } from "../logic/classFeatureSelectionLogic";
@@ -156,6 +157,10 @@ function BuildPlanner() {
   const [selectedClassFeatureIds, setSelectedClassFeatureIds] = useState<
     string[]
   >([]);
+  const [activeClassFeatureIds, setActiveClassFeatureIds] = useState<string[]>(
+    []
+  );
+
   const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
 
   const tabs: { id: TabId; label: string }[] = [
@@ -232,13 +237,21 @@ function BuildPlanner() {
     selectedWarlockInvocations
   );
 
-const availableClassFeatures = getAvailableClassFeaturesForBuild(
-  bg3ClassFeatures,
-  selectedClass,
-  selectedSubclass,
-  selectedLevel,
-  selectedClassFeatureIds
-);
+  const availableClassFeatures = useMemo(
+    () =>
+      getAvailableClassFeaturesForBuild(
+        bg3ClassFeatures,
+        selectedClass,
+        selectedSubclass,
+        selectedLevel,
+        selectedClassFeatureIds
+      ),
+    [selectedClass, selectedSubclass, selectedLevel, selectedClassFeatureIds]
+  );
+
+  const availableClassFeatureKey = availableClassFeatures
+    .map((feature) => feature.id)
+    .join("|");
 
   const fixedClassFeatureIds = getFixedClassFeatureIds(availableClassFeatures);
 
@@ -252,7 +265,13 @@ const availableClassFeatures = getAvailableClassFeaturesForBuild(
     setSelectedClassFeatureIds((current) =>
       cleanSelectedClassFeatureIds(current, availableClassFeatures)
     );
-  }, [availableClassFeatures.map((feature) => feature.id).join("|")]);
+  }, [availableClassFeatureKey]);
+
+  useEffect(() => {
+    setActiveClassFeatureIds((current) =>
+      cleanActiveClassFeatureIds(current, availableClassFeatures)
+    );
+  }, [availableClassFeatureKey]);
 
   useEffect(() => {
     const featLevels = getFeatLevelsForClass(selectedClass, selectedLevel);
@@ -281,6 +300,7 @@ const availableClassFeatures = getAvailableClassFeaturesForBuild(
     selectedWarlockInvocations,
     selectedSpellIds,
     selectedClassFeatureIds,
+    activeClassFeatureIds,
     baseAbilityScores,
     bonusPlusTwo,
     bonusPlusOne,
@@ -308,6 +328,7 @@ const availableClassFeatures = getAvailableClassFeaturesForBuild(
     setSelectedWarlockInvocations([]);
     setSelectedSpellIds([]);
     setSelectedClassFeatureIds([]);
+    setActiveClassFeatureIds([]);
   }
 
   function handleEvaluateBuild() {
@@ -365,6 +386,11 @@ const availableClassFeatures = getAvailableClassFeaturesForBuild(
             </div>
 
             <div className="summary-row">
+              <span>Subclass</span>
+              <strong>{selectedSubclass || "Not selected"}</strong>
+            </div>
+
+            <div className="summary-row">
               <span>Level</span>
               <strong>{selectedLevel}</strong>
             </div>
@@ -386,6 +412,11 @@ const availableClassFeatures = getAvailableClassFeaturesForBuild(
               <strong>
                 {fixedClassFeatureIds.length + selectedClassFeatureIds.length}
               </strong>
+            </div>
+
+            <div className="summary-row">
+              <span>Active toggles</span>
+              <strong>{activeClassFeatureIds.length}</strong>
             </div>
           </aside>
 
@@ -461,6 +492,8 @@ const availableClassFeatures = getAvailableClassFeaturesForBuild(
                 selectedClassFeatureIds={selectedClassFeatureIds}
                 fixedClassFeatureIds={fixedClassFeatureIds}
                 setSelectedClassFeatureIds={setSelectedClassFeatureIds}
+                activeClassFeatureIds={activeClassFeatureIds}
+                setActiveClassFeatureIds={setActiveClassFeatureIds}
               />
             )}
           </section>

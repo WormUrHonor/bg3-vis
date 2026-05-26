@@ -1,13 +1,6 @@
-﻿export {
-  bg3ClassFeatures,
-  classFeatureIconFileById,
-  classFeatureModules,
-  getClassFeatureById,
-  getClassFeatureTabLabel,
-} from "./classFeatures";
-
-export type {
+﻿export type {
   BG3ClassFeature,
+  ClassFeatureActiveGroup,
   ClassFeatureAvailability,
   ClassFeatureChoiceGroup,
   ClassFeatureDependencyMode,
@@ -15,4 +8,11 @@ export type {
   ClassFeatureKind,
   ClassFeatureModule,
   ClassFeatureRange,
+} from "./classFeatures";
+
+export {
+  bg3ClassFeatures,
+  classFeatureIconFileById,
+  getClassFeatureById,
+  getClassFeatureTabLabel,
 } from "./classFeatures";
