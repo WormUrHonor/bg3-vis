@@ -48,6 +48,19 @@ const eldritchKnightCantripIds = [
 
 export const spellChoiceRuleDefinitions: SpellChoiceRuleDefinition[] = [
   {
+  id: "paladin-prepared-spells",
+  label: "Paladin Prepared Spells",
+  className: "Paladin",
+  minLevel: 2,
+  ranks: [1, 2, 3],
+  maxByLevel: [
+    { minLevel: 2, max: 2 },
+  ],
+  displayGroupLabel: "Paladin Prepared Spell Choices",
+  displayGroupOrder: 20,
+},
+  {
+
     id: "fighter-arcane-archer-cantrip",
     label: "Arcane Archer Cantrip",
     className: "Fighter",
@@ -158,8 +171,15 @@ function ruleAppliesToBuild(
 
 function getMaxForLevel(
   rule: SpellChoiceRuleDefinition,
-  selectedLevel: number
+  selectedLevel: number,
+  maxOverrides: Record<string, number> = {}
 ): number {
+  const override = maxOverrides[rule.id];
+
+  if (override !== undefined) {
+    return override;
+  }
+
   const matchingEntries = rule.maxByLevel
     .filter((entry) => selectedLevel >= entry.minLevel)
     .sort((a, b) => b.minLevel - a.minLevel);
@@ -190,7 +210,8 @@ export function getActiveSpellChoiceRulesForBuild(
   availableSpells: BG3Spell[],
   selectedClass: ClassName | "",
   selectedSubclass: string,
-  selectedLevel: number
+  selectedLevel: number,
+  maxOverrides: Record<string, number> = {}
 ): ActiveSpellChoiceRule[] {
   return spellChoiceRuleDefinitions
     .filter((rule) =>
@@ -199,7 +220,7 @@ export function getActiveSpellChoiceRulesForBuild(
     .map((rule) => ({
       id: rule.id,
       label: rule.label,
-      max: getMaxForLevel(rule, selectedLevel),
+      max: getMaxForLevel(rule, selectedLevel, maxOverrides),
       spellIds: getSpellIdsForRule(rule, availableSpells),
       displayGroupLabel: rule.displayGroupLabel ?? rule.label,
       displayGroupOrder: rule.displayGroupOrder ?? 999,

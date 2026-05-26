@@ -56,6 +56,10 @@ import {
   getFeatSkillProficiencies,
 } from "../logic/featLogic";
 
+function getAbilityModifier(score: number): number {
+  return Math.floor((score - 10) / 2);
+}
+
 function getSpellsAbilitiesTabLabel(
   selectedClass: ClassName | "",
   selectedSubclass: string
@@ -64,53 +68,18 @@ function getSpellsAbilitiesTabLabel(
     return "Manoeuvres";
   }
 
-  if (selectedClass === "Fighter") {
-    return "Fighter Features";
-  }
-
-  if (selectedClass === "Warlock") {
-    return "Spells & Invocations";
-  }
-
-  if (selectedClass === "Monk") {
-    return "Ki Actions";
-  }
-
-  if (selectedClass === "Barbarian") {
-    return "Rage Actions";
-  }
-
-  if (selectedClass === "Rogue") {
-    return "Rogue Actions";
-  }
-
-  if (selectedClass === "Bard") {
-    return "Spells & Inspiration";
-  }
-
-  if (selectedClass === "Cleric") {
-    return "Spells & Divinity";
-  }
-
-  if (selectedClass === "Druid") {
-    return "Spells & Wild Shape";
-  }
-
-  if (selectedClass === "Paladin") {
-    return "Spells & Smites";
-  }
-
-  if (selectedClass === "Ranger") {
-    return "Spells & Ranger";
-  }
-
-  if (selectedClass === "Sorcerer") {
-    return "Spells & Metamagic";
-  }
-
-  if (selectedClass === "Wizard") {
-    return "Spells & Wizard";
-  }
+  if (selectedClass === "Fighter") return "Fighter Features";
+  if (selectedClass === "Warlock") return "Spells & Invocations";
+  if (selectedClass === "Monk") return "Ki Actions";
+  if (selectedClass === "Barbarian") return "Rage Actions";
+  if (selectedClass === "Rogue") return "Rogue Actions";
+  if (selectedClass === "Bard") return "Spells & Inspiration";
+  if (selectedClass === "Cleric") return "Spells & Divinity";
+  if (selectedClass === "Druid") return "Spells & Wild Shape";
+  if (selectedClass === "Paladin") return "Spells & Smites";
+  if (selectedClass === "Ranger") return "Spells & Ranger";
+  if (selectedClass === "Sorcerer") return "Spells & Metamagic";
+  if (selectedClass === "Wizard") return "Spells & Wizard";
 
   return "Spells & Abilities";
 }
@@ -122,9 +91,7 @@ function BuildPlanner() {
   const [characterName, setCharacterName] = useState("");
   const [selectedRace, setSelectedRace] = useState<RaceName | "">("");
   const [selectedSubrace, setSelectedSubrace] = useState("");
-  const [selectedBackground, setSelectedBackground] = useState<Background | "">(
-    ""
-  );
+  const [selectedBackground, setSelectedBackground] = useState<Background | "">("");
   const [selectedClass, setSelectedClass] = useState<ClassName | "">("");
   const [selectedSubclass, setSelectedSubclass] = useState("");
   const [selectedLevel, setSelectedLevel] = useState(12);
@@ -139,9 +106,8 @@ function BuildPlanner() {
   const [bardExpertise, setBardExpertise] = useState<Skill[]>([]);
   const [rogueExpertise, setRogueExpertise] = useState<Skill[]>([]);
   const [loreBardSkills, setLoreBardSkills] = useState<Skill[]>([]);
-  const [knowledgeClericExpertise, setKnowledgeClericExpertise] = useState<
-    Skill[]
-  >([]);
+  const [knowledgeClericExpertise, setKnowledgeClericExpertise] =
+    useState<Skill[]>([]);
 
   const [rangerFavouredEnemy, setRangerFavouredEnemy] = useState<
     RangerFavouredEnemy | ""
@@ -154,9 +120,9 @@ function BuildPlanner() {
   >([]);
 
   const [selectedSpellIds, setSelectedSpellIds] = useState<string[]>([]);
-  const [selectedClassFeatureIds, setSelectedClassFeatureIds] = useState<
-    string[]
-  >([]);
+  const [selectedClassFeatureIds, setSelectedClassFeatureIds] = useState<string[]>(
+    []
+  );
   const [activeClassFeatureIds, setActiveClassFeatureIds] = useState<string[]>(
     []
   );
@@ -198,6 +164,27 @@ function BuildPlanner() {
   const featExpertise = getFeatExpertise(featSelections);
   const featAbilityIncreases = getFeatAbilityIncreases(featSelections);
 
+  const finalCharismaScore =
+    baseAbilityScores.Charisma +
+    (bonusPlusTwo === "Charisma" ? 2 : 0) +
+    (bonusPlusOne === "Charisma" ? 1 : 0) +
+    (featAbilityIncreases.Charisma ?? 0);
+
+  const paladinPreparedSpellLimit =
+    selectedClass === "Paladin" && selectedLevel >= 2
+      ? Math.max(
+          1,
+          Math.floor(selectedLevel / 2) + getAbilityModifier(finalCharismaScore)
+        )
+      : 0;
+
+  const spellChoiceMaxOverrides: Record<string, number> =
+    selectedClass === "Paladin"
+      ? {
+          "paladin-prepared-spells": paladinPreparedSpellLimit,
+        }
+      : {};
+
   const lockedSkills: Skill[] = unique([
     ...lockedBackgroundSkills,
     ...lockedRaceSkills,
@@ -237,26 +224,26 @@ function BuildPlanner() {
     selectedWarlockInvocations
   );
 
-const availableClassFeatures = useMemo(
-  () =>
-    getAvailableClassFeaturesForBuild(
-      bg3ClassFeatures,
+  const availableClassFeatures = useMemo(
+    () =>
+      getAvailableClassFeaturesForBuild(
+        bg3ClassFeatures,
+        selectedClass,
+        selectedSubclass,
+        selectedLevel,
+        selectedClassFeatureIds,
+        rangerFavouredEnemy,
+        rangerNaturalExplorer
+      ),
+    [
       selectedClass,
       selectedSubclass,
       selectedLevel,
       selectedClassFeatureIds,
       rangerFavouredEnemy,
-      rangerNaturalExplorer
-    ),
-  [
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedClassFeatureIds,
-    rangerFavouredEnemy,
-    rangerNaturalExplorer,
-  ]
-);
+      rangerNaturalExplorer,
+    ]
+  );
 
   const availableClassFeatureKey = availableClassFeatures
     .map((feature) => feature.id)
@@ -284,7 +271,6 @@ const availableClassFeatures = useMemo(
 
   useEffect(() => {
     const featLevels = getFeatLevelsForClass(selectedClass, selectedLevel);
-
     setFeatSelections((current) => cleanFeatSelections(current, featLevels));
   }, [selectedClass, selectedLevel]);
 
@@ -503,6 +489,7 @@ const availableClassFeatures = useMemo(
                 setSelectedClassFeatureIds={setSelectedClassFeatureIds}
                 activeClassFeatureIds={activeClassFeatureIds}
                 setActiveClassFeatureIds={setActiveClassFeatureIds}
+                spellChoiceMaxOverrides={spellChoiceMaxOverrides}
               />
             )}
           </section>
