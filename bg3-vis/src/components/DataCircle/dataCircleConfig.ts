@@ -110,9 +110,9 @@ export const DAMAGE_TYPES: {
     glowColor: "#edc98a",
   },
   {
-    key: "Physical",
-    short: "PHY",
-    label: "Physical",
+    key: "Weapon",
+    short: "WEP",
+    label: "Weapon",
     color: "#c3aa7c",
     glowColor: "#f0d49a",
   },

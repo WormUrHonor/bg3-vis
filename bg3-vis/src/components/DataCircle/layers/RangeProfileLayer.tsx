@@ -1,6 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AbilityRole } from "../../../data/bg3Spells";
+import { getClassFeatureById } from "../../../data/bg3ClassFeatures";
 import { getSpellById } from "../../../data/bg3Spells";
+import { getClassFeatureIcon } from "../../../logic/classFeatureIconLogic";
 import { getSpellIcon } from "../../../logic/spellIconLogic";
 import {
   DAMAGE_ROLE_KEYS,
@@ -524,9 +526,17 @@ function getAbilityIconHref(abilityId?: string) {
 
   const spell = getSpellById(abilityId);
 
-  if (!spell) return undefined;
+  if (spell) {
+    return getSpellIcon(spell);
+  }
 
-  return getSpellIcon(spell);
+  const classFeature = getClassFeatureById(abilityId);
+
+  if (classFeature) {
+    return getClassFeatureIcon(classFeature);
+  }
+
+  return undefined;
 }
 
 function IconMarker({

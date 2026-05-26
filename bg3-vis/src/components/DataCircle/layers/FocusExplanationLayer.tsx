@@ -11,14 +11,21 @@ import psychicIcon from "../../../assets/Damage Types/Psychic_Damage_Icon.png";
 import radiantIcon from "../../../assets/Damage Types/Radiant_Damage_Icon.png";
 import slashingIcon from "../../../assets/Damage Types/Slashing_Damage_Icon.png";
 import thunderIcon from "../../../assets/Damage Types/Thunder_Damage_Icon.png";
+import weaponIcon from "../../../assets/Damage Types/weapon.webp";
+
+import { getClassFeatureById } from "../../../data/bg3ClassFeatures";
 import { getSpellById } from "../../../data/bg3Spells";
+import { getClassFeatureIcon } from "../../../logic/classFeatureIconLogic";
 import { getSpellIcon } from "../../../logic/spellIconLogic";
+
 import { DAMAGE_TYPES } from "../dataCircleConfig";
 import { CX, CY, polarToCartesian } from "../dataCircleGeometry";
 import {
   getFocusedAbilityIds,
+  getFocusItems,
   getFocusSummary,
   type DataCircleFocus,
+  type DataCircleFocusItem,
   type LayerRelationshipIndex,
 } from "../dataCircleInteraction";
 import type { DamageRingKey } from "../dataCircleTypes";
@@ -54,7 +61,7 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Slashing: slashingIcon,
   Thunder: thunderIcon,
 
-  Physical: bludgeoningIcon,
+  Weapon: weaponIcon,
   Variable: forceIcon,
 };
 
@@ -62,7 +69,7 @@ const DAMAGE_TYPE_SHORT_LABELS: Record<DamageRingKey, string> = {
   Bludgeoning: "BL",
   Piercing: "PI",
   Slashing: "SL",
-  Physical: "PH",
+  Weapon: "WP",
   Acid: "AC",
   Cold: "CO",
   Fire: "FI",
@@ -117,19 +124,38 @@ function getDamageTypeVisual(damageType: DamageRingKey) {
 function getAbilityIconHref(abilityId: string) {
   const spell = getSpellById(abilityId);
 
-  if (!spell) return undefined;
+  if (spell) {
+    return getSpellIcon(spell);
+  }
 
-  return getSpellIcon(spell);
+  const feature = getClassFeatureById(abilityId);
+
+  if (feature) {
+    return getClassFeatureIcon(feature);
+  }
+
+  return undefined;
+}
+
+function getPrimaryFocusItem(focus: DataCircleFocus): DataCircleFocusItem | null {
+  const focusItems = getFocusItems(focus);
+  return focusItems[0] ?? null;
 }
 
 function getFocusKindLabel(focus: DataCircleFocus) {
-  if (!focus) return "TRACE";
+  const focusItems = getFocusItems(focus);
 
-  if (focus.type === "ability") return "ABILITY";
-  if (focus.type === "damageType") return "DAMAGE";
-  if (focus.type === "role") return "ROLE";
-  if (focus.type === "range") return "RANGE";
-  if (focus.type === "round") return "ROUND";
+  if (focusItems.length === 0) return "TRACE";
+  if (focusItems.length > 1) return "FILTER";
+
+  const focusItem = focusItems[0];
+
+  if (focusItem.type === "ability") return "ABILITY";
+  if (focusItem.type === "damageType") return "DAMAGE";
+  if (focusItem.type === "role") return "ROLE";
+  if (focusItem.type === "roleGroup") return "ROLE";
+  if (focusItem.type === "range") return "RANGE";
+  if (focusItem.type === "round") return "ROUND";
 
   return "TRACE";
 }
@@ -233,10 +259,12 @@ function FocusIconRow({
   focus,
   relationshipIndex,
 }: FocusExplanationLayerProps) {
-  if (!focus) return null;
+  const primaryFocus = getPrimaryFocusItem(focus);
 
-  if (focus.type === "ability") {
-    const iconHref = getAbilityIconHref(focus.abilityId);
+  if (!primaryFocus) return null;
+
+  if (primaryFocus.type === "ability") {
+    const iconHref = getAbilityIconHref(primaryFocus.abilityId);
 
     return (
       <IconBadge
@@ -246,13 +274,13 @@ function FocusIconRow({
         href={iconHref}
         label={!iconHref ? "?" : undefined}
         stroke="rgba(230,188,112,0.72)"
-        clipId={`focus-main-ability-${focus.abilityId}`}
+        clipId={`focus-main-ability-${primaryFocus.abilityId}`}
       />
     );
   }
 
-  if (focus.type === "damageType") {
-    const visual = getDamageTypeVisual(focus.damageType);
+  if (primaryFocus.type === "damageType") {
+    const visual = getDamageTypeVisual(primaryFocus.damageType);
 
     return (
       <IconBadge
@@ -263,7 +291,7 @@ function FocusIconRow({
         label={!visual.href ? visual.label : undefined}
         fill={visual.fill}
         stroke={visual.stroke}
-        clipId={`focus-main-damage-${focus.damageType}`}
+        clipId={`focus-main-damage-${primaryFocus.damageType}`}
       />
     );
   }

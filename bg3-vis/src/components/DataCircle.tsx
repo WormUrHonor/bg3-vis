@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import type { ClassName } from "../types/buildPlannerTypes";
 import { getSpellById, type BG3Spell } from "../data/bg3Spells";
 import {
+  getClassFeatureById,
+  type BG3ClassFeature,
+} from "../data/bg3ClassFeatures";
+import {
   mockAverageDpr,
   mockDataCircleBuild,
   mockDprByRound,
@@ -36,15 +40,64 @@ type DataCircleProps = {
   selectedSubclass: string;
   selectedLevel: number;
   selectedSpellIds: string[];
+  fixedClassFeatureIds: string[];
+  selectedClassFeatureIds: string[];
+  activeClassFeatureIds: string[];
   showDprLayer: boolean;
 };
 
 export type DprBarMode = "stacked" | "grouped";
 
+import type { VisualizedBuildItem } from "./DataCircle/dataCircleTypes";
+
 function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
   return selectedSpellIds
     .map((id) => getSpellById(id))
     .filter((spell): spell is BG3Spell => Boolean(spell));
+}
+
+function getSelectedClassFeatures(featureIds: string[]): BG3ClassFeature[] {
+  return featureIds
+    .map((id) => getClassFeatureById(id))
+    .filter((feature): feature is BG3ClassFeature => Boolean(feature));
+}
+
+function isVisualizableClassFeature(feature: BG3ClassFeature): boolean {
+  if (feature.isInformational) return false;
+
+  const hasRoles = feature.roles.length > 0;
+  const hasDamageTypes = feature.damageTypes.length > 0;
+  const hasRange = Boolean(feature.range);
+
+  const isUsableAction =
+    feature.kind === "action" ||
+    feature.kind === "bonus-action" ||
+    feature.kind === "reaction" ||
+    feature.kind === "manoeuvre" ||
+    feature.kind === "toggle" ||
+    feature.kind === "subclass-feature";
+
+  const isRelevantPassive =
+    feature.kind === "passive" &&
+    (feature.roles.some((role) =>
+      [
+        "single-target-damage",
+        "area-damage",
+        "control",
+        "support-buff",
+        "defense-protection",
+        "healing",
+        "mobility-positioning",
+        "summon",
+      ].includes(role)
+    ) ||
+      hasDamageTypes);
+
+  return hasRange && (isUsableAction || isRelevantPassive) && (hasRoles || hasDamageTypes);
+}
+
+function uniqueById<T extends { id: string }>(items: T[]): T[] {
+  return Array.from(new Map(items.map((item) => [item.id, item])).values());
 }
 
 export default function DataCircle({
@@ -54,6 +107,9 @@ export default function DataCircle({
   selectedSubclass,
   selectedLevel,
   selectedSpellIds,
+  fixedClassFeatureIds,
+  selectedClassFeatureIds,
+  activeClassFeatureIds,
   showDprLayer,
 }: DataCircleProps) {
   const [hoverFocus, setHoverFocus] = useState<DataCircleFocus>(null);
@@ -66,11 +122,22 @@ export default function DataCircle({
   const activeFocus: DataCircleFocus =
     hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
 
-  const isUsingMockData = selectedSpellIds.length === 0;
+  const selectedClassFeatureIdsForCircle = useMemo(
+    () =>
+      uniqueById(
+        getSelectedClassFeatures([
+          ...fixedClassFeatureIds,
+          ...selectedClassFeatureIds,
+          ...activeClassFeatureIds,
+        ])
+      ).filter(isVisualizableClassFeature),
+    [fixedClassFeatureIds, selectedClassFeatureIds, activeClassFeatureIds]
+  );
 
-  const displaySpellIds = isUsingMockData
-    ? mockSelectedSpellIds
-    : selectedSpellIds;
+  const isUsingMockData =
+    selectedSpellIds.length === 0 && selectedClassFeatureIdsForCircle.length === 0;
+
+  const displaySpellIds = isUsingMockData ? mockSelectedSpellIds : selectedSpellIds;
 
   const displayBuildName = isUsingMockData
     ? mockDataCircleBuild.buildName
@@ -97,21 +164,30 @@ export default function DataCircle({
     [displaySpellIds]
   );
 
+  const visualizedItems: VisualizedBuildItem[] = useMemo(
+    () =>
+      uniqueById([
+        ...selectedSpells,
+        ...(isUsingMockData ? [] : selectedClassFeatureIdsForCircle),
+      ]),
+    [selectedSpells, selectedClassFeatureIdsForCircle, isUsingMockData]
+  );
+
   const buildLabel = displayBuildName.trim() || "Untitled Build";
   const characterLabel = displayCharacterName.trim();
   const archetypeLabel = displaySubclass || displayClass || "Unassigned";
-  const spellCount = selectedSpells.length;
+  const abilityCount = visualizedItems.length;
 
   const rangeCounts = useMemo(
-    () => getRangeCounts(selectedSpells),
-    [selectedSpells]
+    () => getRangeCounts(visualizedItems),
+    [visualizedItems]
   );
 
-  const roleData = useMemo(() => getRoleData(selectedSpells), [selectedSpells]);
+  const roleData = useMemo(() => getRoleData(visualizedItems), [visualizedItems]);
 
   const damageTypeCounts = useMemo(
-    () => getDamageTypeCounts(selectedSpells),
-    [selectedSpells]
+    () => getDamageTypeCounts(visualizedItems),
+    [visualizedItems]
   );
 
   const maxRangeCount = Math.max(...Object.values(rangeCounts), 1);
@@ -122,8 +198,8 @@ export default function DataCircle({
   );
 
   const relationshipIndex = useMemo(
-    () => buildLayerRelationshipIndex(selectedSpells, mockDprByRound),
-    [selectedSpells]
+    () => buildLayerRelationshipIndex(visualizedItems, mockDprByRound),
+    [visualizedItems]
   );
 
   const totalDamage = mockDprByRound.reduce(
@@ -277,7 +353,7 @@ export default function DataCircle({
               characterLabel={characterLabel}
               archetypeLabel={archetypeLabel}
               displayLevel={displayLevel}
-              spellCount={spellCount}
+              spellCount={abilityCount}
               averageDpr={showDprLayer ? mockAverageDpr : undefined}
               totalDamage={showDprLayer ? totalDamage : undefined}
             />

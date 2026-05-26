@@ -12,6 +12,7 @@ import psychicIcon from "../../../assets/Damage Types/Psychic_Damage_Icon.png";
 import radiantIcon from "../../../assets/Damage Types/Radiant_Damage_Icon.png";
 import slashingIcon from "../../../assets/Damage Types/Slashing_Damage_Icon.png";
 import thunderIcon from "../../../assets/Damage Types/Thunder_Damage_Icon.png";
+import weaponIcon from "../../../assets/Damage Types/weapon.webp";
 import { DAMAGE_TYPES } from "../dataCircleConfig";
 import {
   CX,
@@ -78,8 +79,7 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Radiant: radiantIcon,
   Slashing: slashingIcon,
   Thunder: thunderIcon,
-
-  Physical: bludgeoningIcon,
+  Weapon : weaponIcon,
   Variable: forceIcon,
 };
 

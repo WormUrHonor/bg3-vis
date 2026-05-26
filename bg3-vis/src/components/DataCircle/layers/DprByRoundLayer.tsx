@@ -1,6 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { getClassFeatureById } from "../../../data/bg3ClassFeatures";
 import { getSpellById } from "../../../data/bg3Spells";
+import { getClassFeatureIcon } from "../../../logic/classFeatureIconLogic";
 import { getSpellIcon } from "../../../logic/spellIconLogic";
 import {
   CX,
@@ -261,7 +263,23 @@ function getContributionIconSize(radialThickness: number, sectorAngle: number) {
 
   return 0;
 }
+function getAbilityIconHref(abilityId?: string) {
+  if (!abilityId) return undefined;
 
+  const spell = getSpellById(abilityId);
+
+  if (spell) {
+    return getSpellIcon(spell);
+  }
+
+  const classFeature = getClassFeatureById(abilityId);
+
+  if (classFeature) {
+    return getClassFeatureIcon(classFeature);
+  }
+
+  return undefined;
+}
 function getContributionIcon(
   contribution: DprContribution,
   iconSize: number,
@@ -270,11 +288,11 @@ function getContributionIcon(
   color: string,
   isRelated: boolean
 ) {
-  const spell = getSpellById(contribution.abilityId);
+  if (iconSize <= 0) return null;
 
-  if (!spell || iconSize <= 0) return null;
+  const iconHref = getAbilityIconHref(contribution.abilityId);
 
-  const iconHref = getSpellIcon(spell);
+  if (!iconHref) return null;
 
   return (
     <g pointerEvents="none" opacity={isRelated ? 1 : 0.3}>
@@ -458,14 +476,12 @@ export function DprByRoundLayer({
 
       await Promise.all(
         abilityIds.map(async (abilityId, index) => {
-          const spell = getSpellById(abilityId);
+const iconHref = getAbilityIconHref(abilityId);
 
-          if (!spell) {
-            nextColors[abilityId] = getFallbackColor(index);
-            return;
-          }
-
-          const iconHref = getSpellIcon(spell);
+if (!iconHref) {
+  nextColors[abilityId] = getFallbackColor(index);
+  return;
+}
 
           try {
             nextColors[abilityId] = await getAverageIconColor(iconHref);

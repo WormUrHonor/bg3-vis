@@ -1,11 +1,15 @@
-import type { AbilityRole, BG3Spell } from "../../data/bg3Spells";
+import type { AbilityRole } from "../../data/bg3Spells";
 import {
   DAMAGE_ROLE_KEYS,
   DAMAGE_TYPES,
   RANGE_BANDS,
   UTILITY_ROLE_KEYS,
 } from "./dataCircleConfig";
-import type { DamageRingKey, RangeBandKey } from "./dataCircleTypes";
+import type {
+  DamageRingKey,
+  RangeBandKey,
+  VisualizedBuildItem,
+} from "./dataCircleTypes";
 
 export type RoleGroupKey = "damage" | "utility";
 
@@ -62,31 +66,29 @@ export function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
   return Array.isArray(focus) ? focus : [focus];
 }
 
-function getSpellId(spell: BG3Spell) {
-  return spell.id;
+function getItemId(item: VisualizedBuildItem) {
+  return item.id;
 }
 
-function getSpellName(spell: BG3Spell) {
-  return spell.name;
+function getItemName(item: VisualizedBuildItem) {
+  return item.name;
 }
 
 function isDamageRingKey(value: string): value is DamageRingKey {
   return ALL_DAMAGE_TYPE_KEYS.includes(value as DamageRingKey);
 }
 
-function getSpellRoles(spell: BG3Spell): AbilityRole[] {
+function getItemRoles(item: VisualizedBuildItem): AbilityRole[] {
   return unique(
-    spell.roles.filter((role): role is AbilityRole =>
-      ALL_ROLE_KEYS.includes(role)
-    )
+    item.roles.filter((role): role is AbilityRole => ALL_ROLE_KEYS.includes(role))
   );
 }
 
-function getSpellDamageTypes(spell: BG3Spell): DamageRingKey[] {
+function getItemDamageTypes(item: VisualizedBuildItem): DamageRingKey[] {
   return unique(
-    spell.damageTypes.flatMap((type) => {
+    item.damageTypes.flatMap((type) => {
       if (type === "Weapon" || type === "Physical") {
-        return ["Physical"];
+        return ["Weapon"];
       }
 
       if (isDamageRingKey(type)) {
@@ -98,8 +100,10 @@ function getSpellDamageTypes(spell: BG3Spell): DamageRingKey[] {
   );
 }
 
-function getSpellRanges(spell: BG3Spell): RangeBandKey[] {
-  switch (spell.range.category) {
+function getItemRanges(item: VisualizedBuildItem): RangeBandKey[] {
+  if (!item.range) return [];
+
+  switch (item.range.category) {
     case "self":
       return ["self"];
 
@@ -189,7 +193,7 @@ export function isSameFocusItem(
 }
 
 export function buildLayerRelationshipIndex(
-  selectedSpells: BG3Spell[],
+  items: VisualizedBuildItem[],
   rounds: DprRound[]
 ): LayerRelationshipIndex {
   const abilityNames: Record<string, string> = {};
@@ -205,13 +209,13 @@ export function buildLayerRelationshipIndex(
   const rangeToAbilities = emptyRangeMap();
   const roundToAbilities: Record<number, string[]> = {};
 
-  selectedSpells.forEach((spell) => {
-    const abilityId = getSpellId(spell);
-    const roles = getSpellRoles(spell);
-    const damageTypes = getSpellDamageTypes(spell);
-    const ranges = getSpellRanges(spell);
+  items.forEach((item) => {
+    const abilityId = getItemId(item);
+    const roles = getItemRoles(item);
+    const damageTypes = getItemDamageTypes(item);
+    const ranges = getItemRanges(item);
 
-    abilityNames[abilityId] = getSpellName(spell);
+    abilityNames[abilityId] = getItemName(item);
     abilityToRoles[abilityId] = roles;
     abilityToDamageTypes[abilityId] = damageTypes;
     abilityToRanges[abilityId] = ranges;
@@ -260,7 +264,7 @@ export function buildLayerRelationshipIndex(
 
   const allAbilityIds = unique([
     ...Object.keys(abilityNames),
-    ...selectedSpells.map(getSpellId),
+    ...items.map(getItemId),
   ]);
 
   return {
@@ -290,10 +294,7 @@ function intersectAbilityIds(base: string[], filterValues: string[]) {
   return base.filter((abilityId) => filterSet.has(abilityId));
 }
 
-function getAbilityFacetIds(
-  focusItems: DataCircleFocusItem[],
-  index: LayerRelationshipIndex
-) {
+function getAbilityFacetIds(focusItems: DataCircleFocusItem[]) {
   return unique(
     focusItems
       .filter((item): item is Extract<DataCircleFocusItem, { type: "ability" }> =>
@@ -391,7 +392,7 @@ export function getFocusedAbilityIds(
 
   let result = [...index.allAbilityIds];
 
-  const abilityFacetIds = getAbilityFacetIds(focusItems, index);
+  const abilityFacetIds = getAbilityFacetIds(focusItems);
   if (abilityFacetIds.length > 0) {
     result = intersectAbilityIds(result, abilityFacetIds);
   }

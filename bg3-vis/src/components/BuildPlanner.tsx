@@ -505,15 +505,18 @@ function BuildPlanner() {
         </header>
 
         <div className="visualisation-panel">
-          <DataCircle
-            buildName={buildName}
-            characterName={characterName}
-            selectedClass={selectedClass}
-            selectedSubclass={selectedSubclass}
-            selectedLevel={selectedLevel}
-            selectedSpellIds={selectedSpellIds}
-            showDprLayer={hasEvaluatedBuild}
-          />
+<DataCircle
+  buildName={buildName}
+  characterName={characterName}
+  selectedClass={selectedClass}
+  selectedSubclass={selectedSubclass}
+  selectedLevel={selectedLevel}
+  selectedSpellIds={selectedSpellIds}
+  fixedClassFeatureIds={fixedClassFeatureIds}
+  selectedClassFeatureIds={selectedClassFeatureIds}
+  activeClassFeatureIds={activeClassFeatureIds}
+  showDprLayer={hasEvaluatedBuild}
+/>
         </div>
       </section>
     </main>

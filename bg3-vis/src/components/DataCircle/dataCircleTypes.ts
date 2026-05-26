@@ -1,4 +1,12 @@
-import type { AbilityRole } from "../../data/bg3Spells";
+import type {
+  AbilityRole,
+  ActionCost,
+  DamageType,
+  RangeCategory,
+  RangeShape,
+  ResourceCost,
+  SpellRank,
+} from "../../data/bg3Spells";
 
 export type DataCircleProps = {
   buildName: string;
@@ -9,13 +17,34 @@ export type DataCircleProps = {
   selectedSpellIds: string[];
 };
 
+export type VisualizedBuildItem = {
+  id: string;
+  name: string;
+  range?: {
+    label: string;
+    meters: number | null;
+    category: RangeCategory;
+    shape: RangeShape;
+    aoeMeters?: number;
+  };
+  roles: AbilityRole[];
+  damageTypes: DamageType[];
+  costs: {
+    actions: ActionCost[];
+    resources: ResourceCost[];
+    spellSlotLevel?: SpellRank;
+    requiresConcentration?: boolean;
+  };
+  rank?: SpellRank;
+};
+
 export type RangeBandKey = "self" | "melee" | "mid" | "long";
 
 export type DamageRingKey =
   | "Bludgeoning"
   | "Piercing"
   | "Slashing"
-  | "Physical"
+  | "Weapon"
   | "Acid"
   | "Cold"
   | "Fire"

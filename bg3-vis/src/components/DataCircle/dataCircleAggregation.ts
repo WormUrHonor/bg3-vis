@@ -1,13 +1,14 @@
-import type { AbilityRole, BG3Spell } from "../../data/bg3Spells";
+import type { AbilityRole } from "../../data/bg3Spells";
 import { DAMAGE_ROLE_KEYS, UTILITY_ROLE_KEYS } from "./dataCircleConfig";
 import type {
   DamageRingKey,
   RangeBandKey,
   ResourceSectorKey,
   RoleData,
+  VisualizedBuildItem,
 } from "./dataCircleTypes";
 
-export function getRangeCounts(selectedSpells: BG3Spell[]) {
+export function getRangeCounts(items: VisualizedBuildItem[]) {
   const counts: Record<RangeBandKey, number> = {
     self: 0,
     melee: 0,
@@ -15,8 +16,10 @@ export function getRangeCounts(selectedSpells: BG3Spell[]) {
     long: 0,
   };
 
-  selectedSpells.forEach((spell) => {
-    switch (spell.range.category) {
+  items.forEach((item) => {
+    if (!item.range) return;
+
+    switch (item.range.category) {
       case "self":
         counts.self += 1;
         break;
@@ -36,7 +39,7 @@ export function getRangeCounts(selectedSpells: BG3Spell[]) {
   return counts;
 }
 
-export function getRoleData(selectedSpells: BG3Spell[]): RoleData {
+export function getRoleData(items: VisualizedBuildItem[]): RoleData {
   const counts: Record<AbilityRole, number> = {
     "single-target-damage": 0,
     "area-damage": 0,
@@ -50,8 +53,8 @@ export function getRoleData(selectedSpells: BG3Spell[]): RoleData {
     summon: 0,
   };
 
-  selectedSpells.forEach((spell) => {
-    spell.roles.forEach((role) => {
+  items.forEach((item) => {
+    item.roles.forEach((role) => {
       counts[role] += 1;
     });
   });
@@ -74,12 +77,12 @@ export function getRoleData(selectedSpells: BG3Spell[]): RoleData {
   };
 }
 
-export function getDamageTypeCounts(selectedSpells: BG3Spell[]) {
+export function getDamageTypeCounts(items: VisualizedBuildItem[]) {
   const counts: Record<DamageRingKey, number> = {
     Bludgeoning: 0,
     Piercing: 0,
     Slashing: 0,
-    Physical: 0,
+    Weapon: 0,
     Acid: 0,
     Cold: 0,
     Fire: 0,
@@ -93,10 +96,10 @@ export function getDamageTypeCounts(selectedSpells: BG3Spell[]) {
     Variable: 0,
   };
 
-  selectedSpells.forEach((spell) => {
-    spell.damageTypes.forEach((type) => {
+  items.forEach((item) => {
+    item.damageTypes.forEach((type) => {
       if (type === "Weapon" || type === "Physical") {
-        counts.Physical += 1;
+        counts.Weapon += 1;
       } else if (type in counts) {
         counts[type as DamageRingKey] += 1;
       }
@@ -106,7 +109,7 @@ export function getDamageTypeCounts(selectedSpells: BG3Spell[]) {
   return counts;
 }
 
-export function getResourceCounts(selectedSpells: BG3Spell[]) {
+export function getResourceCounts(items: VisualizedBuildItem[]) {
   const counts: Record<ResourceSectorKey, number> = {
     action: 0,
     "bonus-action": 0,
@@ -126,9 +129,9 @@ export function getResourceCounts(selectedSpells: BG3Spell[]) {
     "passive-conditional": 0,
   };
 
-  selectedSpells.forEach((spell) => {
-    const actions = spell.costs.actions;
-    const resources = spell.costs.resources;
+  items.forEach((item) => {
+    const actions = item.costs.actions;
+    const resources = item.costs.resources;
 
     if (actions.includes("action")) {
       counts.action += 1;
@@ -142,38 +145,27 @@ export function getResourceCounts(selectedSpells: BG3Spell[]) {
       counts.reaction += 1;
     }
 
-    /*
-      This relies only on the action type, because your ResourceCost type
-      does not currently include "passive" or "conditional".
-    */
-    if (
-      actions.includes("passive") ||
-      actions.includes("conditional")
-    ) {
+    if (actions.includes("passive") || actions.includes("conditional")) {
       counts["passive-conditional"] += 1;
     }
 
-    if (spell.costs.requiresConcentration) {
+    if (item.costs.requiresConcentration) {
       counts.concentration += 1;
     }
 
-    if (spell.rank === 0 || resources.includes("cantrip")) {
+    if (item.rank === 0 || resources.includes("cantrip")) {
       counts.cantrip += 1;
     }
 
     if (
       resources.includes("spell-slot") &&
-      spell.costs.spellSlotLevel &&
-      spell.costs.spellSlotLevel >= 1 &&
-      spell.costs.spellSlotLevel <= 6
+      item.costs.spellSlotLevel &&
+      item.costs.spellSlotLevel >= 1 &&
+      item.costs.spellSlotLevel <= 6
     ) {
-      counts[`slot-${spell.costs.spellSlotLevel}` as ResourceSectorKey] += 1;
+      counts[`slot-${item.costs.spellSlotLevel}` as ResourceSectorKey] += 1;
     }
 
-    /*
-      Use only "pact-magic-slot" here.
-      Your ResourceCost type does not include plain "pact".
-    */
     if (resources.includes("pact-magic-slot")) {
       counts.pact += 1;
     }
@@ -186,10 +178,6 @@ export function getResourceCounts(selectedSpells: BG3Spell[]) {
       counts["long-rest"] += 1;
     }
 
-    /*
-      Use only "class-resource" here.
-      Your ResourceCost type does not include "class-pool".
-    */
     if (resources.includes("class-resource")) {
       counts["class-resource"] += 1;
     }
