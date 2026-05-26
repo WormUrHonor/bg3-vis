@@ -4,7 +4,7 @@ import type { BG3ClassFeature, ClassFeatureModule } from "./classFeatureTypes";
 import { barbarianClassModule } from "./barbarian";
 import { bardClassModule } from "./bard";
 // import { clericClassModule } from "./cleric";
-// import { druidClassModule } from "./druid";
+import { druidClassModule } from "./druid";
 import { fighterClassModule } from "./fighter";
 import { monkClassModule } from "./monk";
 import { paladinClassModule } from "./paladin";
@@ -30,7 +30,7 @@ export const classFeatureModules: ClassFeatureModule[] = [
   barbarianClassModule,
   bardClassModule,
   // clericClassModule,
-  // druidClassModule,
+  druidClassModule,
   fighterClassModule,
   monkClassModule,
   paladinClassModule,
