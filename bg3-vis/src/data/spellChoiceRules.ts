@@ -1,6 +1,14 @@
 import type { ClassName } from "../types/buildPlannerTypes";
 import type { BG3Spell } from "./bg3Spells";
 import {
+  ARCANE_TRICKSTER_ANY_SCHOOL_SPELL_IDS,
+  ARCANE_TRICKSTER_CANTRIP_IDS,
+  ARCANE_TRICKSTER_ENCHANTMENT_ILLUSION_SPELL_IDS,
+  ROGUE_ARCANE_TRICKSTER_ANY_SPELL_TAG,
+  ROGUE_ARCANE_TRICKSTER_CANTRIP_TAG,
+  ROGUE_ARCANE_TRICKSTER_RESTRICTED_SPELL_TAG,
+} from "./rogueArcaneTricksterSpells";
+import {
   BARD_MAGICAL_SECRET_TAG,
   MAGICAL_SECRET_SPELL_IDS,
 } from "./bardMagicalSecrets";
@@ -68,7 +76,59 @@ export const spellChoiceRuleDefinitions: SpellChoiceRuleDefinition[] = [
     displayGroupLabel: "Bard Cantrip Choices",
     displayGroupOrder: 10,
   },
+  {
+  id: "rogue-arcane-trickster-cantrips",
+  label: "Arcane Trickster Cantrips",
+  className: "Rogue",
+  subclass: "Arcane Trickster",
+  minLevel: 3,
+  ranks: [0],
+  spellIds: ARCANE_TRICKSTER_CANTRIP_IDS,
+  includeTags: [ROGUE_ARCANE_TRICKSTER_CANTRIP_TAG],
+  maxByLevel: [
+    { minLevel: 3, max: 2 },
+    { minLevel: 10, max: 3 },
+  ],
+  displayGroupLabel: "Arcane Trickster Cantrip Choices",
+  displayGroupOrder: 10,
+},
 
+{
+  id: "rogue-arcane-trickster-enchantment-illusion-spells",
+  label: "Arcane Trickster Enchantment / Illusion Spells",
+  className: "Rogue",
+  subclass: "Arcane Trickster",
+  minLevel: 3,
+  ranks: [1, 2],
+  spellIds: ARCANE_TRICKSTER_ENCHANTMENT_ILLUSION_SPELL_IDS,
+  includeTags: [ROGUE_ARCANE_TRICKSTER_RESTRICTED_SPELL_TAG],
+  maxByLevel: [
+    { minLevel: 3, max: 2 },
+    { minLevel: 4, max: 3 },
+    { minLevel: 7, max: 4 },
+    { minLevel: 10, max: 5 },
+    { minLevel: 11, max: 6 },
+  ],
+  displayGroupLabel: "Arcane Trickster Enchantment / Illusion Choices",
+  displayGroupOrder: 20,
+},
+
+{
+  id: "rogue-arcane-trickster-any-school-spells",
+  label: "Arcane Trickster Any-School Spells",
+  className: "Rogue",
+  subclass: "Arcane Trickster",
+  minLevel: 3,
+  ranks: [1, 2],
+  spellIds: ARCANE_TRICKSTER_ANY_SCHOOL_SPELL_IDS,
+  includeTags: [ROGUE_ARCANE_TRICKSTER_ANY_SPELL_TAG],
+  maxByLevel: [
+    { minLevel: 3, max: 1 },
+    { minLevel: 8, max: 2 },
+  ],
+  displayGroupLabel: "Arcane Trickster Any-School Choices",
+  displayGroupOrder: 30,
+},
   {
     id: "bard-known-spells",
     label: "Bard Known Spells",

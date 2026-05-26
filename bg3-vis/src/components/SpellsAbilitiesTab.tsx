@@ -11,6 +11,7 @@ import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
 import { getSpellIcon } from "../logic/spellIconLogic";
 import { getClassFeatureIcon } from "../logic/classFeatureIconLogic";
 import concentrationIcon from "../assets/UI Icons/20px-Concentration_Icon.png.webp";
+import { getAvailableRogueArcaneTricksterSpells } from "../data/rogueArcaneTricksterSpells";
 import ritualIcon from "../assets/UI Icons/Ritual_Spell_Icon.png";
 import {
   getActiveSpellChoiceRulesForBuild,
@@ -248,24 +249,30 @@ function SpellsAbilitiesTab({
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
-  const baseAvailableSpells = getAvailableSpellsForBuild(
-    bg3Spells,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedWarlockInvocations
-  );
+const baseAvailableSpells = getAvailableSpellsForBuild(
+  bg3Spells,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  selectedWarlockInvocations
+);
 
-  const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
-    selectedClass,
-    selectedSubclass,
-    selectedLevel
-  );
+const magicalSecretSpells = getAvailableBardMagicalSecretSpells(
+  selectedClass,
+  selectedSubclass,
+  selectedLevel
+);
 
-  const availableSpells = mergeSpellLists(
-    baseAvailableSpells,
-    magicalSecretSpells
-  );
+const arcaneTricksterSpells = getAvailableRogueArcaneTricksterSpells(
+  selectedClass,
+  selectedSubclass,
+  selectedLevel
+);
+
+const availableSpells = mergeSpellLists(baseAvailableSpells, [
+  ...magicalSecretSpells,
+  ...arcaneTricksterSpells,
+]);
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
 

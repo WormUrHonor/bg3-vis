@@ -9,7 +9,7 @@ import { fighterClassModule } from "./fighter";
 import { monkClassModule } from "./monk";
 import { paladinClassModule } from "./paladin";
 import { rangerClassModule } from "./ranger";
-// import { rogueClassModule } from "./rogue";
+import { rogueClassModule } from "./rogue";
 // import { sorcererClassModule } from "./sorcerer";
 // import { warlockClassModule } from "./warlock";
 // import { wizardClassModule } from "./wizard";
@@ -35,7 +35,7 @@ export const classFeatureModules: ClassFeatureModule[] = [
   monkClassModule,
   paladinClassModule,
   rangerClassModule,
-  // rogueClassModule,
+  rogueClassModule,
   // sorcererClassModule,
   // warlockClassModule,
   // wizardClassModule,

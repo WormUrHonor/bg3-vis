@@ -190,7 +190,7 @@ export const subclassesByClass: Record<ClassName, string[]> = {
   Monk: ["Way of the Drunken Master", "Way of the Four Elements", "Way of the Open Hand", "Way of Shadow",],
   Paladin: ["Oath of the Ancients", "Oath of Devotion", "Oath of Vengeance", "Oathbreaker", "Oath of the Crown"],
   Ranger: ["Hunter", "Beast Master", "Gloom Stalker", "Swarmkeeper"],
-  Rogue: ["Arcane Trickster", "Assassin", "Thief"],
+  Rogue: ["Arcane Trickster", "Assassin", "Thief", "Swashbuckler"],
   Sorcerer: ["Draconic Bloodline", "Wild Magic", "Storm Sorcery"],
   Warlock: ["The Fiend", "The Great Old One", "The Archfey"],
   Wizard: ["Abjuration School", "Conjuration School", "Divination School", "Enchantment School", "Evocation School", "Illusion School", "Necromancy School", "Transmutation School"],
