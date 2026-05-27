@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import "./BuildPlanner.css";
+
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import CharacterTab from "./CharacterTab";
 import ClassScoresTab from "./ClassScoresTab";
 import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
 import DataCircle from "./DataCircle";
+import PartyPlanner, {
+  type PartyBuildSnapshot,
+} from "./PartyPlanner/PartyPlanner";
+import { getVisualizedBuildItems } from "./DataCircle/dataCircleBuildItems";
 
 import { bg3ClassFeatures } from "../data/bg3ClassFeatures";
 import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvailability";
@@ -111,6 +116,7 @@ function getSpellsAbilitiesTabLabel(
 }
 
 function BuildPlanner() {
+  const [showPartyPlanner, setShowPartyPlanner] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>("character");
 
   const [buildName, setBuildName] = useState("");
@@ -154,6 +160,10 @@ function BuildPlanner() {
   const [activeClassFeatureIds, setActiveClassFeatureIds] = useState<string[]>(
     []
   );
+
+  const [partySlots, setPartySlots] = useState<
+    Array<PartyBuildSnapshot | null>
+  >([null, null, null]);
 
   const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
 
@@ -292,46 +302,78 @@ function BuildPlanner() {
   );
 
   const availableClassFeaturesOnly = useMemo(
-  () =>
-    getAvailableClassFeaturesForBuild(
-      bg3ClassFeatures,
+    () =>
+      getAvailableClassFeaturesForBuild(
+        bg3ClassFeatures,
+        selectedClass,
+        selectedSubclass,
+        selectedLevel,
+        selectedClassFeatureIds,
+        rangerFavouredEnemy,
+        rangerNaturalExplorer
+      ),
+    [
       selectedClass,
       selectedSubclass,
       selectedLevel,
       selectedClassFeatureIds,
       rangerFavouredEnemy,
-      rangerNaturalExplorer
-    ),
-  [
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedClassFeatureIds,
-    rangerFavouredEnemy,
-    rangerNaturalExplorer,
-  ]
-);
+      rangerNaturalExplorer,
+    ]
+  );
 
-const availableRaceFeatures = useMemo(
-  () =>
-    getAvailableRaceFeaturesForBuild(
-      selectedRace,
-      selectedSubrace,
-      selectedLevel
-    ),
-  [selectedRace, selectedSubrace, selectedLevel]
-);
+  const availableRaceFeatures = useMemo(
+    () =>
+      getAvailableRaceFeaturesForBuild(
+        selectedRace,
+        selectedSubrace,
+        selectedLevel
+      ),
+    [selectedRace, selectedSubrace, selectedLevel]
+  );
 
-const availableClassFeatures = useMemo(
-  () => [...availableRaceFeatures, ...availableClassFeaturesOnly],
-  [availableRaceFeatures, availableClassFeaturesOnly]
-);
+  const availableClassFeatures = useMemo(
+    () => [...availableRaceFeatures, ...availableClassFeaturesOnly],
+    [availableRaceFeatures, availableClassFeaturesOnly]
+  );
 
   const availableClassFeatureKey = availableClassFeatures
     .map((feature) => feature.id)
     .join("|");
 
   const fixedClassFeatureIds = getFixedClassFeatureIds(availableClassFeatures);
+
+  const currentBuildSnapshot: PartyBuildSnapshot = useMemo(
+    () => ({
+      id: "current-build",
+      buildName,
+      characterName,
+      selectedClass,
+      selectedSubclass,
+      selectedLevel,
+      selectedSpellIds,
+      fixedClassFeatureIds,
+      selectedClassFeatureIds,
+      activeClassFeatureIds,
+      visualizedItems: getVisualizedBuildItems({
+        selectedSpellIds,
+        fixedClassFeatureIds,
+        selectedClassFeatureIds,
+        activeClassFeatureIds,
+      }),
+    }),
+    [
+      buildName,
+      characterName,
+      selectedClass,
+      selectedSubclass,
+      selectedLevel,
+      selectedSpellIds,
+      fixedClassFeatureIds,
+      selectedClassFeatureIds,
+      activeClassFeatureIds,
+    ]
+  );
 
   useEffect(() => {
     setSelectedSpellIds((current) =>
@@ -384,13 +426,14 @@ const availableClassFeatures = useMemo(
     featSelections,
   ]);
 
-function handleRaceChange(value: string) {
-  const race = value as RaceName | "";
-  setSelectedRace(race);
-  setSelectedSubrace("");
-  setSelectedClassFeatureIds([]);
-  setActiveClassFeatureIds([]);
-}
+  function handleRaceChange(value: string) {
+    const race = value as RaceName | "";
+
+    setSelectedRace(race);
+    setSelectedSubrace("");
+    setSelectedClassFeatureIds([]);
+    setActiveClassFeatureIds([]);
+  }
 
   function handleClassChange(value: string) {
     const className = value as ClassName | "";
@@ -412,6 +455,41 @@ function handleRaceChange(value: string) {
 
   function handleEvaluateBuild() {
     setHasEvaluatedBuild(true);
+  }
+
+  function handleSaveCurrentToPartySlot(slotIndex: number) {
+    setPartySlots((current) =>
+      current.map((slot, index) =>
+        index === slotIndex
+          ? {
+              ...currentBuildSnapshot,
+              id: `party-slot-${slotIndex}-${Date.now()}`,
+            }
+          : slot
+      )
+    );
+  }
+
+  function handleLoadPartySlot(slotIndex: number) {
+    const snapshot = partySlots[slotIndex];
+
+    if (!snapshot) return;
+
+    setBuildName(snapshot.buildName);
+    setCharacterName(snapshot.characterName);
+    setSelectedClass(snapshot.selectedClass);
+    setSelectedSubclass(snapshot.selectedSubclass);
+    setSelectedLevel(snapshot.selectedLevel);
+    setSelectedSpellIds(snapshot.selectedSpellIds);
+    setSelectedClassFeatureIds(snapshot.selectedClassFeatureIds);
+    setActiveClassFeatureIds(snapshot.activeClassFeatureIds);
+    setHasEvaluatedBuild(false);
+  }
+
+  function handleClearPartySlot(slotIndex: number) {
+    setPartySlots((current) =>
+      current.map((slot, index) => (index === slotIndex ? null : slot))
+    );
   }
 
   return (
@@ -473,30 +551,6 @@ function handleRaceChange(value: string) {
               <span>Level</span>
               <strong>{selectedLevel}</strong>
             </div>
-
-            <div className="summary-row">
-              <span>Feats</span>
-              <strong>
-                {featSelections.filter((selection) => selection.featName).length}
-              </strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Spells</span>
-              <strong>{selectedSpellIds.length}</strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Features</span>
-              <strong>
-                {fixedClassFeatureIds.length + selectedClassFeatureIds.length}
-              </strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Active toggles</span>
-              <strong>{activeClassFeatureIds.length}</strong>
-            </div>
           </aside>
 
           <section className="main-panel">
@@ -516,10 +570,10 @@ function handleRaceChange(value: string) {
                 allExpertise={allExpertise}
                 onRaceChange={handleRaceChange}
                 setSelectedSubrace={(value) => {
-  setSelectedSubrace(value);
-  setSelectedClassFeatureIds([]);
-  setActiveClassFeatureIds([]);
-}}
+                  setSelectedSubrace(value);
+                  setSelectedClassFeatureIds([]);
+                  setActiveClassFeatureIds([]);
+                }}
                 setSelectedBackground={setSelectedBackground}
                 onClassChange={handleClassChange}
                 setSelectedClassSkills={setSelectedClassSkills}
@@ -584,29 +638,101 @@ function handleRaceChange(value: string) {
         </div>
       </section>
 
-      <section className="workspace-half visualisation-half">
-        <header className="workspace-header visualisation-header">
-          <div>
-            <p className="eyebrow">Performance Overview</p>
-            <h1>Data Circle</h1>
-          </div>
-        </header>
 
-        <div className="visualisation-panel">
-          <DataCircle
-            buildName={buildName}
-            characterName={characterName}
-            selectedClass={selectedClass}
-            selectedSubclass={selectedSubclass}
-            selectedLevel={selectedLevel}
-            selectedSpellIds={selectedSpellIds}
-            fixedClassFeatureIds={fixedClassFeatureIds}
-            selectedClassFeatureIds={selectedClassFeatureIds}
-            activeClassFeatureIds={activeClassFeatureIds}
-            showDprLayer={hasEvaluatedBuild}
-          />
+
+      <section className="workspace-half visualisation-half visualisation-half--immersive">
+        <div
+          className={`visualisation-panel visualisation-panel--with-party-dock ${
+            showPartyPlanner ? "" : "visualisation-panel--party-hidden"
+          }`}
+        >
+          <button
+            type="button"
+            className={`party-dock-toggle ${
+              showPartyPlanner ? "party-dock-toggle--active" : ""
+            }`}
+            onClick={() => setShowPartyPlanner((current) => !current)}
+          >
+            {showPartyPlanner ? "Hide party planner" : "Show party planner"}
+          </button>
+
+          <div className="main-data-circle-frame">
+            <DataCircle
+              buildName={buildName}
+              characterName={characterName}
+              selectedClass={selectedClass}
+              selectedSubclass={selectedSubclass}
+              selectedLevel={selectedLevel}
+              selectedSpellIds={selectedSpellIds}
+              fixedClassFeatureIds={fixedClassFeatureIds}
+              selectedClassFeatureIds={selectedClassFeatureIds}
+              activeClassFeatureIds={activeClassFeatureIds}
+              showDprLayer={hasEvaluatedBuild}
+            />
+          </div>
+
+          {showPartyPlanner && (
+            <section className="party-dock" aria-label="Party planner preview">
+              <div className="party-dock-track">
+                {[
+                  {
+                    label: "Aggregate",
+                    name: "Combined Party",
+                    subtitle: "Shared capability profile",
+                    modifier: "aggregate",
+                  },
+                  {
+                    label: "Member 1",
+                    name: buildName || "Current Build",
+                    subtitle: selectedSubclass || selectedClass || "Unassigned",
+                    modifier: "active",
+                  },
+                  {
+                    label: "Member 2",
+                    name: "Companion Build",
+                    subtitle: selectedSubclass || selectedClass || "Unassigned",
+                    modifier: "member",
+                  },
+                  {
+                    label: "Member 3",
+                    name: "Companion Build",
+                    subtitle: selectedSubclass || selectedClass || "Unassigned",
+                    modifier: "member",
+                  },
+                ].map((slot) => (
+                  <article
+                    className={`party-node party-node--${slot.modifier}`}
+                    key={slot.label}
+                    title={`${slot.label}: ${slot.name} · ${slot.subtitle}`}
+                  >
+                    <span className="party-node-side-label">{slot.label}</span>
+
+                    <div className="party-node-orb-shell">
+                      <div className="party-node-circle">
+                        <DataCircle
+                          buildName={slot.name}
+                          characterName={characterName}
+                          selectedClass={selectedClass}
+                          selectedSubclass={selectedSubclass}
+                          selectedLevel={selectedLevel}
+                          selectedSpellIds={selectedSpellIds}
+                          fixedClassFeatureIds={fixedClassFeatureIds}
+                          selectedClassFeatureIds={selectedClassFeatureIds}
+                          activeClassFeatureIds={activeClassFeatureIds}
+                          showDprLayer={false}
+                        />
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </section>
+
+
+
     </main>
   );
 }

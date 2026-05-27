@@ -967,3 +967,452 @@ select {
   background: rgba(12, 25, 16, 0.78);
   color: rgba(213, 241, 205, 0.98);
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Immersive visualisation layout with optional floating party dock            */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Main editable values.
+
+  --party-circle-size:
+  Controls the actual size of each small party Data Circle.
+
+  --party-dock-height:
+  Controls how much vertical space the party dock takes from the main circle.
+
+  --party-orb-scale:
+  Zooms the SVG inside each small circle. Use this carefully.
+  1.00 = no zoom. 1.05 = slight zoom. 1.35 = strong zoom/cropping.
+
+  --party-node-gap:
+  Controls the horizontal gap between party slots.
+
+  --party-label-width:
+  Controls the width reserved for the vertical side labels.
+*/
+.visualisation-panel--with-party-dock {
+  --party-circle-size: 150px;
+  --party-dock-height: 162px;
+  --party-orb-scale: 1.35;
+  --party-node-gap: 1px;
+  --party-label-width: 15px;
+
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+/* Reduces the outer padding of the whole visualisation half. */
+.visualisation-half--immersive {
+  padding: 8px;
+}
+
+/* Removes extra panel padding so the main Data Circle and dock can use more space. */
+.visualisation-half--immersive .visualisation-panel {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(216, 178, 104, 0.08), transparent 34%),
+    radial-gradient(circle at 18% 18%, rgba(149, 95, 166, 0.08), transparent 24%),
+    radial-gradient(circle at 82% 84%, rgba(81, 138, 174, 0.07), transparent 24%),
+    rgba(10, 8, 6, 0.24);
+}
+
+/* Main Data Circle area. Bottom padding reserves space for the floating party dock. */
+.main-data-circle-frame {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 8px 8px calc(var(--party-dock-height) + 10px) 8px;
+  overflow: hidden;
+}
+
+/* When the party planner is hidden, the main Data Circle gets the full area. */
+.visualisation-panel--party-hidden .main-data-circle-frame {
+  padding: 8px;
+}
+
+/* Removes the normal panel framing from the main Data Circle wrapper. */
+.main-data-circle-frame > .data-circle-panel {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Main Data Circle stage styling. This is the large frame behind the circle. */
+.main-data-circle-frame .data-circle-stage {
+  height: 100%;
+  min-height: 0;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(87, 50, 102, 0.1), transparent 34%),
+    radial-gradient(circle at 50% 50%, rgba(178, 130, 67, 0.08), transparent 58%),
+    linear-gradient(145deg, rgba(12, 8, 10, 0.98), rgba(4, 3, 4, 0.995));
+  border: 1px solid rgba(194, 143, 76, 0.26);
+  box-shadow:
+    inset 0 0 72px rgba(0, 0, 0, 0.74),
+    inset 0 0 18px rgba(206, 151, 78, 0.04),
+    0 18px 34px rgba(0, 0, 0, 0.24);
+}
+
+/*
+  Main Data Circle size.
+  The last value subtracts the dock height so the main circle does not get cut off.
+*/
+.main-data-circle-frame .data-circle-svg {
+  width: min(
+    100%,
+    calc(50vw - 34px),
+    calc(100vh - var(--party-dock-height) - 66px)
+  );
+}
+
+/* Main Data Circle size when the party planner is hidden. */
+.visualisation-panel--party-hidden .main-data-circle-frame .data-circle-svg {
+  width: min(100%, calc(50vw - 34px), calc(100vh - 42px));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party planner toggle                                                       */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Toggle button for showing/hiding the party planner.
+  Move this if it overlaps the DPR controls.
+*/
+.party-dock-toggle {
+  position: absolute;
+  z-index: 12;
+  top: 56px;
+  left: 24px;
+  min-height: 24px;
+  padding: 5px 11px 4px;
+  border: 1px solid rgba(230, 188, 112, 0.22);
+  border-radius: 999px;
+  background: rgba(5, 4, 6, 0.72);
+  color: rgba(229, 202, 152, 0.74);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  box-shadow:
+    inset 0 0 10px rgba(0, 0, 0, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.party-dock-toggle:hover,
+.party-dock-toggle:focus-visible {
+  color: rgba(255, 244, 218, 0.95);
+  border-color: rgba(230, 188, 112, 0.4);
+  background: rgba(18, 12, 16, 0.82);
+}
+
+/* Active state means the party planner is currently visible. */
+.party-dock-toggle--active {
+  border-color: rgba(151, 210, 255, 0.26);
+  color: rgba(188, 224, 255, 0.78);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Floating party dock                                                        */
+/* -------------------------------------------------------------------------- */
+
+/*
+  The floating dock itself.
+  This sits over the bottom of the visualisation panel rather than taking a
+  separate boxed row.
+*/
+.party-dock {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  height: var(--party-dock-height);
+  padding: 8px 14px;
+  border-radius: 28px;
+  border: 1px solid rgba(194, 143, 76, 0.16);
+  background:
+    linear-gradient(90deg, rgba(45, 28, 24, 0.5), rgba(18, 12, 16, 0.46)),
+    radial-gradient(circle at 14% 50%, rgba(151, 210, 255, 0.08), transparent 18%),
+    radial-gradient(circle at 38% 50%, rgba(149, 95, 166, 0.1), transparent 22%),
+    radial-gradient(circle at 62% 50%, rgba(149, 95, 166, 0.08), transparent 22%),
+    radial-gradient(circle at 86% 50%, rgba(149, 95, 166, 0.08), transparent 22%);
+  backdrop-filter: blur(7px);
+  box-shadow:
+    inset 0 0 26px rgba(0, 0, 0, 0.42),
+    0 12px 24px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+/*
+  Thin horizontal connector line through the dock.
+  It uses the space between the circles without taking layout space.
+*/
+.party-dock::before {
+  content: "";
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 50%;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(230, 188, 112, 0.02),
+      rgba(230, 188, 112, 0.24),
+      rgba(151, 210, 255, 0.16),
+      rgba(230, 188, 112, 0.24),
+      rgba(230, 188, 112, 0.02)
+    );
+  box-shadow: 0 0 4px rgba(230, 188, 112, 0.08);
+  pointer-events: none;
+}
+
+/*
+  Grid that distributes the four party nodes evenly.
+  Each node contains a vertical label and a small Data Circle.
+*/
+.party-dock-track {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 880px);
+  height: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--party-node-gap);
+  align-items: center;
+}
+
+/*
+  Individual party node.
+  The label sits to the left of its circle using --party-label-width.
+*/
+.party-node {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: var(--party-label-width) var(--party-circle-size);
+  justify-content: center;
+  align-items: center;
+  column-gap: 5px;
+  position: relative;
+}
+
+/* Vertical label beside each party circle. */
+.party-node-side-label {
+  align-self: center;
+  justify-self: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: rgba(229, 202, 152, 0.62);
+  font-size: 0.56rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.72);
+}
+
+/* Aggregate label gets a colder colour to distinguish it from party members. */
+.party-node--aggregate .party-node-side-label {
+  color: rgba(188, 224, 255, 0.72);
+}
+
+/*
+  Shell around the small Data Circle.
+  This is where the thin 1px ring/glow is created.
+*/
+.party-node-orb-shell {
+  position: relative;
+  width: var(--party-circle-size);
+  height: var(--party-circle-size);
+  display: grid;
+  place-items: center;
+}
+
+/*
+  Thin ring around every party circle.
+  The old version used inset: -5px and a thick conic glow.
+  This version keeps it close to 1px.
+*/
+.party-node-orb-shell::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  border: 1px solid rgba(230, 188, 112, 0.26);
+  background: transparent;
+  box-shadow: 0 0 15px rgba(230, 188, 112, 0.18);
+  pointer-events: none;
+}
+
+/* Aggregate circle gets a thin blue-tinted 1px ring. */
+.party-node--aggregate .party-node-orb-shell::before {
+  border-color: rgba(151, 210, 255, 0.32);
+  box-shadow: 0 0 1px rgba(151, 210, 255, 0.2);
+}
+
+/*
+  Actual circular container for the small Data Circle.
+  The glow is intentionally kept very thin.
+*/
+.party-node-circle {
+  position: relative;
+  z-index: 1;
+  width: var(--party-circle-size) !important;
+  height: var(--party-circle-size) !important;
+  min-width: var(--party-circle-size) !important;
+  min-height: var(--party-circle-size) !important;
+  max-width: var(--party-circle-size) !important;
+  max-height: var(--party-circle-size) !important;
+  display: grid;
+  place-items: center;
+  overflow: hidden !important;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(230, 188, 112, 0.06), transparent 62%),
+    rgba(3, 2, 4, 0.72);
+  box-shadow:
+    inset 0 0 14px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(230, 188, 112, 0.18);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* Active build gets a slightly clearer, still 1px, gold edge. */
+.party-node--active .party-node-circle {
+  box-shadow:
+    inset 0 0 14px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(230, 188, 112, 0.34);
+}
+
+/* Aggregate gets a slightly clearer, still 1px, blue edge. */
+.party-node--aggregate .party-node-circle {
+  box-shadow: 0 0 15px rgba(151, 210, 255, 0.32);
+}
+
+/* Small hover motion without adding extra UI. */
+.party-node:hover .party-node-circle {
+  transform: translateY(-1px);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Compact DataCircle override for party dock                                 */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Forces the full-size DataCircle component to behave like a thumbnail.
+  These !important rules are needed because the normal DataCircle CSS has
+  fixed/min-width behaviour.
+*/
+.party-node-circle .data-circle-panel {
+  width: var(--party-circle-size) !important;
+  height: var(--party-circle-size) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--party-circle-size) !important;
+  max-height: var(--party-circle-size) !important;
+  display: block !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.party-node-circle .data-circle-stage {
+  width: var(--party-circle-size) !important;
+  height: var(--party-circle-size) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--party-circle-size) !important;
+  max-height: var(--party-circle-size) !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/*
+  The inner SVG.
+  --party-orb-scale controls zoom inside the thumbnail.
+*/
+.party-node-circle .data-circle-svg {
+  width: var(--party-circle-size) !important;
+  height: var(--party-circle-size) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: var(--party-circle-size) !important;
+  max-height: var(--party-circle-size) !important;
+  display: block !important;
+  transform: scale(var(--party-orb-scale));
+  transform-origin: center;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.35));
+}
+
+/* Hide full-size DataCircle controls inside thumbnails. */
+.party-node-circle .data-circle-controls,
+.party-node-circle .data-circle-clear-selection-button,
+.party-node-circle .data-circle-curved-title,
+.party-node-circle .data-circle-range-band-label,
+.party-node-circle .data-circle-focus-explanation {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive tuning                                                          */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 1450px) {
+  .visualisation-panel--with-party-dock {
+    --party-circle-size: 98px;
+    --party-dock-height: 120px;
+    --party-orb-scale: 1.04;
+    --party-node-gap: 6px;
+    --party-label-width: 16px;
+  }
+
+  .main-data-circle-frame .data-circle-svg {
+    width: min(
+      100%,
+      calc(50vw - 34px),
+      calc(100vh - var(--party-dock-height) - 62px)
+    );
+  }
+
+  .party-dock {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    padding: 6px 10px;
+  }
+
+  .party-node-side-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+}
