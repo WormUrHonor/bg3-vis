@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { ClassName } from "../types/buildPlannerTypes";
 import {
   mockAverageDpr,
@@ -62,6 +62,13 @@ export default function DataCircle({
   variant = "main",
   visualizedItemsOverride,
 }: DataCircleProps) {
+  const rawInstanceId = useId();
+
+  const svgInstanceId = useMemo(
+    () => rawInstanceId.replace(/[^a-zA-Z0-9_-]/g, ""),
+    [rawInstanceId]
+  );
+
   const [hoverFocus, setHoverFocus] = useState<DataCircleFocus>(null);
   const [selectedFocuses, setSelectedFocuses] = useState<DataCircleFocusItem[]>(
     []
@@ -98,6 +105,7 @@ export default function DataCircle({
 
   const visualizedItems: VisualizedBuildItem[] = useMemo(() => {
     if (hasOverride) return visualizedItemsOverride;
+
     if (isUsingMockData) {
       return getVisualizedBuildItems({
         selectedSpellIds: mockSelectedSpellIds,
@@ -108,7 +116,27 @@ export default function DataCircle({
     }
 
     return resolvedVisualizedItems;
-  }, [hasOverride, visualizedItemsOverride, isUsingMockData, resolvedVisualizedItems]);
+  }, [
+    hasOverride,
+    visualizedItemsOverride,
+    isUsingMockData,
+    resolvedVisualizedItems,
+  ]);
+
+  const visualizedItemsKey = useMemo(
+    () =>
+      visualizedItems
+        .map((item) => item.id)
+        .sort()
+        .join("|"),
+    [visualizedItems]
+  );
+
+  useEffect(() => {
+    setHoverFocus(null);
+    setSelectedFocuses([]);
+    setIsSelectionReviewActive(false);
+  }, [visualizedItemsKey, showDprLayer, variant]);
 
   const displayBuildName = isUsingMockData
     ? mockDataCircleBuild.buildName
@@ -135,7 +163,8 @@ export default function DataCircle({
   const archetypeLabel = displaySubclass || displayClass || "Unassigned";
   const abilityCount = visualizedItems.length;
 
-  const compactShowDprLayer = !isCompact && showDprLayer;
+  const shouldShowFullDprLayer = !isCompact && showDprLayer;
+  const shouldShowCompactDprNumber = isCompact;
 
   const rangeCounts = useMemo(
     () => getRangeCounts(visualizedItems),
@@ -193,7 +222,7 @@ export default function DataCircle({
       className={`data-circle-panel data-circle-panel--${variant}`}
       data-circle-variant={variant}
     >
-      {compactShowDprLayer ? (
+      {shouldShowFullDprLayer ? (
         <div className="data-circle-controls">
           <div className="data-circle-dpr-toggle" aria-label="DPR bar layout">
             <span className="data-circle-dpr-toggle-label">DPR layout</span>
@@ -255,7 +284,7 @@ export default function DataCircle({
 
           <BackgroundLayer />
 
-          {compactShowDprLayer ? (
+          {shouldShowFullDprLayer ? (
             <DprByRoundLayer
               rounds={mockDprByRound}
               averageDpr={mockAverageDpr}
@@ -291,6 +320,7 @@ export default function DataCircle({
           />
 
           <RangeProfileLayer
+            svgInstanceId={svgInstanceId}
             rangeCounts={rangeCounts}
             maxRangeCount={maxRangeCount}
             roleData={roleData}
@@ -304,7 +334,9 @@ export default function DataCircle({
 
           {!isCompact ? (
             <SectionTitleLayer
-              outerTitle={compactShowDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"}
+              outerTitle={
+                shouldShowFullDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"
+              }
             />
           ) : null}
 
@@ -320,8 +352,13 @@ export default function DataCircle({
               archetypeLabel={archetypeLabel}
               displayLevel={displayLevel}
               spellCount={abilityCount}
-              averageDpr={compactShowDprLayer ? mockAverageDpr : undefined}
-              totalDamage={compactShowDprLayer ? totalDamage : undefined}
+              averageDpr={
+                shouldShowFullDprLayer || shouldShowCompactDprNumber
+                  ? mockAverageDpr
+                  : undefined
+              }
+              totalDamage={shouldShowFullDprLayer ? totalDamage : undefined}
+              compactMode={isCompact}
             />
           )}
         </svg>

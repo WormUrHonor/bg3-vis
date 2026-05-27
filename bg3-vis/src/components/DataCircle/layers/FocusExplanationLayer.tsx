@@ -46,6 +46,11 @@ type IconBadgeProps = {
   clipId: string;
 };
 
+type AbilityTextDetails = {
+  title: string;
+  description: string;
+};
+
 const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Acid: acidIcon,
   Bludgeoning: bludgeoningIcon,
@@ -60,7 +65,6 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Radiant: radiantIcon,
   Slashing: slashingIcon,
   Thunder: thunderIcon,
-
   Weapon: weaponIcon,
   Variable: forceIcon,
 };
@@ -87,7 +91,7 @@ function truncateLabel(label: string, maxLength: number) {
   return label.length > maxLength ? `${label.slice(0, maxLength)}…` : label;
 }
 
-function splitText(text: string, maxLength: number) {
+function splitText(text: string, maxLength: number, maxLines = 3) {
   if (text.length <= maxLength) return [text];
 
   const words = text.split(" ");
@@ -107,7 +111,24 @@ function splitText(text: string, maxLength: number) {
 
   if (currentLine) lines.push(currentLine);
 
-  return lines.slice(0, 3);
+  if (lines.length <= maxLines) return lines;
+
+  const visibleLines = lines.slice(0, maxLines);
+  visibleLines[maxLines - 1] = `${visibleLines[maxLines - 1].replace(
+    /…$/,
+    ""
+  )}…`;
+
+  return visibleLines;
+}
+
+function cleanDescription(description?: string) {
+  if (!description) return "";
+
+  return description
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getDamageTypeVisual(damageType: DamageRingKey) {
@@ -135,6 +156,28 @@ function getAbilityIconHref(abilityId: string) {
   }
 
   return undefined;
+}
+
+function getAbilityTextDetails(abilityId: string): AbilityTextDetails | null {
+  const spell = getSpellById(abilityId);
+
+  if (spell) {
+    return {
+      title: spell.name,
+      description: cleanDescription(spell.description),
+    };
+  }
+
+  const feature = getClassFeatureById(abilityId);
+
+  if (feature) {
+    return {
+      title: feature.name,
+      description: cleanDescription(feature.description),
+    };
+  }
+
+  return null;
 }
 
 function getPrimaryFocusItem(focus: DataCircleFocus): DataCircleFocusItem | null {
@@ -334,7 +377,17 @@ export function FocusExplanationLayer({
   relationshipIndex,
 }: FocusExplanationLayerProps) {
   const summary = getFocusSummary(focus, relationshipIndex);
-  const bodyLines = splitText(summary.body, 25);
+  const primaryFocus = getPrimaryFocusItem(focus);
+
+  const abilityText =
+    primaryFocus?.type === "ability"
+      ? getAbilityTextDetails(primaryFocus.abilityId)
+      : null;
+
+  const title = abilityText?.title || summary.title;
+  const body = abilityText?.description || summary.body;
+
+  const bodyLines = splitText(body, 24, 4);
   const kindLabel = getFocusKindLabel(focus);
 
   return (
@@ -448,23 +501,23 @@ export function FocusExplanationLayer({
         strokeWidth="2.8"
         filter="url(#fineInkShadow)"
       >
-        {truncateLabel(summary.title.toUpperCase(), 23)}
+        {truncateLabel(title.toUpperCase(), 23)}
       </text>
 
       {bodyLines.map((line, index) => (
         <text
           key={`${line}-${index}`}
           x={CX}
-          y={CY + 21 + index * 12.5}
+          y={CY + 18 + index * 10.8}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize="10.35"
+          fontSize="8.9"
           fontWeight="800"
           letterSpacing="0.01em"
           fill="rgba(255,236,200,0.82)"
           paintOrder="stroke"
           stroke="rgba(3,2,4,0.9)"
-          strokeWidth="1.65"
+          strokeWidth="1.45"
         >
           {line}
         </text>

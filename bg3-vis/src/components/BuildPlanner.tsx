@@ -68,6 +68,8 @@ import {
   getFeatSkillProficiencies,
 } from "../logic/featLogic";
 
+type DataCircleFocusSource = "editor" | "aggregate";
+
 function getAbilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
@@ -122,6 +124,19 @@ function getSpellsAbilitiesTabLabel(
   return "Spells & Abilities";
 }
 
+function getSavedBuildTitle(savedBuild: SavedBuild | null | undefined) {
+  if (!savedBuild) return "Empty slot";
+
+  return (
+    savedBuild.label ||
+    savedBuild.snapshot.buildName ||
+    savedBuild.snapshot.characterName ||
+    savedBuild.snapshot.selectedSubclass ||
+    savedBuild.snapshot.selectedClass ||
+    "Untitled Build"
+  );
+}
+
 function getFixedClassFeatureIdsForSnapshot(snapshot: BuildEditorSnapshot) {
   const classFeaturesOnly = getAvailableClassFeaturesForBuild(
     bg3ClassFeatures,
@@ -142,23 +157,22 @@ function getFixedClassFeatureIdsForSnapshot(snapshot: BuildEditorSnapshot) {
   return getFixedClassFeatureIds([...raceFeatures, ...classFeaturesOnly]);
 }
 
-function getVisualizedItemsForSnapshot(
-  snapshot: BuildEditorSnapshot,
-  scopeId: string
-) {
+function getVisualizedItemsForSnapshot(snapshot: BuildEditorSnapshot) {
   return getVisualizedBuildItems({
     selectedSpellIds: snapshot.selectedSpellIds,
     fixedClassFeatureIds: getFixedClassFeatureIdsForSnapshot(snapshot),
     selectedClassFeatureIds: snapshot.selectedClassFeatureIds,
     activeClassFeatureIds: snapshot.activeClassFeatureIds,
-  }).map((item) => ({
-    ...item,
-    id: `${scopeId}:${item.id}`,
-  }));
+  });
 }
 
 function BuildPlanner() {
   const [showPartyPlanner, setShowPartyPlanner] = useState(true);
+  const [focusedDataCircle, setFocusedDataCircle] =
+    useState<DataCircleFocusSource>("editor");
+  const [editingPartySlotIndex, setEditingPartySlotIndex] = useState<
+    number | null
+  >(null);
   const [activeTab, setActiveTab] = useState<TabId>("character");
 
   const [buildName, setBuildName] = useState("");
@@ -214,6 +228,15 @@ function BuildPlanner() {
   ]);
 
   const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
+
+  const isAggregateFocused = focusedDataCircle === "aggregate";
+  const isEditingPartySlot = editingPartySlotIndex !== null;
+
+  const focusedLabel = isAggregateFocused
+    ? "Aggregate"
+    : isEditingPartySlot
+      ? `Member ${editingPartySlotIndex + 1}`
+      : "Current Editor";
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "character", label: "Character" },
@@ -452,17 +475,26 @@ function BuildPlanner() {
 
   const partyAggregateItems = useMemo(
     () =>
-      partySlots.flatMap((slot, index) =>
-        slot
-          ? getVisualizedItemsForSnapshot(slot.snapshot, `party-${index}`)
-          : []
+      partySlots.flatMap((slot) =>
+        slot ? getVisualizedItemsForSnapshot(slot.snapshot) : []
       ),
     [partySlots]
   );
-
+  
   useEffect(() => {
     saveSavedBuildsToStorage(savedBuilds);
   }, [savedBuilds]);
+
+  useEffect(() => {
+    if (isEditingPartySlot && editingPartySlotIndex !== null) {
+      const activeSlot = partySlots[editingPartySlotIndex];
+
+      if (!activeSlot) {
+        setEditingPartySlotIndex(null);
+        setFocusedDataCircle("editor");
+      }
+    }
+  }, [editingPartySlotIndex, isEditingPartySlot, partySlots]);
 
   useEffect(() => {
     setSelectedSpellIds((current) =>
@@ -543,10 +575,15 @@ function BuildPlanner() {
   }
 
   function handleEvaluateBuild() {
+    if (isAggregateFocused) return;
+
     setHasEvaluatedBuild(true);
   }
 
-  function applyEditorSnapshot(snapshot: BuildEditorSnapshot) {
+  function applyEditorSnapshot(
+    snapshot: BuildEditorSnapshot,
+    nextEditingPartySlotIndex: number | null = null
+  ) {
     setBuildName(snapshot.buildName);
     setCharacterName(snapshot.characterName);
 
@@ -577,6 +614,8 @@ function BuildPlanner() {
     setSelectedClassFeatureIds(snapshot.selectedClassFeatureIds);
     setActiveClassFeatureIds(snapshot.activeClassFeatureIds);
 
+    setFocusedDataCircle("editor");
+    setEditingPartySlotIndex(nextEditingPartySlotIndex);
     setHasEvaluatedBuild(false);
   }
 
@@ -588,31 +627,26 @@ function BuildPlanner() {
 
   function handleOverwriteSavedBuild(buildId: string) {
     const updatedAt = new Date().toISOString();
+    const existingBuild = savedBuilds.find(
+      (savedBuild) => savedBuild.id === buildId
+    );
+
+    const updatedBuild: SavedBuild = {
+      id: buildId,
+      label: getDefaultSavedBuildLabel(currentEditorSnapshot),
+      createdAt: existingBuild?.createdAt ?? updatedAt,
+      updatedAt,
+      snapshot: currentEditorSnapshot,
+    };
 
     setSavedBuilds((current) =>
       current.map((savedBuild) =>
-        savedBuild.id === buildId
-          ? {
-              ...savedBuild,
-              label: getDefaultSavedBuildLabel(currentEditorSnapshot),
-              updatedAt,
-              snapshot: currentEditorSnapshot,
-            }
-          : savedBuild
+        savedBuild.id === buildId ? updatedBuild : savedBuild
       )
     );
 
     setPartySlots((current) =>
-      current.map((slot) =>
-        slot?.id === buildId
-          ? {
-              ...slot,
-              label: getDefaultSavedBuildLabel(currentEditorSnapshot),
-              updatedAt,
-              snapshot: currentEditorSnapshot,
-            }
-          : slot
-      )
+      current.map((slot) => (slot?.id === buildId ? updatedBuild : slot))
     );
   }
 
@@ -621,7 +655,7 @@ function BuildPlanner() {
 
     if (!savedBuild) return;
 
-    applyEditorSnapshot(savedBuild.snapshot);
+    applyEditorSnapshot(savedBuild.snapshot, null);
   }
 
   function handleLoadSavedBuildIntoPartySlot(buildId: string, slotIndex: number) {
@@ -632,12 +666,37 @@ function BuildPlanner() {
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? savedBuild : slot))
     );
+
+    applyEditorSnapshot(savedBuild.snapshot, slotIndex);
+  }
+
+  function handleEditPartySlot(slotIndex: number) {
+    const savedBuild = partySlots[slotIndex];
+
+    if (!savedBuild) return;
+
+    applyEditorSnapshot(savedBuild.snapshot, slotIndex);
+  }
+
+  function handleFocusAggregate() {
+    setFocusedDataCircle("aggregate");
+    setEditingPartySlotIndex(null);
+  }
+
+  function handleFocusCurrentEditor() {
+    setFocusedDataCircle("editor");
+    setEditingPartySlotIndex(null);
   }
 
   function handleClearPartySlot(slotIndex: number) {
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? null : slot))
     );
+
+    if (editingPartySlotIndex === slotIndex) {
+      setEditingPartySlotIndex(null);
+      setFocusedDataCircle("editor");
+    }
   }
 
   function handleDeleteSavedBuild(buildId: string) {
@@ -650,9 +709,23 @@ function BuildPlanner() {
     );
   }
 
+  function handleUpdateEditedPartyBuild() {
+    if (editingPartySlotIndex === null) return;
+
+    const editedSlot = partySlots[editingPartySlotIndex];
+
+    if (!editedSlot) return;
+
+    handleOverwriteSavedBuild(editedSlot.id);
+  }
+
   return (
     <main className="workspace-page">
-      <section className="workspace-half planner-half">
+      <section
+        className={`workspace-half planner-half ${
+          isAggregateFocused ? "planner-half--readonly-focus" : ""
+        }`}
+      >
         <header className="workspace-header">
           <div>
             <p className="eyebrow">BG3 Build Planner</p>
@@ -663,6 +736,12 @@ function BuildPlanner() {
             className="evaluate-button"
             type="button"
             onClick={handleEvaluateBuild}
+            disabled={isAggregateFocused}
+            title={
+              isAggregateFocused
+                ? "Aggregate is a read-only calculated preview."
+                : "Evaluate the current editable build."
+            }
           >
             {hasEvaluatedBuild ? "Re-evaluate Build" : "Evaluate Build"}
           </button>
@@ -675,6 +754,7 @@ function BuildPlanner() {
               className={activeTab === tab.id ? "tab active" : "tab"}
               onClick={() => setActiveTab(tab.id)}
               type="button"
+              disabled={isAggregateFocused}
             >
               {tab.label}
             </button>
@@ -710,6 +790,87 @@ function BuildPlanner() {
               <strong>{selectedLevel}</strong>
             </div>
 
+            <section className="focus-selector" aria-label="Focused data circle">
+              <div className="focus-selector-header">
+                <span>Big circle focus</span>
+                <strong>{focusedLabel}</strong>
+              </div>
+
+              <div className="focus-selector-grid">
+                <button
+                  type="button"
+                  className={
+                    !isAggregateFocused && !isEditingPartySlot
+                      ? "focus-selector-button focus-selector-button--active"
+                      : "focus-selector-button"
+                  }
+                  onClick={handleFocusCurrentEditor}
+                >
+                  Current Editor
+                </button>
+
+                <button
+                  type="button"
+                  className={
+                    isAggregateFocused
+                      ? "focus-selector-button focus-selector-button--active focus-selector-button--aggregate"
+                      : "focus-selector-button focus-selector-button--aggregate"
+                  }
+                  onClick={handleFocusAggregate}
+                >
+                  Aggregate
+                </button>
+
+                {partySlots.map((slot, index) => {
+                  const isFocused =
+                    !isAggregateFocused && editingPartySlotIndex === index;
+
+                  return (
+                    <button
+                      key={`focus-party-${index}`}
+                      type="button"
+                      className={
+                        isFocused
+                          ? "focus-selector-button focus-selector-button--active"
+                          : "focus-selector-button"
+                      }
+                      onClick={() => handleEditPartySlot(index)}
+                      disabled={!slot || isAggregateFocused}
+                      title={
+                        slot
+                          ? `Edit ${getSavedBuildTitle(slot)}`
+                          : `Member ${index + 1} has no assigned build.`
+                      }
+                    >
+                      Member {index + 1}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isAggregateFocused ? (
+                <p className="focus-selector-note">
+                  Aggregate is a read-only calculated view of the assigned party
+                  members.
+                </p>
+              ) : isEditingPartySlot ? (
+                <p className="focus-selector-note">
+                  Editing Member {editingPartySlotIndex + 1}. Use Update to
+                  save changes back into this party slot.
+                </p>
+              ) : null}
+
+              {isEditingPartySlot ? (
+                <button
+                  type="button"
+                  className="focus-selector-update-button"
+                  onClick={handleUpdateEditedPartyBuild}
+                >
+                  Update edited party member
+                </button>
+              ) : null}
+            </section>
+
             <SavedBuildsPanel
               currentSnapshot={currentEditorSnapshot}
               savedBuilds={savedBuilds}
@@ -723,7 +884,19 @@ function BuildPlanner() {
             />
           </aside>
 
-          <section className="main-panel">
+          <section
+            className={`main-panel ${
+              isAggregateFocused ? "main-panel--readonly-preview" : ""
+            }`}
+            aria-disabled={isAggregateFocused}
+          >
+            {isAggregateFocused ? (
+              <div className="main-panel-readonly-overlay">
+                Viewing Aggregate. Select Current Editor or a party member to
+                edit.
+              </div>
+            ) : null}
+
             {activeTab === "character" && (
               <CharacterTab
                 buildName={buildName}
@@ -825,18 +998,34 @@ function BuildPlanner() {
           </button>
 
           <div className="main-data-circle-frame">
-            <DataCircle
-              buildName={buildName}
-              characterName={characterName}
-              selectedClass={selectedClass}
-              selectedSubclass={selectedSubclass}
-              selectedLevel={selectedLevel}
-              selectedSpellIds={selectedSpellIds}
-              fixedClassFeatureIds={fixedClassFeatureIds}
-              selectedClassFeatureIds={selectedClassFeatureIds}
-              activeClassFeatureIds={activeClassFeatureIds}
-              showDprLayer={hasEvaluatedBuild}
-            />
+            {isAggregateFocused ? (
+              <DataCircle
+                buildName="Party Aggregate"
+                characterName="Combined Party"
+                selectedClass=""
+                selectedSubclass="Aggregate"
+                selectedLevel={12}
+                selectedSpellIds={[]}
+                fixedClassFeatureIds={[]}
+                selectedClassFeatureIds={[]}
+                activeClassFeatureIds={[]}
+                showDprLayer={false}
+                visualizedItemsOverride={partyAggregateItems}
+              />
+            ) : (
+              <DataCircle
+                buildName={buildName}
+                characterName={characterName}
+                selectedClass={selectedClass}
+                selectedSubclass={selectedSubclass}
+                selectedLevel={selectedLevel}
+                selectedSpellIds={selectedSpellIds}
+                fixedClassFeatureIds={fixedClassFeatureIds}
+                selectedClassFeatureIds={selectedClassFeatureIds}
+                activeClassFeatureIds={activeClassFeatureIds}
+                showDprLayer={hasEvaluatedBuild}
+              />
+            )}
           </div>
 
           {showPartyPlanner && (
@@ -847,82 +1036,105 @@ function BuildPlanner() {
                     label: "Aggregate",
                     modifier: "aggregate",
                     savedBuild: null,
-                    visualizedItemsOverride: partyAggregateItems,
+                    isFocused: isAggregateFocused,
+                    onFocus: handleFocusAggregate,
                   },
                   ...partySlots.map((slot, index) => ({
                     label: `Member ${index + 1}`,
                     modifier: slot ? "member-filled" : "member-empty",
                     savedBuild: slot,
-                    visualizedItemsOverride: undefined,
+                    isFocused:
+                      !isAggregateFocused && editingPartySlotIndex === index,
+                    onFocus: () => handleEditPartySlot(index),
                   })),
-                ].map((slot, index) => (
-                  <article
-                    className={`party-node party-node--${slot.modifier}`}
-                    key={slot.label}
-                    title={
-                      slot.savedBuild
-                        ? `${slot.label}: ${slot.savedBuild.label}`
-                        : slot.label
-                    }
-                  >
-                    <span className="party-node-side-label">{slot.label}</span>
+                ].map((slot, index) => {
+                  const isDisabled = index > 0 && !slot.savedBuild;
 
-                    <div className="party-node-orb-shell">
-                      {index === 0 ? (
-                        <div className="party-node-circle">
-                          <DataCircle
-                            buildName="Party Aggregate"
-                            characterName="Combined Party"
-                            selectedClass=""
-                            selectedSubclass="Aggregate"
-                            selectedLevel={12}
-                            selectedSpellIds={[]}
-                            fixedClassFeatureIds={[]}
-                            selectedClassFeatureIds={[]}
-                            activeClassFeatureIds={[]}
-                            showDprLayer={false}
-                            visualizedItemsOverride={partyAggregateItems}
-                          />
-                        </div>
-                      ) : slot.savedBuild ? (
-                        <div className="party-node-circle">
-                          <DataCircle
-                            buildName={slot.savedBuild.snapshot.buildName}
-                            characterName={
-                              slot.savedBuild.snapshot.characterName
-                            }
-                            selectedClass={
-                              slot.savedBuild.snapshot.selectedClass
-                            }
-                            selectedSubclass={
-                              slot.savedBuild.snapshot.selectedSubclass
-                            }
-                            selectedLevel={
-                              slot.savedBuild.snapshot.selectedLevel
-                            }
-                            selectedSpellIds={
-                              slot.savedBuild.snapshot.selectedSpellIds
-                            }
-                            fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(
-                              slot.savedBuild.snapshot
-                            )}
-                            selectedClassFeatureIds={
-                              slot.savedBuild.snapshot.selectedClassFeatureIds
-                            }
-                            activeClassFeatureIds={
-                              slot.savedBuild.snapshot.activeClassFeatureIds
-                            }
-                            showDprLayer={false}
-                          />
-                        </div>
-                      ) : (
-                        <div className="party-node-empty">
-                          <span>Empty</span>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
+                  return (
+                    <article
+                      className={`party-node party-node--${slot.modifier} ${
+                        slot.isFocused ? "party-node--focused" : ""
+                      }`}
+                      key={slot.label}
+                      title={
+                        slot.savedBuild
+                          ? `${slot.label}: ${slot.savedBuild.label}`
+                          : slot.label
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="party-node-side-label"
+                        onClick={slot.onFocus}
+                        disabled={isDisabled}
+                        title={
+                          isDisabled
+                            ? "Assign a saved build to this slot first."
+                            : index === 0
+                              ? "Focus aggregate preview"
+                              : `Edit ${slot.label}`
+                        }
+                      >
+                        {slot.label}
+                      </button>
+
+                      <div className="party-node-orb-shell">
+                        {index === 0 ? (
+                          <div className="party-node-circle">
+                            <DataCircle
+                              buildName="Party Aggregate"
+                              characterName="Combined Party"
+                              selectedClass=""
+                              selectedSubclass="Aggregate"
+                              selectedLevel={12}
+                              selectedSpellIds={[]}
+                              fixedClassFeatureIds={[]}
+                              selectedClassFeatureIds={[]}
+                              activeClassFeatureIds={[]}
+                              showDprLayer={false}
+                              visualizedItemsOverride={partyAggregateItems}
+                            />
+                          </div>
+                        ) : slot.savedBuild ? (
+                          <div className="party-node-circle">
+                            <DataCircle
+                              buildName={slot.savedBuild.snapshot.buildName}
+                              characterName={
+                                slot.savedBuild.snapshot.characterName
+                              }
+                              selectedClass={
+                                slot.savedBuild.snapshot.selectedClass
+                              }
+                              selectedSubclass={
+                                slot.savedBuild.snapshot.selectedSubclass
+                              }
+                              selectedLevel={
+                                slot.savedBuild.snapshot.selectedLevel
+                              }
+                              selectedSpellIds={
+                                slot.savedBuild.snapshot.selectedSpellIds
+                              }
+                              fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(
+                                slot.savedBuild.snapshot
+                              )}
+                              selectedClassFeatureIds={
+                                slot.savedBuild.snapshot.selectedClassFeatureIds
+                              }
+                              activeClassFeatureIds={
+                                slot.savedBuild.snapshot.activeClassFeatureIds
+                              }
+                              showDprLayer={false}
+                            />
+                          </div>
+                        ) : (
+                          <div className="party-node-empty">
+                            <span>Empty</span>
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           )}

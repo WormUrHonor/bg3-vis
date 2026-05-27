@@ -8,6 +8,7 @@ type CenterSealLayerProps = {
   spellCount: number;
   averageDpr?: number;
   totalDamage?: number;
+  compactMode?: boolean;
 };
 
 function truncateLabel(label: string, maxLength: number) {
@@ -20,7 +21,9 @@ export function CenterSealLayer({
   archetypeLabel,
   averageDpr,
   totalDamage,
+  compactMode = false,
 }: CenterSealLayerProps) {
+  const hasAverageDpr = typeof averageDpr === "number";
   const hasDamageSummary =
     typeof averageDpr === "number" && typeof totalDamage === "number";
 
@@ -103,7 +106,42 @@ export function CenterSealLayer({
         );
       })}
 
-      {hasDamageSummary ? (
+      {compactMode ? (
+        <>
+          <text
+            x={CX}
+            y={CY - 30}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="10"
+            fontWeight="950"
+            letterSpacing="0.18em"
+            fill="rgba(229,202,152,0.72)"
+            paintOrder="stroke"
+            stroke="rgba(4,3,5,0.92)"
+            strokeWidth="2"
+          >
+            AVG DPR
+          </text>
+
+          <text
+            x={CX}
+            y={CY + 9}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={hasAverageDpr ? "44" : "27"}
+            fontWeight="950"
+            letterSpacing="0.01em"
+            fill="rgba(255,248,226,0.98)"
+            paintOrder="stroke"
+            stroke="rgba(3,2,4,0.96)"
+            strokeWidth="5"
+            filter="url(#fineInkShadow)"
+          >
+            {hasAverageDpr ? averageDpr.toFixed(1) : "—"}
+          </text>
+        </>
+      ) : hasDamageSummary ? (
         <>
           <text
             x={CX}
@@ -208,23 +246,25 @@ export function CenterSealLayer({
         </>
       )}
 
-      <text
-        x={CX}
-        y={CY + 66}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="8"
-        fontWeight="850"
-        letterSpacing="0.08em"
-        fill="rgba(229,202,152,0.52)"
-        paintOrder="stroke"
-        stroke="rgba(4,3,5,0.84)"
-        strokeWidth="1.6"
-      >
-        {characterLabel
-          ? truncateLabel(characterLabel, 18).toUpperCase()
-          : truncateLabel(buildLabel, 18).toUpperCase()}
-      </text>
+      {!compactMode ? (
+        <text
+          x={CX}
+          y={CY + 66}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize="8"
+          fontWeight="850"
+          letterSpacing="0.08em"
+          fill="rgba(229,202,152,0.52)"
+          paintOrder="stroke"
+          stroke="rgba(4,3,5,0.84)"
+          strokeWidth="1.6"
+        >
+          {characterLabel
+            ? truncateLabel(characterLabel, 18).toUpperCase()
+            : truncateLabel(buildLabel, 18).toUpperCase()}
+        </text>
+      ) : null}
     </g>
   );
 }

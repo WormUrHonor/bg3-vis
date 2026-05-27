@@ -24,6 +24,7 @@ import {
 import type { DamageRingKey, RangeBandKey, RoleData } from "../dataCircleTypes";
 
 type RangeProfileLayerProps = {
+  svgInstanceId: string;
   rangeCounts: Record<RangeBandKey, number>;
   maxRangeCount: number;
   roleData: RoleData;
@@ -479,24 +480,17 @@ function assignAnglesToClosestRoleSlots(
 
 function getRangeMotes(
   range: RangeBandKey,
-  fallbackCount: number,
+  _fallbackCount: number,
   roleData: RoleData,
   relationshipIndex: LayerRelationshipIndex
 ): RangeMote[] {
   const abilityIds = relationshipIndex.rangeToAbilities[range] ?? [];
-  const count = Math.max(fallbackCount, abilityIds.length);
-  const angles = getRangeDotAngles(count);
 
   if (abilityIds.length <= 0) {
-    return angles.map((angle, index) => ({
-      key: `${range}-fallback-${index}`,
-      label: `${range} ability ${index + 1}`,
-      angle,
-      fillColors: [FALLBACK_DOT_FILL],
-      glowColors: [MIXED_GLOW_COLOR],
-      strokeColors: [FALLBACK_DOT_STROKE],
-    }));
+    return [];
   }
+
+  const angles = getRangeDotAngles(abilityIds.length);
 
   const assignedAngles = assignAnglesToClosestRoleSlots(
     abilityIds,
@@ -546,6 +540,7 @@ function IconMarker({
   mote,
   isRelated,
   focusBoost,
+  svgInstanceId,
 }: {
   x: number;
   y: number;
@@ -553,41 +548,14 @@ function IconMarker({
   mote: RangeMote;
   isRelated: boolean;
   focusBoost: number;
+  svgInstanceId: string;
 }) {
   const iconHref = getAbilityIconHref(mote.abilityId);
   const radius = (size / 2) * focusBoost;
-  const clipId = `range-icon-clip-${mote.key}`;
+  const clipId = `${svgInstanceId}-range-icon-clip-${mote.key}`;
 
   if (!iconHref) {
-    return (
-      <>
-        <SegmentedCircle
-          x={x}
-          y={y}
-          radius={radius + 4}
-          colors={mote.glowColors}
-          opacity={0.24}
-          filter="url(#moteGlow)"
-        />
-
-        <SegmentedCircle
-          x={x}
-          y={y}
-          radius={radius}
-          colors={mote.fillColors}
-          opacity={0.92}
-        />
-
-        <SegmentedStrokeCircle
-          x={x}
-          y={y}
-          radius={radius}
-          colors={mote.strokeColors}
-          opacity={0.78}
-          strokeWidth={isRelated ? 1.25 : 0.8}
-        />
-      </>
-    );
+    return null;
   }
 
   return (
@@ -641,6 +609,7 @@ function IconMarker({
 }
 
 export function RangeProfileLayer({
+  svgInstanceId,
   rangeCounts,
   maxRangeCount,
   roleData,
@@ -831,7 +800,7 @@ export function RangeProfileLayer({
 
               return (
                 <g
-                  key={mote.key}
+                  key={`${svgInstanceId}-${mote.key}`}
                   opacity={moteOpacity}
                   style={{ cursor: mote.abilityId ? "pointer" : "default" }}
                   onMouseEnter={(event) => {
@@ -889,6 +858,7 @@ export function RangeProfileLayer({
                     mote={mote}
                     isRelated={moteIsRelated}
                     focusBoost={moteFocusBoost}
+                    svgInstanceId={svgInstanceId}
                   />
                 </g>
               );
