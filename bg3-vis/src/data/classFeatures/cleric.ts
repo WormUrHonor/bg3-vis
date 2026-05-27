@@ -103,6 +103,12 @@ const natureCantripGroup = {
   order: 62,
 };
 
+const natureElementalFuryGroup = {
+  id: "cleric-nature-elemental-fury",
+  label: "Elemental Fury Variants",
+  order: 64,
+};
+
 const tempestGroup = {
   id: "cleric-tempest",
   label: "Tempest Domain Features",
@@ -132,22 +138,6 @@ const range9m = {
   meters: 9,
   category: "mid",
   shape: "single-target",
-} as const;
-
-const self3mRadius = {
-  label: "self, 3m AoE",
-  meters: 0,
-  category: "self",
-  shape: "radius",
-  aoeMeters: 3,
-} as const;
-
-const self6mRadius = {
-  label: "self, 6m AoE",
-  meters: 0,
-  category: "self",
-  shape: "radius",
-  aoeMeters: 6,
 } as const;
 
 const self9mRadius = {
@@ -437,74 +427,103 @@ function makeWarPriestChargeFeature(entry: WarPriestChargeDefinition) {
   );
 }
 
-type DivineStrikeDefinition = {
+type Level8StrikeDefinition = {
   idBase: string;
   name: string;
   subclass: string;
+  description: string;
   damageTypes: DamageType[];
   displayGroup: { id: string; label: string; order: number };
+  tags: string[];
 };
 
-const divineStrikeDefinitions: DivineStrikeDefinition[] = [
+const divineStrikeDefinitions: Level8StrikeDefinition[] = [
   {
     idBase: "death-necrotic",
     name: "Divine Strike: Necrotic",
     subclass: DEATH,
+    description:
+      "Once per turn, deal additional Necrotic damage together with a weapon attack.",
     damageTypes: ["Weapon", "Necrotic"],
     displayGroup: deathGroup,
+    tags: ["death-domain", "divine-strike"],
   },
   {
     idBase: "life-radiant",
     name: "Divine Strike: Radiant",
     subclass: LIFE,
+    description:
+      "Once per turn, deal additional Radiant damage together with a weapon attack.",
     damageTypes: ["Weapon", "Radiant"],
     displayGroup: lifeGroup,
-  },
-  {
-    idBase: "nature-cold",
-    name: "Divine Strike: Elemental Fury: Cold",
-    subclass: NATURE,
-    damageTypes: ["Weapon", "Cold"],
-    displayGroup: natureGroup,
-  },
-  {
-    idBase: "nature-fire",
-    name: "Divine Strike: Elemental Fury: Fire",
-    subclass: NATURE,
-    damageTypes: ["Weapon", "Fire"],
-    displayGroup: natureGroup,
-  },
-  {
-    idBase: "nature-lightning",
-    name: "Divine Strike: Elemental Fury: Lightning",
-    subclass: NATURE,
-    damageTypes: ["Weapon", "Lightning"],
-    displayGroup: natureGroup,
+    tags: ["life-domain", "divine-strike"],
   },
   {
     idBase: "tempest-thunder",
     name: "Divine Strike: Thunder",
     subclass: TEMPEST,
+    description:
+      "Once per turn, deal additional Thunder damage together with a weapon attack.",
     damageTypes: ["Weapon", "Thunder"],
     displayGroup: tempestGroup,
+    tags: ["tempest-domain", "divine-strike"],
   },
   {
     idBase: "trickery-poison",
     name: "Divine Strike: Poison",
     subclass: TRICKERY,
+    description:
+      "Once per turn, deal additional Poison damage together with a weapon attack.",
     damageTypes: ["Weapon", "Poison"],
     displayGroup: trickeryGroup,
+    tags: ["trickery-domain", "divine-strike"],
   },
   {
     idBase: "war-weapon",
     name: "Divine Strike: Weapon",
     subclass: WAR,
+    description:
+      "Once per turn, deal additional weapon damage together with a weapon attack.",
     damageTypes: ["Weapon"],
     displayGroup: warGroup,
+    tags: ["war-domain", "divine-strike"],
   },
 ];
 
-function makeDivineStrikeFeatures(entry: DivineStrikeDefinition) {
+const elementalFuryDefinitions: Level8StrikeDefinition[] = [
+  {
+    idBase: "nature-cold",
+    name: "Elemental Fury: Cold",
+    subclass: NATURE,
+    description:
+      "Once per turn, deal additional Cold damage together with a weapon attack.",
+    damageTypes: ["Weapon", "Cold"],
+    displayGroup: natureElementalFuryGroup,
+    tags: ["nature-domain", "elemental-fury", "elemental-fury-cold"],
+  },
+  {
+    idBase: "nature-fire",
+    name: "Elemental Fury: Fire",
+    subclass: NATURE,
+    description:
+      "Once per turn, deal additional Fire damage together with a weapon attack.",
+    damageTypes: ["Weapon", "Fire"],
+    displayGroup: natureElementalFuryGroup,
+    tags: ["nature-domain", "elemental-fury", "elemental-fury-fire"],
+  },
+  {
+    idBase: "nature-lightning",
+    name: "Elemental Fury: Lightning",
+    subclass: NATURE,
+    description:
+      "Once per turn, deal additional Lightning damage together with a weapon attack.",
+    damageTypes: ["Weapon", "Lightning"],
+    displayGroup: natureElementalFuryGroup,
+    tags: ["nature-domain", "elemental-fury", "elemental-fury-lightning"],
+  },
+];
+
+function makeWeaponDamageVariantFeatures(entry: Level8StrikeDefinition) {
   return [
     feature(
       `cleric-${entry.idBase}-melee`,
@@ -512,13 +531,13 @@ function makeDivineStrikeFeatures(entry: DivineStrikeDefinition) {
       "action",
       [availableTo(CLERIC, 8, entry.subclass)],
       true,
-      "Once per turn, deal additional Divine Strike damage together with a melee weapon attack.",
+      `${entry.description} This visualizes the melee variant.`,
       ["single-target-damage"],
       entry.damageTypes,
       ["action"],
       ["none"],
       melee,
-      ["cleric", "divine-strike", "melee"],
+      ["cleric", "level-8-weapon-damage", "melee", ...entry.tags],
       {
         displayGroup: entry.displayGroup,
       }
@@ -529,13 +548,13 @@ function makeDivineStrikeFeatures(entry: DivineStrikeDefinition) {
       "action",
       [availableTo(CLERIC, 8, entry.subclass)],
       true,
-      "Once per turn, deal additional Divine Strike damage together with a ranged weapon attack.",
+      `${entry.description} This visualizes the ranged variant.`,
       ["single-target-damage"],
       entry.damageTypes,
       ["action"],
       ["none"],
       weaponRange,
-      ["cleric", "divine-strike", "ranged"],
+      ["cleric", "level-8-weapon-damage", "ranged", ...entry.tags],
       {
         displayGroup: entry.displayGroup,
       }
@@ -1247,7 +1266,8 @@ const clericFeatures = [
 
   ...makeDomainSpellFeatures(),
 
-  ...divineStrikeDefinitions.flatMap(makeDivineStrikeFeatures),
+  ...divineStrikeDefinitions.flatMap(makeWeaponDamageVariantFeatures),
+  ...elementalFuryDefinitions.flatMap(makeWeaponDamageVariantFeatures),
 ];
 
 const domainSpellIconEntries = Object.fromEntries(
@@ -1296,6 +1316,19 @@ const divineStrikeIconEntries = Object.fromEntries(
     [
       `cleric-${entry.idBase}-ranged`,
       `Action_Cleric_DivineStrike_${entry.idBase}_ranged.png`,
+    ],
+  ])
+);
+
+const elementalFuryIconEntries = Object.fromEntries(
+  elementalFuryDefinitions.flatMap((entry) => [
+    [
+      `cleric-${entry.idBase}-melee`,
+      `Action_Cleric_ElementalFury_${entry.idBase}_melee.png`,
+    ],
+    [
+      `cleric-${entry.idBase}-ranged`,
+      `Action_Cleric_ElementalFury_${entry.idBase}_ranged.png`,
     ],
   ])
 );
@@ -1396,5 +1429,6 @@ export const clericClassModule: ClassFeatureModule = {
     ...deathReaperCantripIconEntries,
     ...natureAcolyteCantripIconEntries,
     ...divineStrikeIconEntries,
+    ...elementalFuryIconEntries,
   },
 };

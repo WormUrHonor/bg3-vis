@@ -60,6 +60,32 @@ function getAbilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
 
+function getWisdomPreparedSpellMax(
+  selectedClass: ClassName | "",
+  selectedLevel: number,
+  wisdomScore: number
+): number | undefined {
+  if (selectedClass !== "Cleric" && selectedClass !== "Druid") {
+    return undefined;
+  }
+
+  return Math.max(1, selectedLevel + getAbilityModifier(wisdomScore));
+}
+
+function getDruidCantripMax(
+  selectedClass: ClassName | "",
+  selectedSubclass: string,
+  selectedLevel: number
+): number | undefined {
+  if (selectedClass !== "Druid") return undefined;
+
+  const baseMax = selectedLevel >= 10 ? 4 : selectedLevel >= 4 ? 3 : 2;
+  const landBonus =
+    selectedSubclass === "Circle of the Land" && selectedLevel >= 2 ? 1 : 0;
+
+  return baseMax + landBonus;
+}
+
 function getSpellsAbilitiesTabLabel(
   selectedClass: ClassName | "",
   selectedSubclass: string
@@ -91,7 +117,9 @@ function BuildPlanner() {
   const [characterName, setCharacterName] = useState("");
   const [selectedRace, setSelectedRace] = useState<RaceName | "">("");
   const [selectedSubrace, setSelectedSubrace] = useState("");
-  const [selectedBackground, setSelectedBackground] = useState<Background | "">("");
+  const [selectedBackground, setSelectedBackground] = useState<Background | "">(
+    ""
+  );
   const [selectedClass, setSelectedClass] = useState<ClassName | "">("");
   const [selectedSubclass, setSelectedSubclass] = useState("");
   const [selectedLevel, setSelectedLevel] = useState(12);
@@ -120,9 +148,9 @@ function BuildPlanner() {
   >([]);
 
   const [selectedSpellIds, setSelectedSpellIds] = useState<string[]>([]);
-  const [selectedClassFeatureIds, setSelectedClassFeatureIds] = useState<string[]>(
-    []
-  );
+  const [selectedClassFeatureIds, setSelectedClassFeatureIds] = useState<
+    string[]
+  >([]);
   const [activeClassFeatureIds, setActiveClassFeatureIds] = useState<string[]>(
     []
   );
@@ -170,20 +198,59 @@ function BuildPlanner() {
     (bonusPlusOne === "Charisma" ? 1 : 0) +
     (featAbilityIncreases.Charisma ?? 0);
 
+  const finalWisdomScore =
+    baseAbilityScores.Wisdom +
+    (bonusPlusTwo === "Wisdom" ? 2 : 0) +
+    (bonusPlusOne === "Wisdom" ? 1 : 0) +
+    (featAbilityIncreases.Wisdom ?? 0);
+
   const paladinPreparedSpellLimit =
     selectedClass === "Paladin" && selectedLevel >= 2
       ? Math.max(
           1,
           Math.floor(selectedLevel / 2) + getAbilityModifier(finalCharismaScore)
         )
-      : 0;
+      : undefined;
 
-  const spellChoiceMaxOverrides: Record<string, number> =
-    selectedClass === "Paladin"
+  const clericOrDruidPreparedSpellLimit = getWisdomPreparedSpellMax(
+    selectedClass,
+    selectedLevel,
+    finalWisdomScore
+  );
+
+  const druidCantripLimit = getDruidCantripMax(
+    selectedClass,
+    selectedSubclass,
+    selectedLevel
+  );
+
+  const spellChoiceMaxOverrides: Record<string, number> = {
+    ...(paladinPreparedSpellLimit !== undefined
       ? {
           "paladin-prepared-spells": paladinPreparedSpellLimit,
         }
-      : {};
+      : {}),
+
+    ...(selectedClass === "Cleric" &&
+    clericOrDruidPreparedSpellLimit !== undefined
+      ? {
+          "cleric-prepared-spells": clericOrDruidPreparedSpellLimit,
+        }
+      : {}),
+
+    ...(selectedClass === "Druid" &&
+    clericOrDruidPreparedSpellLimit !== undefined
+      ? {
+          "druid-prepared-spells": clericOrDruidPreparedSpellLimit,
+        }
+      : {}),
+
+    ...(druidCantripLimit !== undefined
+      ? {
+          "druid-cantrips": druidCantripLimit,
+        }
+      : {}),
+  };
 
   const lockedSkills: Skill[] = unique([
     ...lockedBackgroundSkills,
@@ -505,18 +572,18 @@ function BuildPlanner() {
         </header>
 
         <div className="visualisation-panel">
-<DataCircle
-  buildName={buildName}
-  characterName={characterName}
-  selectedClass={selectedClass}
-  selectedSubclass={selectedSubclass}
-  selectedLevel={selectedLevel}
-  selectedSpellIds={selectedSpellIds}
-  fixedClassFeatureIds={fixedClassFeatureIds}
-  selectedClassFeatureIds={selectedClassFeatureIds}
-  activeClassFeatureIds={activeClassFeatureIds}
-  showDprLayer={hasEvaluatedBuild}
-/>
+          <DataCircle
+            buildName={buildName}
+            characterName={characterName}
+            selectedClass={selectedClass}
+            selectedSubclass={selectedSubclass}
+            selectedLevel={selectedLevel}
+            selectedSpellIds={selectedSpellIds}
+            fixedClassFeatureIds={fixedClassFeatureIds}
+            selectedClassFeatureIds={selectedClassFeatureIds}
+            activeClassFeatureIds={activeClassFeatureIds}
+            showDprLayer={hasEvaluatedBuild}
+          />
         </div>
       </section>
     </main>
