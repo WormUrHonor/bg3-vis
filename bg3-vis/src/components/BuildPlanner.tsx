@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./BuildPlanner.css";
-
+import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import CharacterTab from "./CharacterTab";
 import ClassScoresTab from "./ClassScoresTab";
 import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
@@ -291,26 +291,41 @@ function BuildPlanner() {
     selectedWarlockInvocations
   );
 
-  const availableClassFeatures = useMemo(
-    () =>
-      getAvailableClassFeaturesForBuild(
-        bg3ClassFeatures,
-        selectedClass,
-        selectedSubclass,
-        selectedLevel,
-        selectedClassFeatureIds,
-        rangerFavouredEnemy,
-        rangerNaturalExplorer
-      ),
-    [
+  const availableClassFeaturesOnly = useMemo(
+  () =>
+    getAvailableClassFeaturesForBuild(
+      bg3ClassFeatures,
       selectedClass,
       selectedSubclass,
       selectedLevel,
       selectedClassFeatureIds,
       rangerFavouredEnemy,
-      rangerNaturalExplorer,
-    ]
-  );
+      rangerNaturalExplorer
+    ),
+  [
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedClassFeatureIds,
+    rangerFavouredEnemy,
+    rangerNaturalExplorer,
+  ]
+);
+
+const availableRaceFeatures = useMemo(
+  () =>
+    getAvailableRaceFeaturesForBuild(
+      selectedRace,
+      selectedSubrace,
+      selectedLevel
+    ),
+  [selectedRace, selectedSubrace, selectedLevel]
+);
+
+const availableClassFeatures = useMemo(
+  () => [...availableRaceFeatures, ...availableClassFeaturesOnly],
+  [availableRaceFeatures, availableClassFeaturesOnly]
+);
 
   const availableClassFeatureKey = availableClassFeatures
     .map((feature) => feature.id)
@@ -369,11 +384,13 @@ function BuildPlanner() {
     featSelections,
   ]);
 
-  function handleRaceChange(value: string) {
-    const race = value as RaceName | "";
-    setSelectedRace(race);
-    setSelectedSubrace("");
-  }
+function handleRaceChange(value: string) {
+  const race = value as RaceName | "";
+  setSelectedRace(race);
+  setSelectedSubrace("");
+  setSelectedClassFeatureIds([]);
+  setActiveClassFeatureIds([]);
+}
 
   function handleClassChange(value: string) {
     const className = value as ClassName | "";
@@ -498,7 +515,11 @@ function BuildPlanner() {
                 allProficiencies={allProficiencies}
                 allExpertise={allExpertise}
                 onRaceChange={handleRaceChange}
-                setSelectedSubrace={setSelectedSubrace}
+                setSelectedSubrace={(value) => {
+  setSelectedSubrace(value);
+  setSelectedClassFeatureIds([]);
+  setActiveClassFeatureIds([]);
+}}
                 setSelectedBackground={setSelectedBackground}
                 onClassChange={handleClassChange}
                 setSelectedClassSkills={setSelectedClassSkills}

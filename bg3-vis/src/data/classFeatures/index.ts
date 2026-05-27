@@ -14,6 +14,11 @@ import { sorcererClassModule } from "./sorcerer";
 import { warlockClassModule } from "./warlock";
 import { wizardClassModule } from "./wizard";
 
+import {
+  bg3RaceFeatures,
+  raceFeatureIconFileById,
+} from "../raceFeatures";
+
 export type {
   BG3ClassFeature,
   ClassFeatureActiveGroup,
@@ -41,13 +46,19 @@ export const classFeatureModules: ClassFeatureModule[] = [
   wizardClassModule,
 ];
 
-export const bg3ClassFeatures: BG3ClassFeature[] = classFeatureModules.flatMap(
+const classOnlyFeatures: BG3ClassFeature[] = classFeatureModules.flatMap(
   (module) => module.features
 );
 
+export const bg3ClassFeatures: BG3ClassFeature[] = [
+  ...classOnlyFeatures,
+  ...bg3RaceFeatures,
+];
+
 export const classFeatureIconFileById: Record<string, string> = Object.assign(
   {},
-  ...classFeatureModules.map((module) => module.iconFileByFeatureId)
+  ...classFeatureModules.map((module) => module.iconFileByFeatureId),
+  raceFeatureIconFileById
 );
 
 export function getClassFeatureById(id: string): BG3ClassFeature | undefined {
