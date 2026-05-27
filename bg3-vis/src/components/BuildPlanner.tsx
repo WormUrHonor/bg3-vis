@@ -6,13 +6,11 @@ import CharacterTab from "./CharacterTab";
 import ClassScoresTab from "./ClassScoresTab";
 import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
 import DataCircle from "./DataCircle";
-import PartyPlanner, {
-  type PartyBuildSnapshot,
-} from "./PartyPlanner/PartyPlanner";
-import { getVisualizedBuildItems } from "./DataCircle/dataCircleBuildItems";
+import SavedBuildsPanel from "./SavedBuildsPanel";
 
 import { bg3ClassFeatures } from "../data/bg3ClassFeatures";
 import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvailability";
+import { getVisualizedBuildItems } from "./DataCircle/dataCircleBuildItems";
 
 import {
   cleanActiveClassFeatureIds,
@@ -32,6 +30,15 @@ import type {
   TabId,
   WarlockInvocation,
 } from "../types/buildPlannerTypes";
+
+import type { BuildEditorSnapshot, SavedBuild } from "../types/savedBuildTypes";
+
+import {
+  createSavedBuild,
+  getDefaultSavedBuildLabel,
+  loadSavedBuildsFromStorage,
+  saveSavedBuildsToStorage,
+} from "../logic/savedBuildStorage";
 
 import {
   backgroundSkills,
@@ -115,6 +122,41 @@ function getSpellsAbilitiesTabLabel(
   return "Spells & Abilities";
 }
 
+function getFixedClassFeatureIdsForSnapshot(snapshot: BuildEditorSnapshot) {
+  const classFeaturesOnly = getAvailableClassFeaturesForBuild(
+    bg3ClassFeatures,
+    snapshot.selectedClass,
+    snapshot.selectedSubclass,
+    snapshot.selectedLevel,
+    snapshot.selectedClassFeatureIds,
+    snapshot.rangerFavouredEnemy,
+    snapshot.rangerNaturalExplorer
+  );
+
+  const raceFeatures = getAvailableRaceFeaturesForBuild(
+    snapshot.selectedRace,
+    snapshot.selectedSubrace,
+    snapshot.selectedLevel
+  );
+
+  return getFixedClassFeatureIds([...raceFeatures, ...classFeaturesOnly]);
+}
+
+function getVisualizedItemsForSnapshot(
+  snapshot: BuildEditorSnapshot,
+  scopeId: string
+) {
+  return getVisualizedBuildItems({
+    selectedSpellIds: snapshot.selectedSpellIds,
+    fixedClassFeatureIds: getFixedClassFeatureIdsForSnapshot(snapshot),
+    selectedClassFeatureIds: snapshot.selectedClassFeatureIds,
+    activeClassFeatureIds: snapshot.activeClassFeatureIds,
+  }).map((item) => ({
+    ...item,
+    id: `${scopeId}:${item.id}`,
+  }));
+}
+
 function BuildPlanner() {
   const [showPartyPlanner, setShowPartyPlanner] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>("character");
@@ -161,9 +203,15 @@ function BuildPlanner() {
     []
   );
 
-  const [partySlots, setPartySlots] = useState<
-    Array<PartyBuildSnapshot | null>
-  >([null, null, null]);
+  const [savedBuilds, setSavedBuilds] = useState<SavedBuild[]>(() =>
+    loadSavedBuildsFromStorage()
+  );
+
+  const [partySlots, setPartySlots] = useState<Array<SavedBuild | null>>([
+    null,
+    null,
+    null,
+  ]);
 
   const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
 
@@ -343,37 +391,78 @@ function BuildPlanner() {
 
   const fixedClassFeatureIds = getFixedClassFeatureIds(availableClassFeatures);
 
-  const currentBuildSnapshot: PartyBuildSnapshot = useMemo(
+  const currentEditorSnapshot: BuildEditorSnapshot = useMemo(
     () => ({
-      id: "current-build",
       buildName,
       characterName,
+
+      selectedRace,
+      selectedSubrace,
+      selectedBackground,
+
       selectedClass,
       selectedSubclass,
       selectedLevel,
+
+      baseAbilityScores,
+      bonusPlusTwo,
+      bonusPlusOne,
+      featSelections,
+
+      selectedClassSkills,
+      bardExpertise,
+      rogueExpertise,
+      loreBardSkills,
+      knowledgeClericExpertise,
+
+      rangerFavouredEnemy,
+      rangerNaturalExplorer,
+      selectedWarlockInvocations,
+
       selectedSpellIds,
-      fixedClassFeatureIds,
       selectedClassFeatureIds,
       activeClassFeatureIds,
-      visualizedItems: getVisualizedBuildItems({
-        selectedSpellIds,
-        fixedClassFeatureIds,
-        selectedClassFeatureIds,
-        activeClassFeatureIds,
-      }),
     }),
     [
       buildName,
       characterName,
+      selectedRace,
+      selectedSubrace,
+      selectedBackground,
       selectedClass,
       selectedSubclass,
       selectedLevel,
+      baseAbilityScores,
+      bonusPlusTwo,
+      bonusPlusOne,
+      featSelections,
+      selectedClassSkills,
+      bardExpertise,
+      rogueExpertise,
+      loreBardSkills,
+      knowledgeClericExpertise,
+      rangerFavouredEnemy,
+      rangerNaturalExplorer,
+      selectedWarlockInvocations,
       selectedSpellIds,
-      fixedClassFeatureIds,
       selectedClassFeatureIds,
       activeClassFeatureIds,
     ]
   );
+
+  const partyAggregateItems = useMemo(
+    () =>
+      partySlots.flatMap((slot, index) =>
+        slot
+          ? getVisualizedItemsForSnapshot(slot.snapshot, `party-${index}`)
+          : []
+      ),
+    [partySlots]
+  );
+
+  useEffect(() => {
+    saveSavedBuildsToStorage(savedBuilds);
+  }, [savedBuilds]);
 
   useEffect(() => {
     setSelectedSpellIds((current) =>
@@ -457,38 +546,107 @@ function BuildPlanner() {
     setHasEvaluatedBuild(true);
   }
 
-  function handleSaveCurrentToPartySlot(slotIndex: number) {
-    setPartySlots((current) =>
-      current.map((slot, index) =>
-        index === slotIndex
+  function applyEditorSnapshot(snapshot: BuildEditorSnapshot) {
+    setBuildName(snapshot.buildName);
+    setCharacterName(snapshot.characterName);
+
+    setSelectedRace(snapshot.selectedRace);
+    setSelectedSubrace(snapshot.selectedSubrace);
+    setSelectedBackground(snapshot.selectedBackground);
+
+    setSelectedClass(snapshot.selectedClass);
+    setSelectedSubclass(snapshot.selectedSubclass);
+    setSelectedLevel(snapshot.selectedLevel);
+
+    setBaseAbilityScores(snapshot.baseAbilityScores);
+    setBonusPlusTwo(snapshot.bonusPlusTwo);
+    setBonusPlusOne(snapshot.bonusPlusOne);
+    setFeatSelections(snapshot.featSelections);
+
+    setSelectedClassSkills(snapshot.selectedClassSkills);
+    setBardExpertise(snapshot.bardExpertise);
+    setRogueExpertise(snapshot.rogueExpertise);
+    setLoreBardSkills(snapshot.loreBardSkills);
+    setKnowledgeClericExpertise(snapshot.knowledgeClericExpertise);
+
+    setRangerFavouredEnemy(snapshot.rangerFavouredEnemy);
+    setRangerNaturalExplorer(snapshot.rangerNaturalExplorer);
+    setSelectedWarlockInvocations(snapshot.selectedWarlockInvocations);
+
+    setSelectedSpellIds(snapshot.selectedSpellIds);
+    setSelectedClassFeatureIds(snapshot.selectedClassFeatureIds);
+    setActiveClassFeatureIds(snapshot.activeClassFeatureIds);
+
+    setHasEvaluatedBuild(false);
+  }
+
+  function handleSaveNewBuild() {
+    const savedBuild = createSavedBuild(currentEditorSnapshot);
+
+    setSavedBuilds((current) => [savedBuild, ...current]);
+  }
+
+  function handleOverwriteSavedBuild(buildId: string) {
+    const updatedAt = new Date().toISOString();
+
+    setSavedBuilds((current) =>
+      current.map((savedBuild) =>
+        savedBuild.id === buildId
           ? {
-              ...currentBuildSnapshot,
-              id: `party-slot-${slotIndex}-${Date.now()}`,
+              ...savedBuild,
+              label: getDefaultSavedBuildLabel(currentEditorSnapshot),
+              updatedAt,
+              snapshot: currentEditorSnapshot,
+            }
+          : savedBuild
+      )
+    );
+
+    setPartySlots((current) =>
+      current.map((slot) =>
+        slot?.id === buildId
+          ? {
+              ...slot,
+              label: getDefaultSavedBuildLabel(currentEditorSnapshot),
+              updatedAt,
+              snapshot: currentEditorSnapshot,
             }
           : slot
       )
     );
   }
 
-  function handleLoadPartySlot(slotIndex: number) {
-    const snapshot = partySlots[slotIndex];
+  function handleLoadSavedBuild(buildId: string) {
+    const savedBuild = savedBuilds.find((item) => item.id === buildId);
 
-    if (!snapshot) return;
+    if (!savedBuild) return;
 
-    setBuildName(snapshot.buildName);
-    setCharacterName(snapshot.characterName);
-    setSelectedClass(snapshot.selectedClass);
-    setSelectedSubclass(snapshot.selectedSubclass);
-    setSelectedLevel(snapshot.selectedLevel);
-    setSelectedSpellIds(snapshot.selectedSpellIds);
-    setSelectedClassFeatureIds(snapshot.selectedClassFeatureIds);
-    setActiveClassFeatureIds(snapshot.activeClassFeatureIds);
-    setHasEvaluatedBuild(false);
+    applyEditorSnapshot(savedBuild.snapshot);
+  }
+
+  function handleLoadSavedBuildIntoPartySlot(buildId: string, slotIndex: number) {
+    const savedBuild = savedBuilds.find((item) => item.id === buildId);
+
+    if (!savedBuild) return;
+
+    setPartySlots((current) =>
+      current.map((slot, index) => (index === slotIndex ? savedBuild : slot))
+    );
   }
 
   function handleClearPartySlot(slotIndex: number) {
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? null : slot))
+    );
+  }
+
+  function handleDeleteSavedBuild(buildId: string) {
+    setSavedBuilds((current) =>
+      current.filter((savedBuild) => savedBuild.id !== buildId)
+    );
+
+    setPartySlots((current) =>
+      current.map((slot) => (slot?.id === buildId ? null : slot))
     );
   }
 
@@ -551,6 +709,18 @@ function BuildPlanner() {
               <span>Level</span>
               <strong>{selectedLevel}</strong>
             </div>
+
+            <SavedBuildsPanel
+              currentSnapshot={currentEditorSnapshot}
+              savedBuilds={savedBuilds}
+              partySlots={partySlots}
+              onSaveNew={handleSaveNewBuild}
+              onOverwrite={handleOverwriteSavedBuild}
+              onLoad={handleLoadSavedBuild}
+              onLoadIntoPartySlot={handleLoadSavedBuildIntoPartySlot}
+              onClearPartySlot={handleClearPartySlot}
+              onDelete={handleDeleteSavedBuild}
+            />
           </aside>
 
           <section className="main-panel">
@@ -638,8 +808,6 @@ function BuildPlanner() {
         </div>
       </section>
 
-
-
       <section className="workspace-half visualisation-half visualisation-half--immersive">
         <div
           className={`visualisation-panel visualisation-panel--with-party-dock ${
@@ -677,51 +845,81 @@ function BuildPlanner() {
                 {[
                   {
                     label: "Aggregate",
-                    name: "Combined Party",
-                    subtitle: "Shared capability profile",
                     modifier: "aggregate",
+                    savedBuild: null,
+                    visualizedItemsOverride: partyAggregateItems,
                   },
-                  {
-                    label: "Member 1",
-                    name: buildName || "Current Build",
-                    subtitle: selectedSubclass || selectedClass || "Unassigned",
-                    modifier: "active",
-                  },
-                  {
-                    label: "Member 2",
-                    name: "Companion Build",
-                    subtitle: selectedSubclass || selectedClass || "Unassigned",
-                    modifier: "member",
-                  },
-                  {
-                    label: "Member 3",
-                    name: "Companion Build",
-                    subtitle: selectedSubclass || selectedClass || "Unassigned",
-                    modifier: "member",
-                  },
-                ].map((slot) => (
+                  ...partySlots.map((slot, index) => ({
+                    label: `Member ${index + 1}`,
+                    modifier: slot ? "member-filled" : "member-empty",
+                    savedBuild: slot,
+                    visualizedItemsOverride: undefined,
+                  })),
+                ].map((slot, index) => (
                   <article
                     className={`party-node party-node--${slot.modifier}`}
                     key={slot.label}
-                    title={`${slot.label}: ${slot.name} · ${slot.subtitle}`}
+                    title={
+                      slot.savedBuild
+                        ? `${slot.label}: ${slot.savedBuild.label}`
+                        : slot.label
+                    }
                   >
                     <span className="party-node-side-label">{slot.label}</span>
 
                     <div className="party-node-orb-shell">
-                      <div className="party-node-circle">
-                        <DataCircle
-                          buildName={slot.name}
-                          characterName={characterName}
-                          selectedClass={selectedClass}
-                          selectedSubclass={selectedSubclass}
-                          selectedLevel={selectedLevel}
-                          selectedSpellIds={selectedSpellIds}
-                          fixedClassFeatureIds={fixedClassFeatureIds}
-                          selectedClassFeatureIds={selectedClassFeatureIds}
-                          activeClassFeatureIds={activeClassFeatureIds}
-                          showDprLayer={false}
-                        />
-                      </div>
+                      {index === 0 ? (
+                        <div className="party-node-circle">
+                          <DataCircle
+                            buildName="Party Aggregate"
+                            characterName="Combined Party"
+                            selectedClass=""
+                            selectedSubclass="Aggregate"
+                            selectedLevel={12}
+                            selectedSpellIds={[]}
+                            fixedClassFeatureIds={[]}
+                            selectedClassFeatureIds={[]}
+                            activeClassFeatureIds={[]}
+                            showDprLayer={false}
+                            visualizedItemsOverride={partyAggregateItems}
+                          />
+                        </div>
+                      ) : slot.savedBuild ? (
+                        <div className="party-node-circle">
+                          <DataCircle
+                            buildName={slot.savedBuild.snapshot.buildName}
+                            characterName={
+                              slot.savedBuild.snapshot.characterName
+                            }
+                            selectedClass={
+                              slot.savedBuild.snapshot.selectedClass
+                            }
+                            selectedSubclass={
+                              slot.savedBuild.snapshot.selectedSubclass
+                            }
+                            selectedLevel={
+                              slot.savedBuild.snapshot.selectedLevel
+                            }
+                            selectedSpellIds={
+                              slot.savedBuild.snapshot.selectedSpellIds
+                            }
+                            fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(
+                              slot.savedBuild.snapshot
+                            )}
+                            selectedClassFeatureIds={
+                              slot.savedBuild.snapshot.selectedClassFeatureIds
+                            }
+                            activeClassFeatureIds={
+                              slot.savedBuild.snapshot.activeClassFeatureIds
+                            }
+                            showDprLayer={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="party-node-empty">
+                          <span>Empty</span>
+                        </div>
+                      )}
                     </div>
                   </article>
                 ))}
@@ -730,9 +928,6 @@ function BuildPlanner() {
           )}
         </div>
       </section>
-
-
-
     </main>
   );
 }
