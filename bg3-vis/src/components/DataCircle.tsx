@@ -1,10 +1,5 @@
 import { useMemo, useState } from "react";
 import type { ClassName } from "../types/buildPlannerTypes";
-import { getSpellById, type BG3Spell } from "../data/bg3Spells";
-import {
-  getClassFeatureById,
-  type BG3ClassFeature,
-} from "../data/bg3ClassFeatures";
 import {
   mockAverageDpr,
   mockDataCircleBuild,
@@ -17,12 +12,14 @@ import {
   getRangeCounts,
   getRoleData,
 } from "./DataCircle/dataCircleAggregation";
+import { getVisualizedBuildItems } from "./DataCircle/dataCircleBuildItems";
 import {
   buildLayerRelationshipIndex,
   isSameFocusItem,
   type DataCircleFocus,
   type DataCircleFocusItem,
 } from "./DataCircle/dataCircleInteraction";
+import type { VisualizedBuildItem } from "./DataCircle/dataCircleTypes";
 import { BackgroundLayer } from "./DataCircle/layers/BackgroundLayer";
 import { CenterSealLayer } from "./DataCircle/layers/CenterSealLayer";
 import { DamageTypesLayer } from "./DataCircle/layers/DamageTypesLayer";
@@ -33,72 +30,23 @@ import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
 import "./DataCircle.css";
 
+export type DprBarMode = "stacked" | "grouped";
+export type DataCircleVariant = "main" | "party" | "aggregate";
+
 type DataCircleProps = {
   buildName: string;
   characterName: string;
   selectedClass: ClassName | "";
   selectedSubclass: string;
   selectedLevel: number;
-  selectedSpellIds: string[];
-  fixedClassFeatureIds: string[];
-  selectedClassFeatureIds: string[];
-  activeClassFeatureIds: string[];
-  showDprLayer: boolean;
+  selectedSpellIds?: string[];
+  fixedClassFeatureIds?: string[];
+  selectedClassFeatureIds?: string[];
+  activeClassFeatureIds?: string[];
+  showDprLayer?: boolean;
+  variant?: DataCircleVariant;
+  visualizedItemsOverride?: VisualizedBuildItem[];
 };
-
-export type DprBarMode = "stacked" | "grouped";
-
-import type { VisualizedBuildItem } from "./DataCircle/dataCircleTypes";
-
-function getSelectedSpells(selectedSpellIds: string[]): BG3Spell[] {
-  return selectedSpellIds
-    .map((id) => getSpellById(id))
-    .filter((spell): spell is BG3Spell => Boolean(spell));
-}
-
-function getSelectedClassFeatures(featureIds: string[]): BG3ClassFeature[] {
-  return featureIds
-    .map((id) => getClassFeatureById(id))
-    .filter((feature): feature is BG3ClassFeature => Boolean(feature));
-}
-
-function isVisualizableClassFeature(feature: BG3ClassFeature): boolean {
-  if (feature.isInformational) return false;
-
-  const hasRoles = feature.roles.length > 0;
-  const hasDamageTypes = feature.damageTypes.length > 0;
-  const hasRange = Boolean(feature.range);
-
-  const isUsableAction =
-    feature.kind === "action" ||
-    feature.kind === "bonus-action" ||
-    feature.kind === "reaction" ||
-    feature.kind === "manoeuvre" ||
-    feature.kind === "toggle" ||
-    feature.kind === "subclass-feature";
-
-  const isRelevantPassive =
-    feature.kind === "passive" &&
-    (feature.roles.some((role) =>
-      [
-        "single-target-damage",
-        "area-damage",
-        "control",
-        "support-buff",
-        "defense-protection",
-        "healing",
-        "mobility-positioning",
-        "summon",
-      ].includes(role)
-    ) ||
-      hasDamageTypes);
-
-  return hasRange && (isUsableAction || isRelevantPassive) && (hasRoles || hasDamageTypes);
-}
-
-function uniqueById<T extends { id: string }>(items: T[]): T[] {
-  return Array.from(new Map(items.map((item) => [item.id, item])).values());
-}
 
 export default function DataCircle({
   buildName,
@@ -106,11 +54,13 @@ export default function DataCircle({
   selectedClass,
   selectedSubclass,
   selectedLevel,
-  selectedSpellIds,
-  fixedClassFeatureIds,
-  selectedClassFeatureIds,
-  activeClassFeatureIds,
-  showDprLayer,
+  selectedSpellIds = [],
+  fixedClassFeatureIds = [],
+  selectedClassFeatureIds = [],
+  activeClassFeatureIds = [],
+  showDprLayer = false,
+  variant = "main",
+  visualizedItemsOverride,
 }: DataCircleProps) {
   const [hoverFocus, setHoverFocus] = useState<DataCircleFocus>(null);
   const [selectedFocuses, setSelectedFocuses] = useState<DataCircleFocusItem[]>(
@@ -119,25 +69,46 @@ export default function DataCircle({
   const [isSelectionReviewActive, setIsSelectionReviewActive] = useState(false);
   const [dprBarMode, setDprBarMode] = useState<DprBarMode>("stacked");
 
+  const isCompact = variant !== "main";
   const activeFocus: DataCircleFocus =
     hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
 
-  const selectedClassFeatureIdsForCircle = useMemo(
+  const resolvedVisualizedItems = useMemo(
     () =>
-      uniqueById(
-        getSelectedClassFeatures([
-          ...fixedClassFeatureIds,
-          ...selectedClassFeatureIds,
-          ...activeClassFeatureIds,
-        ])
-      ).filter(isVisualizableClassFeature),
-    [fixedClassFeatureIds, selectedClassFeatureIds, activeClassFeatureIds]
+      getVisualizedBuildItems({
+        selectedSpellIds,
+        fixedClassFeatureIds,
+        selectedClassFeatureIds,
+        activeClassFeatureIds,
+      }),
+    [
+      selectedSpellIds,
+      fixedClassFeatureIds,
+      selectedClassFeatureIds,
+      activeClassFeatureIds,
+    ]
   );
 
-  const isUsingMockData =
-    selectedSpellIds.length === 0 && selectedClassFeatureIdsForCircle.length === 0;
+  const hasOverride = visualizedItemsOverride !== undefined;
 
-  const displaySpellIds = isUsingMockData ? mockSelectedSpellIds : selectedSpellIds;
+  const isUsingMockData =
+    !hasOverride &&
+    selectedSpellIds.length === 0 &&
+    resolvedVisualizedItems.length === 0;
+
+  const visualizedItems: VisualizedBuildItem[] = useMemo(() => {
+    if (hasOverride) return visualizedItemsOverride;
+    if (isUsingMockData) {
+      return getVisualizedBuildItems({
+        selectedSpellIds: mockSelectedSpellIds,
+        fixedClassFeatureIds: [],
+        selectedClassFeatureIds: [],
+        activeClassFeatureIds: [],
+      });
+    }
+
+    return resolvedVisualizedItems;
+  }, [hasOverride, visualizedItemsOverride, isUsingMockData, resolvedVisualizedItems]);
 
   const displayBuildName = isUsingMockData
     ? mockDataCircleBuild.buildName
@@ -159,24 +130,12 @@ export default function DataCircle({
     ? mockDataCircleBuild.selectedLevel
     : selectedLevel;
 
-  const selectedSpells = useMemo(
-    () => getSelectedSpells(displaySpellIds),
-    [displaySpellIds]
-  );
-
-  const visualizedItems: VisualizedBuildItem[] = useMemo(
-    () =>
-      uniqueById([
-        ...selectedSpells,
-        ...(isUsingMockData ? [] : selectedClassFeatureIdsForCircle),
-      ]),
-    [selectedSpells, selectedClassFeatureIdsForCircle, isUsingMockData]
-  );
-
   const buildLabel = displayBuildName.trim() || "Untitled Build";
   const characterLabel = displayCharacterName.trim();
   const archetypeLabel = displaySubclass || displayClass || "Unassigned";
   const abilityCount = visualizedItems.length;
+
+  const compactShowDprLayer = !isCompact && showDprLayer;
 
   const rangeCounts = useMemo(
     () => getRangeCounts(visualizedItems),
@@ -208,6 +167,8 @@ export default function DataCircle({
   );
 
   function toggleSelectedFocus(nextFocus: DataCircleFocusItem) {
+    if (isCompact) return;
+
     setSelectedFocuses((current) => {
       const alreadySelected = current.some((item) =>
         isSameFocusItem(item, nextFocus)
@@ -228,8 +189,11 @@ export default function DataCircle({
   }
 
   return (
-    <div className="data-circle-panel">
-      {showDprLayer ? (
+    <div
+      className={`data-circle-panel data-circle-panel--${variant}`}
+      data-circle-variant={variant}
+    >
+      {compactShowDprLayer ? (
         <div className="data-circle-controls">
           <div className="data-circle-dpr-toggle" aria-label="DPR bar layout">
             <span className="data-circle-dpr-toggle-label">DPR layout</span>
@@ -261,7 +225,7 @@ export default function DataCircle({
         </div>
       ) : null}
 
-      {selectedFocuses.length > 0 ? (
+      {!isCompact && selectedFocuses.length > 0 ? (
         <button
           type="button"
           className={`data-circle-clear-selection-button ${
@@ -284,14 +248,14 @@ export default function DataCircle({
           viewBox="0 0 1000 1000"
           className="data-circle-svg"
           role="img"
-          aria-label="Overview Data Circle visualization"
+          aria-label={`${buildLabel} Data Circle visualization`}
           onMouseLeave={() => setHoverFocus(null)}
         >
           <DataCircleDefs />
 
           <BackgroundLayer />
 
-          {showDprLayer ? (
+          {compactShowDprLayer ? (
             <DprByRoundLayer
               rounds={mockDprByRound}
               averageDpr={mockAverageDpr}
@@ -338,11 +302,13 @@ export default function DataCircle({
             showSelectionMarks={isSelectionReviewActive}
           />
 
-          <SectionTitleLayer
-            outerTitle={showDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"}
-          />
+          {!isCompact ? (
+            <SectionTitleLayer
+              outerTitle={compactShowDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"}
+            />
+          ) : null}
 
-          {hoverFocus ? (
+          {!isCompact && hoverFocus ? (
             <FocusExplanationLayer
               focus={hoverFocus}
               relationshipIndex={relationshipIndex}
@@ -354,8 +320,8 @@ export default function DataCircle({
               archetypeLabel={archetypeLabel}
               displayLevel={displayLevel}
               spellCount={abilityCount}
-              averageDpr={showDprLayer ? mockAverageDpr : undefined}
-              totalDamage={showDprLayer ? totalDamage : undefined}
+              averageDpr={compactShowDprLayer ? mockAverageDpr : undefined}
+              totalDamage={compactShowDprLayer ? totalDamage : undefined}
             />
           )}
         </svg>

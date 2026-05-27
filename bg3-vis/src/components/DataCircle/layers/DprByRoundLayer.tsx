@@ -256,13 +256,45 @@ function getDprLayerFilter(focus: DataCircleFocus) {
   return "saturate(0.9) brightness(0.9)";
 }
 
-function getContributionIconSize(radialThickness: number, sectorAngle: number) {
-  if (radialThickness >= 22 && sectorAngle >= 30) return 20;
-  if (radialThickness >= 17 && sectorAngle >= 28) return 17;
-  if (radialThickness >= 12 && sectorAngle >= 24) return 14;
+function getContributionIconSize(
+  barMode: DprBarMode,
+  radialThickness: number,
+  angularSweep: number
+) {
+  if (barMode === "grouped") {
+    if (radialThickness >= 20 && angularSweep >= 7) return 15;
+    if (radialThickness >= 16 && angularSweep >= 5.5) return 12;
+    if (radialThickness >= 13 && angularSweep >= 4.8) return 10;
+
+    return 0;
+  }
+
+  if (radialThickness >= 22 && angularSweep >= 30) return 20;
+  if (radialThickness >= 17 && angularSweep >= 28) return 17;
+  if (radialThickness >= 12 && angularSweep >= 24) return 14;
 
   return 0;
 }
+
+function getContributionIconRadius(
+  barMode: DprBarMode,
+  innerRadius: number,
+  outerRadius: number,
+  iconSize: number
+) {
+  if (iconSize <= 0) return (innerRadius + outerRadius) / 2;
+
+  if (barMode === "grouped") {
+    return clamp(
+      (innerRadius + outerRadius) / 2,
+      innerRadius + iconSize * 0.58,
+      outerRadius - iconSize * 0.58
+    );
+  }
+
+  return (innerRadius + outerRadius) / 2;
+}
+
 function getAbilityIconHref(abilityId?: string) {
   if (!abilityId) return undefined;
 
@@ -280,6 +312,7 @@ function getAbilityIconHref(abilityId?: string) {
 
   return undefined;
 }
+
 function getContributionIcon(
   contribution: DprContribution,
   iconSize: number,
@@ -295,15 +328,16 @@ function getContributionIcon(
   if (!iconHref) return null;
 
   return (
-    <g pointerEvents="none" opacity={isRelated ? 1 : 0.3}>
+    <g pointerEvents="none" opacity={isRelated ? 1 : 0.34}>
       <circle
         cx={x}
         cy={y}
-        r={iconSize * 0.62}
-        fill="rgba(6,5,7,0.54)"
+        r={iconSize * 0.68}
+        fill="rgba(6,5,7,0.72)"
         stroke={color}
-        strokeOpacity="0.2"
-        strokeWidth="0.75"
+        strokeOpacity={isRelated ? 0.36 : 0.18}
+        strokeWidth="0.85"
+        filter="url(#fineInkShadow)"
       />
 
       <image
@@ -312,7 +346,7 @@ function getContributionIcon(
         y={y - iconSize / 2}
         width={iconSize}
         height={iconSize}
-        opacity="0.94"
+        opacity="0.96"
         preserveAspectRatio="xMidYMid meet"
       />
     </g>
@@ -476,12 +510,12 @@ export function DprByRoundLayer({
 
       await Promise.all(
         abilityIds.map(async (abilityId, index) => {
-const iconHref = getAbilityIconHref(abilityId);
+          const iconHref = getAbilityIconHref(abilityId);
 
-if (!iconHref) {
-  nextColors[abilityId] = getFallbackColor(index);
-  return;
-}
+          if (!iconHref) {
+            nextColors[abilityId] = getFallbackColor(index);
+            return;
+          }
 
           try {
             nextColors[abilityId] = await getAverageIconColor(iconHref);
@@ -730,7 +764,7 @@ if (!iconHref) {
                 outerRadius = damageToRadius(clippedOuterDamage);
               } else {
                 const contributionCount = Math.max(1, contributions.length);
-                const internalGap = Math.min(1.45, visualSweep * 0.055);
+                const internalGap = Math.min(1.35, visualSweep * 0.052);
                 const availableSweep =
                   visualSweep - internalGap * (contributionCount - 1);
                 const contributionSweep = availableSweep / contributionCount;
@@ -749,17 +783,26 @@ if (!iconHref) {
 
               if (radialThickness <= 0) return null;
 
+              const angularSweep =
+                contributionEndAngle - contributionStartAngle;
+
               const iconSize = getContributionIconSize(
+                barMode,
                 radialThickness,
-                barMode === "grouped"
-                  ? (contributionEndAngle - contributionStartAngle) * 1.25
-                  : sectorAngle
+                angularSweep
+              );
+
+              const iconRadius = getContributionIconRadius(
+                barMode,
+                innerRadius,
+                outerRadius,
+                iconSize
               );
 
               const iconPoint = polarToCartesian(
                 CX,
                 CY,
-                (innerRadius + outerRadius) / 2,
+                iconRadius,
                 iconAngle
               );
 

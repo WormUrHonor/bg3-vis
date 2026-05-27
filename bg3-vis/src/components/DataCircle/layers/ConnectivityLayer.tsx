@@ -13,6 +13,7 @@ import {
 } from "../dataCircleGeometry";
 import type {
   DataCircleFocus,
+  DataCircleFocusItem,
   DprRound,
   LayerRelationshipIndex,
 } from "../dataCircleInteraction";
@@ -37,6 +38,18 @@ const ROLE_RADIUS = 242;
 const DAMAGE_RADIUS = 314;
 const RANGE_RADIUS = 206;
 const DPR_RADIUS = 440;
+
+function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
+  if (!focus) return [];
+  return Array.isArray(focus) ? focus : [focus];
+}
+
+function focusIncludesType(
+  focus: DataCircleFocus,
+  type: DataCircleFocusItem["type"]
+) {
+  return getFocusItems(focus).some((item) => item.type === type);
+}
 
 function getSegmentMidAngles(
   keys: AbilityRole[],
@@ -274,7 +287,7 @@ export function ConnectivityLayer({
         />
       ))}
 
-      {focus.type === "round" ? (
+      {focusIncludesType(focus, "round") ? (
         <path
           d={describeTextArc(CX, CY, DPR_RADIUS + 8, -90, 270)}
           fill="none"
