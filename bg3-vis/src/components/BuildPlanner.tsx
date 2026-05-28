@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import "./BuildPlanner.css";
 
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
@@ -8,6 +14,7 @@ import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
 import DataCircle from "./DataCircle";
 import SavedBuildsPanel from "./SavedBuildsPanel";
 import ProcessSpiralPanel from "./ProcessSpiralPanel";
+import StudyLoggingPanel from "./StudyLoggingPanel";
 
 import { bg3ClassFeatures } from "../data/bg3ClassFeatures";
 import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvailability";
@@ -47,6 +54,8 @@ import {
   saveBuildHistoryToStorage,
   saveSavedBuildsToStorage,
 } from "../logic/savedBuildStorage";
+
+import { logStudyEvent } from "../logic/studyLogger";
 
 import {
   backgroundSkills,
@@ -89,6 +98,28 @@ type PartyDockItem = {
 
 function getAbilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
+}
+
+function areLogValuesEqual(first: unknown, second: unknown) {
+  return JSON.stringify(first) === JSON.stringify(second);
+}
+
+function getSnapshotSummary(snapshot: BuildEditorSnapshot) {
+  return {
+    buildName: snapshot.buildName,
+    characterName: snapshot.characterName,
+    selectedRace: snapshot.selectedRace,
+    selectedSubrace: snapshot.selectedSubrace,
+    selectedBackground: snapshot.selectedBackground,
+    selectedClass: snapshot.selectedClass,
+    selectedSubclass: snapshot.selectedSubclass,
+    selectedLevel: snapshot.selectedLevel,
+    selectedSpellCount: snapshot.selectedSpellIds.length,
+    selectedClassFeatureCount: snapshot.selectedClassFeatureIds.length,
+    activeClassFeatureCount: snapshot.activeClassFeatureIds.length,
+    selectedSkillCount: snapshot.selectedClassSkills.length,
+    featCount: snapshot.featSelections.length,
+  };
 }
 
 function getWisdomPreparedSpellMax(
@@ -518,6 +549,50 @@ function BuildPlanner() {
     [currentEditorSnapshot, partySlots]
   );
 
+  function logCurrentBuildEdit(
+    field: string,
+    oldValue: unknown,
+    newValue: unknown,
+    extraPayload: Record<string, unknown> = {}
+  ) {
+    if (areLogValuesEqual(oldValue, newValue)) return;
+
+    logStudyEvent({
+      eventCategory: "build_edit",
+      eventType: "build_edit",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activeView: activeTab,
+      payload: {
+        field,
+        oldValue,
+        newValue,
+        focusedLabel,
+        isAggregateFocused,
+        editingPartySlotIndex,
+        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+        ...extraPayload,
+      },
+    });
+  }
+
+  function createLoggedSetter<T>(
+    field: string,
+    currentValue: T,
+    setter: Dispatch<SetStateAction<T>>,
+    extraPayload: Record<string, unknown> = {}
+  ): Dispatch<SetStateAction<T>> {
+    return (nextValueOrUpdater) => {
+      const nextValue =
+        typeof nextValueOrUpdater === "function"
+          ? (nextValueOrUpdater as (previousValue: T) => T)(currentValue)
+          : nextValueOrUpdater;
+
+      logCurrentBuildEdit(field, currentValue, nextValue, extraPayload);
+      setter(nextValue);
+    };
+  }
+
   useEffect(() => {
     saveSavedBuildsToStorage(savedBuilds);
   }, [savedBuilds]);
@@ -582,6 +657,22 @@ function BuildPlanner() {
     eventType: "created" | "updated"
   ) {
     const historyEntry = createBuildHistoryEntry(savedBuild, eventType);
+
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "history_entry_created",
+      activeBuildId: savedBuild.id,
+      activeBuildLabel: savedBuild.label,
+      activeView: "build-history",
+      payload: {
+        historyEntryId: historyEntry.id,
+        savedBuildId: savedBuild.id,
+        historyEventType: eventType,
+        label: savedBuild.label,
+        snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+      },
+    });
+
     setBuildHistory((current) => [historyEntry, ...current]);
   }
 
@@ -627,6 +718,14 @@ function BuildPlanner() {
   function handleRaceChange(value: string) {
     const race = value as RaceName | "";
 
+    logCurrentBuildEdit("selectedRace", selectedRace, race, {
+      resetFields: [
+        "selectedSubrace",
+        "selectedClassFeatureIds",
+        "activeClassFeatureIds",
+      ],
+    });
+
     setSelectedRace(race);
     setSelectedSubrace("");
     setSelectedClassFeatureIds([]);
@@ -635,6 +734,23 @@ function BuildPlanner() {
 
   function handleClassChange(value: string) {
     const className = value as ClassName | "";
+
+    logCurrentBuildEdit("selectedClass", selectedClass, className, {
+      resetFields: [
+        "selectedSubclass",
+        "selectedClassSkills",
+        "bardExpertise",
+        "rogueExpertise",
+        "loreBardSkills",
+        "knowledgeClericExpertise",
+        "rangerFavouredEnemy",
+        "rangerNaturalExplorer",
+        "selectedWarlockInvocations",
+        "selectedSpellIds",
+        "selectedClassFeatureIds",
+        "activeClassFeatureIds",
+      ],
+    });
 
     setSelectedClass(className);
     setSelectedSubclass("");
@@ -654,7 +770,33 @@ function BuildPlanner() {
   function handleEvaluateBuild() {
     if (isAggregateFocused) return;
 
+    logStudyEvent({
+      eventCategory: "evaluation",
+      eventType: "evaluation_requested",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activeView: "main-data-circle",
+      payload: {
+        resultSource: "prototype_mock_dpr",
+        buildSnapshot: currentEditorSnapshot,
+        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+      },
+    });
+
     setHasEvaluatedBuild(true);
+
+    logStudyEvent({
+      eventCategory: "evaluation",
+      eventType: "evaluation_completed",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activeView: "main-data-circle",
+      payload: {
+        resultSource: "prototype_mock_dpr",
+        note: "Replace this payload with simulator outputs once API integration is active.",
+        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+      },
+    });
   }
 
   function applyEditorSnapshot(
@@ -701,6 +843,20 @@ function BuildPlanner() {
   function handleSaveNewBuild() {
     const savedBuild = createSavedBuild(currentEditorSnapshot);
 
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "build_saved",
+      activeBuildId: savedBuild.id,
+      activeBuildLabel: savedBuild.label,
+      activeView: activeTab,
+      payload: {
+        savedBuildId: savedBuild.id,
+        label: savedBuild.label,
+        snapshot: savedBuild.snapshot,
+        snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+      },
+    });
+
     setSavedBuilds((current) => [savedBuild, ...current]);
     setFocusedSavedBuild(savedBuild);
     setEditingPartySlotIndex(null);
@@ -723,6 +879,21 @@ function BuildPlanner() {
       currentEditorSnapshot
     );
 
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "build_overwritten",
+      activeBuildId: updatedBuild.id,
+      activeBuildLabel: updatedBuild.label,
+      activeView: activeTab,
+      payload: {
+        savedBuildId: updatedBuild.id,
+        label: updatedBuild.label,
+        previousSnapshotSummary: getSnapshotSummary(existingBuild.snapshot),
+        nextSnapshot: updatedBuild.snapshot,
+        nextSnapshotSummary: getSnapshotSummary(updatedBuild.snapshot),
+      },
+    });
+
     upsertSavedBuild(updatedBuild);
     updatePartySlotCopies(updatedBuild);
 
@@ -738,6 +909,20 @@ function BuildPlanner() {
 
     if (!savedBuild) return;
 
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "build_loaded",
+      activeBuildId: savedBuild.id,
+      activeBuildLabel: savedBuild.label,
+      activeView: "saved-builds-panel",
+      payload: {
+        savedBuildId: savedBuild.id,
+        label: savedBuild.label,
+        previousFocusedLabel: focusedLabel,
+        snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+      },
+    });
+
     persistFocusedBuildIfSaved();
     applyEditorSnapshot(savedBuild.snapshot, savedBuild, null);
   }
@@ -750,6 +935,21 @@ function BuildPlanner() {
 
     if (!savedBuild) return;
 
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "party_slot_assigned",
+      activeBuildId: savedBuild.id,
+      activeBuildLabel: savedBuild.label,
+      activeView: "saved-builds-panel",
+      payload: {
+        slotIndex,
+        slotNumber: slotIndex + 1,
+        savedBuildId: savedBuild.id,
+        label: savedBuild.label,
+        snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+      },
+    });
+
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? savedBuild : slot))
     );
@@ -761,6 +961,23 @@ function BuildPlanner() {
     if (!selectedSlotBuild || isAggregateFocused) return;
 
     const outgoingFocusedBuild = getCurrentEditorAsSavedBuild();
+
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "party_slot_focused",
+      activeBuildId: selectedSlotBuild.id,
+      activeBuildLabel: selectedSlotBuild.label,
+      activeView: "party-dock",
+      payload: {
+        slotIndex,
+        slotNumber: slotIndex + 1,
+        incomingBuildId: selectedSlotBuild.id,
+        incomingBuildLabel: selectedSlotBuild.label,
+        outgoingBuildId: outgoingFocusedBuild.id,
+        outgoingBuildLabel: outgoingFocusedBuild.label,
+        interactionMode: "swap_focused_build_with_party_slot",
+      },
+    });
 
     upsertSavedBuild(outgoingFocusedBuild);
 
@@ -778,22 +995,83 @@ function BuildPlanner() {
   }
 
   function handleFocusAggregate() {
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "aggregate_focused",
+      activeView: "focus-selector",
+      payload: {
+        focusedBuildSummary: getSnapshotSummary(currentEditorSnapshot),
+        assignedPartySlots: partySlots.map((slot, index) => ({
+          slotIndex: index,
+          slotNumber: index + 1,
+          savedBuildId: slot?.id ?? null,
+          label: slot?.label ?? null,
+        })),
+      },
+    });
+
     persistFocusedBuildIfSaved();
     setFocusedDataCircle("aggregate");
     setEditingPartySlotIndex(null);
   }
 
   function handleFocusCurrentEditor() {
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "editable_focused",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activeView: "focus-selector",
+      payload: {
+        focusedLabel,
+        snapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+      },
+    });
+
     setFocusedDataCircle("editor");
   }
 
   function handleClearPartySlot(slotIndex: number) {
+    const clearedSlot = partySlots[slotIndex];
+
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "party_slot_cleared",
+      activeBuildId: clearedSlot?.id,
+      activeBuildLabel: clearedSlot?.label,
+      activeView: "saved-builds-panel",
+      payload: {
+        slotIndex,
+        slotNumber: slotIndex + 1,
+        clearedBuildId: clearedSlot?.id ?? null,
+        clearedBuildLabel: clearedSlot?.label ?? null,
+      },
+    });
+
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? null : slot))
     );
   }
 
   function handleDeleteSavedBuild(buildId: string) {
+    const deletedBuild =
+      savedBuilds.find((savedBuild) => savedBuild.id === buildId) ?? null;
+
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "build_deleted",
+      activeBuildId: buildId,
+      activeBuildLabel: deletedBuild?.label,
+      activeView: "saved-builds-panel",
+      payload: {
+        savedBuildId: buildId,
+        label: deletedBuild?.label ?? null,
+        snapshotSummary: deletedBuild
+          ? getSnapshotSummary(deletedBuild.snapshot)
+          : null,
+      },
+    });
+
     setSavedBuilds((current) =>
       current.filter((savedBuild) => savedBuild.id !== buildId)
     );
@@ -815,6 +1093,21 @@ function BuildPlanner() {
 
     if (!historyEntry) return;
 
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "build_loaded",
+      activeBuildId: historyEntry.savedBuildId,
+      activeBuildLabel: historyEntry.label,
+      activeView: "process-spiral",
+      payload: {
+        source: "history-entry",
+        historyEntryId: historyEntry.id,
+        savedBuildId: historyEntry.savedBuildId,
+        label: historyEntry.label,
+        snapshotSummary: getSnapshotSummary(historyEntry.snapshot),
+      },
+    });
+
     applyEditorSnapshot(historyEntry.snapshot, null, null);
   }
 
@@ -829,6 +1122,22 @@ function BuildPlanner() {
       historyEntry.snapshot,
       `${historyEntry.label} · restored`
     );
+
+    logStudyEvent({
+      eventCategory: "build_lifecycle",
+      eventType: "build_restored_from_history",
+      activeBuildId: restoredBuild.id,
+      activeBuildLabel: restoredBuild.label,
+      activeView: "process-spiral",
+      payload: {
+        restoredBuildId: restoredBuild.id,
+        restoredLabel: restoredBuild.label,
+        sourceHistoryEntryId: historyEntry.id,
+        sourceSavedBuildId: historyEntry.savedBuildId,
+        snapshot: restoredBuild.snapshot,
+        snapshotSummary: getSnapshotSummary(restoredBuild.snapshot),
+      },
+    });
 
     setSavedBuilds((current) => [restoredBuild, ...current]);
     setFocusedSavedBuild(restoredBuild);
@@ -850,6 +1159,23 @@ function BuildPlanner() {
       historyEntry.snapshot,
       `${historyEntry.label} · restored`
     );
+
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "party_slot_assigned",
+      activeBuildId: restoredBuild.id,
+      activeBuildLabel: restoredBuild.label,
+      activeView: "process-spiral",
+      payload: {
+        slotIndex,
+        slotNumber: slotIndex + 1,
+        restoredBuildId: restoredBuild.id,
+        restoredLabel: restoredBuild.label,
+        sourceHistoryEntryId: historyEntry.id,
+        sourceSavedBuildId: historyEntry.savedBuildId,
+        snapshotSummary: getSnapshotSummary(restoredBuild.snapshot),
+      },
+    });
 
     setSavedBuilds((current) => [restoredBuild, ...current]);
 
@@ -928,7 +1254,21 @@ function BuildPlanner() {
                 <button
                   key={tab.id}
                   className={activeTab === tab.id ? "tab active" : "tab"}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    if (activeTab === tab.id) return;
+
+                    logStudyEvent({
+                      eventCategory: "visualization",
+                      eventType: "planner_tab_changed",
+                      activeView: "build-planner",
+                      payload: {
+                        previousTab: activeTab,
+                        nextTab: tab.id,
+                      },
+                    });
+
+                    setActiveTab(tab.id);
+                  }}
                   type="button"
                   disabled={isAggregateFocused}
                 >
@@ -1061,6 +1401,12 @@ function BuildPlanner() {
                   }
                 />
 
+                <StudyLoggingPanel
+                  currentSnapshot={currentEditorSnapshot}
+                  partySlots={partySlots}
+                  focusedLabel={focusedLabel}
+                />
+
                 <SavedBuildsPanel
                   currentSnapshot={currentEditorSnapshot}
                   savedBuilds={savedBuilds}
@@ -1090,9 +1436,17 @@ function BuildPlanner() {
                 {activeTab === "character" && (
                   <CharacterTab
                     buildName={buildName}
-                    setBuildName={setBuildName}
+                    setBuildName={createLoggedSetter(
+                      "buildName",
+                      buildName,
+                      setBuildName
+                    )}
                     characterName={characterName}
-                    setCharacterName={setCharacterName}
+                    setCharacterName={createLoggedSetter(
+                      "characterName",
+                      characterName,
+                      setCharacterName
+                    )}
                     selectedRace={selectedRace}
                     selectedSubrace={selectedSubrace}
                     selectedBackground={selectedBackground}
@@ -1103,13 +1457,28 @@ function BuildPlanner() {
                     allExpertise={allExpertise}
                     onRaceChange={handleRaceChange}
                     setSelectedSubrace={(value) => {
+                      logCurrentBuildEdit("selectedSubrace", selectedSubrace, value, {
+                        resetFields: [
+                          "selectedClassFeatureIds",
+                          "activeClassFeatureIds",
+                        ],
+                      });
+
                       setSelectedSubrace(value);
                       setSelectedClassFeatureIds([]);
                       setActiveClassFeatureIds([]);
                     }}
-                    setSelectedBackground={setSelectedBackground}
+                    setSelectedBackground={createLoggedSetter(
+                      "selectedBackground",
+                      selectedBackground,
+                      setSelectedBackground
+                    )}
                     onClassChange={handleClassChange}
-                    setSelectedClassSkills={setSelectedClassSkills}
+                    setSelectedClassSkills={createLoggedSetter(
+                      "selectedClassSkills",
+                      selectedClassSkills,
+                      setSelectedClassSkills
+                    )}
                   />
                 )}
 
@@ -1134,21 +1503,71 @@ function BuildPlanner() {
                     featSelections={featSelections}
                     featAbilityIncreases={featAbilityIncreases}
                     onClassChange={handleClassChange}
-                    setSelectedSubclass={setSelectedSubclass}
-                    setSelectedLevel={setSelectedLevel}
-                    setBardExpertise={setBardExpertise}
-                    setRogueExpertise={setRogueExpertise}
-                    setLoreBardSkills={setLoreBardSkills}
-                    setKnowledgeClericExpertise={setKnowledgeClericExpertise}
-                    setRangerFavouredEnemy={setRangerFavouredEnemy}
-                    setRangerNaturalExplorer={setRangerNaturalExplorer}
-                    setSelectedWarlockInvocations={
+                    setSelectedSubclass={createLoggedSetter(
+                      "selectedSubclass",
+                      selectedSubclass,
+                      setSelectedSubclass
+                    )}
+                    setSelectedLevel={createLoggedSetter(
+                      "selectedLevel",
+                      selectedLevel,
+                      setSelectedLevel
+                    )}
+                    setBardExpertise={createLoggedSetter(
+                      "bardExpertise",
+                      bardExpertise,
+                      setBardExpertise
+                    )}
+                    setRogueExpertise={createLoggedSetter(
+                      "rogueExpertise",
+                      rogueExpertise,
+                      setRogueExpertise
+                    )}
+                    setLoreBardSkills={createLoggedSetter(
+                      "loreBardSkills",
+                      loreBardSkills,
+                      setLoreBardSkills
+                    )}
+                    setKnowledgeClericExpertise={createLoggedSetter(
+                      "knowledgeClericExpertise",
+                      knowledgeClericExpertise,
+                      setKnowledgeClericExpertise
+                    )}
+                    setRangerFavouredEnemy={createLoggedSetter(
+                      "rangerFavouredEnemy",
+                      rangerFavouredEnemy,
+                      setRangerFavouredEnemy
+                    )}
+                    setRangerNaturalExplorer={createLoggedSetter(
+                      "rangerNaturalExplorer",
+                      rangerNaturalExplorer,
+                      setRangerNaturalExplorer
+                    )}
+                    setSelectedWarlockInvocations={createLoggedSetter(
+                      "selectedWarlockInvocations",
+                      selectedWarlockInvocations,
                       setSelectedWarlockInvocations
-                    }
-                    setBaseAbilityScores={setBaseAbilityScores}
-                    setBonusPlusTwo={setBonusPlusTwo}
-                    setBonusPlusOne={setBonusPlusOne}
-                    setFeatSelections={setFeatSelections}
+                    )}
+                    setBaseAbilityScores={createLoggedSetter(
+                      "baseAbilityScores",
+                      baseAbilityScores,
+                      setBaseAbilityScores
+                    )}
+                    setBonusPlusTwo={createLoggedSetter(
+                      "bonusPlusTwo",
+                      bonusPlusTwo,
+                      setBonusPlusTwo
+                    )}
+                    setBonusPlusOne={createLoggedSetter(
+                      "bonusPlusOne",
+                      bonusPlusOne,
+                      setBonusPlusOne
+                    )}
+                    setFeatSelections={createLoggedSetter(
+                      "featSelections",
+                      featSelections,
+                      setFeatSelections
+                    )}
                   />
                 )}
 
@@ -1159,13 +1578,25 @@ function BuildPlanner() {
                     selectedLevel={selectedLevel}
                     selectedWarlockInvocations={selectedWarlockInvocations}
                     selectedSpellIds={selectedSpellIds}
-                    setSelectedSpellIds={setSelectedSpellIds}
+                    setSelectedSpellIds={createLoggedSetter(
+                      "selectedSpellIds",
+                      selectedSpellIds,
+                      setSelectedSpellIds
+                    )}
                     availableClassFeatures={availableClassFeatures}
                     selectedClassFeatureIds={selectedClassFeatureIds}
                     fixedClassFeatureIds={fixedClassFeatureIds}
-                    setSelectedClassFeatureIds={setSelectedClassFeatureIds}
+                    setSelectedClassFeatureIds={createLoggedSetter(
+                      "selectedClassFeatureIds",
+                      selectedClassFeatureIds,
+                      setSelectedClassFeatureIds
+                    )}
                     activeClassFeatureIds={activeClassFeatureIds}
-                    setActiveClassFeatureIds={setActiveClassFeatureIds}
+                    setActiveClassFeatureIds={createLoggedSetter(
+                      "activeClassFeatureIds",
+                      activeClassFeatureIds,
+                      setActiveClassFeatureIds
+                    )}
                     spellChoiceMaxOverrides={spellChoiceMaxOverrides}
                   />
                 )}
@@ -1186,7 +1617,21 @@ function BuildPlanner() {
             className={`party-dock-toggle ${
               showPartyPlanner ? "party-dock-toggle--active" : ""
             }`}
-            onClick={() => setShowPartyPlanner((current) => !current)}
+            onClick={() => {
+              const nextValue = !showPartyPlanner;
+
+              logStudyEvent({
+                eventCategory: "visualization",
+                eventType: "party_planner_toggled",
+                activeView: "visualisation-panel",
+                payload: {
+                  previousValue: showPartyPlanner,
+                  nextValue,
+                },
+              });
+
+              setShowPartyPlanner(nextValue);
+            }}
           >
             {showPartyPlanner ? "Hide party planner" : "Show party planner"}
           </button>

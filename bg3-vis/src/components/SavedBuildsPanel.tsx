@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BuildEditorSnapshot, SavedBuild } from "../types/savedBuildTypes";
 import {
   formatSavedBuildDate,
   getDefaultSavedBuildLabel,
 } from "../logic/savedBuildStorage";
+import { loadStudyLogs, logStudyEvent } from "../logic/studyLogger";
 
 type SavedBuildsPanelProps = {
   currentSnapshot: BuildEditorSnapshot;
@@ -18,8 +19,10 @@ type SavedBuildsPanelProps = {
 };
 
 function getSnapshotSubtitle(snapshot: BuildEditorSnapshot) {
-  const classLabel = snapshot.selectedSubclass || snapshot.selectedClass || "No class";
-  const raceLabel = snapshot.selectedSubrace || snapshot.selectedRace || "No race";
+  const classLabel =
+    snapshot.selectedSubclass || snapshot.selectedClass || "No class";
+  const raceLabel =
+    snapshot.selectedSubrace || snapshot.selectedRace || "No race";
 
   return `Level ${snapshot.selectedLevel} · ${classLabel} · ${raceLabel}`;
 }
@@ -52,11 +55,15 @@ function getSavedBuildSearchScore(savedBuild: SavedBuild, query: string) {
   ].join(" ");
 
   if (label === normalizedQuery || buildName === normalizedQuery) return 100;
-  if (label.startsWith(normalizedQuery) || buildName.startsWith(normalizedQuery)) return 80;
-  if (label.includes(normalizedQuery) || buildName.includes(normalizedQuery)) return 60;
+  if (label.startsWith(normalizedQuery) || buildName.startsWith(normalizedQuery))
+    return 80;
+  if (label.includes(normalizedQuery) || buildName.includes(normalizedQuery))
+    return 60;
   if (characterName.includes(normalizedQuery)) return 45;
-  if (subclass.includes(normalizedQuery) || className.includes(normalizedQuery)) return 30;
-  if (subrace.includes(normalizedQuery) || race.includes(normalizedQuery)) return 20;
+  if (subclass.includes(normalizedQuery) || className.includes(normalizedQuery))
+    return 30;
+  if (subrace.includes(normalizedQuery) || race.includes(normalizedQuery))
+    return 20;
   if (searchableText.includes(normalizedQuery)) return 10;
 
   return -1;
@@ -74,6 +81,7 @@ export default function SavedBuildsPanel({
   onDelete,
 }: SavedBuildsPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const hasMountedRef = useRef(false);
 
   const currentBuildLabel = getDefaultSavedBuildLabel(currentSnapshot);
 
@@ -98,6 +106,30 @@ export default function SavedBuildsPanel({
       })
       .map((entry) => entry.savedBuild);
   }, [savedBuilds, searchQuery]);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      logStudyEvent({
+        eventCategory: "visualization",
+        eventType: "saved_build_search_changed",
+        activeView: "saved-builds-panel",
+        payload: {
+          searchQuery,
+          matchingBuildCount: filteredSavedBuilds.length,
+          totalSavedBuildCount: savedBuilds.length,
+        },
+      });
+
+      loadStudyLogs();
+    }, 450);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [filteredSavedBuilds.length, savedBuilds.length, searchQuery]);
 
   return (
     <section className="saved-builds-panel" aria-label="Saved builds">

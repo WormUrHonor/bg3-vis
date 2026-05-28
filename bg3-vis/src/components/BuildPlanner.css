@@ -1775,26 +1775,78 @@ select {
   line-height: 1.15;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Big circle focus selector: 2-row compact layout                            */
+/* -------------------------------------------------------------------------- */
+
 .focus-selector-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .focus-selector-button {
   min-width: 0;
-  min-height: 27px;
-  padding: 5px 7px;
+  min-height: 25px;
+  padding: 4px 7px;
   border: 1px solid rgba(216, 178, 104, 0.2);
   border-radius: 999px;
   background: rgba(216, 178, 104, 0.08);
   color: rgba(255, 239, 205, 0.72);
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   font-weight: 850;
   letter-spacing: 0.045em;
   line-height: 1;
   text-transform: uppercase;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+/* First row: Editable + Aggregate */
+.focus-selector-button:nth-child(1) {
+  grid-column: 1 / 4;
+}
+
+.focus-selector-button:nth-child(2) {
+  grid-column: 4 / 7;
+}
+
+/* Second row: Slot 1 + Slot 2 + Slot 3 */
+.focus-selector-button:nth-child(3) {
+  grid-column: 1 / 3;
+}
+
+.focus-selector-button:nth-child(4) {
+  grid-column: 3 / 5;
+}
+
+.focus-selector-button:nth-child(5) {
+  grid-column: 5 / 7;
+}
+
+.focus-selector-button:hover:not(:disabled),
+.focus-selector-button:focus-visible:not(:disabled) {
+  border-color: rgba(247, 217, 149, 0.48);
+  background: rgba(216, 178, 104, 0.16);
+  color: rgba(255, 248, 226, 0.96);
+}
+
+.focus-selector-button:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.focus-selector-button--active {
+  border-color: rgba(247, 217, 149, 0.56);
+  background: rgba(216, 178, 104, 0.2);
+  color: rgba(255, 248, 226, 0.98);
+  box-shadow: 0 0 0 1px rgba(216, 178, 104, 0.08);
+}
+
+.focus-selector-button--aggregate.focus-selector-button--active {
+  border-color: rgba(151, 210, 255, 0.44);
+  background: rgba(92, 152, 196, 0.14);
+  color: rgba(206, 234, 255, 0.96);
 }
 
 .focus-selector-button:hover:not(:disabled),
@@ -2926,7 +2978,106 @@ select {
     color 160ms ease,
     transform 160ms ease;
 }
+/* -------------------------------------------------------------------------- */
+/* Compact process controls: two-line layout                                  */
+/* -------------------------------------------------------------------------- */
 
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  button,
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  span {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: auto;
+  min-height: 22px;
+  padding: 4px 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(216, 178, 104, 0.26);
+  border-radius: 999px;
+  background: rgba(216, 178, 104, 0.1);
+  color: rgba(255, 239, 205, 0.82);
+  font-size: 0.52rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* History count, +, -, Focus should sit on the first compact row. */
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-count {
+  min-width: 42px;
+  color: rgba(247, 217, 149, 0.9) !important;
+}
+
+/* + and - are small icon-like buttons. */
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  button:nth-of-type(1),
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  button:nth-of-type(2) {
+  min-width: 42px;
+  padding-inline: 0;
+}
+
+/* Focus/reset/enlarge size to their text, not the whole row. */
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  button:nth-of-type(3),
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  button:nth-of-type(4),
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-topbar-controls
+  button:nth-of-type(5) {
+  padding-inline: 10px;
+}
+
+/* Zoom starts the second row and then reset/enlarge follow it if they fit. */
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-zoom {
+  flex-basis: 100%;
+  max-width: 100%;
+  min-height: 21px;
+  color: rgba(247, 217, 149, 0.9) !important;
+}
+
+/* Make the zoom pill not visually dominate the compact panel. */
+.process-spiral-panel:not(.process-spiral-panel--expanded)
+  .process-spiral-zoom {
+  justify-content: center;
+}
+
+/* Keep expanded mode as the one-line topbar. */
+.process-spiral-panel--expanded .process-spiral-topbar-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: max-content;
+}
+
+.process-spiral-panel--expanded .process-spiral-topbar-controls button,
+.process-spiral-panel--expanded .process-spiral-topbar-controls span {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 24px;
+  padding: 4px 8px;
+  font-size: 0.54rem;
+}
 .process-spiral-count,
 .process-spiral-zoom {
   color: rgba(247, 217, 149, 0.9) !important;
@@ -2971,4 +3122,154 @@ select {
   .process-spiral-topbar-controls
   .process-spiral-zoom {
   grid-column: 1 / -1;
+}
+/* -------------------------------------------------------------------------- */
+/* Study logging panel                                                        */
+/* -------------------------------------------------------------------------- */
+
+.study-logging-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(216, 178, 104, 0.18);
+}
+
+.study-logging-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.study-logging-header h3 {
+  margin: 0;
+  color: rgba(255, 244, 218, 0.94);
+  font-size: 0.82rem;
+  line-height: 1.05;
+}
+
+.study-logging-header p {
+  margin: 2px 0 0;
+  color: rgba(203, 189, 167, 0.62);
+  font-size: 0.56rem;
+  line-height: 1.18;
+}
+
+.study-logging-header span {
+  flex-shrink: 0;
+  min-width: 22px;
+  min-height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(216, 178, 104, 0.28);
+  border-radius: 999px;
+  background: rgba(216, 178, 104, 0.1);
+  color: rgba(247, 217, 149, 0.9);
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.study-logging-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.study-logging-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: rgba(203, 189, 167, 0.54);
+  font-size: 0.52rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.study-logging-grid input,
+.study-logging-grid select {
+  min-width: 0;
+  height: 26px;
+  padding: 5px 7px;
+  border: 1px solid rgba(216, 178, 104, 0.16);
+  border-radius: 8px;
+  background: rgba(6, 5, 7, 0.68);
+  color: rgba(255, 244, 218, 0.88);
+  font-size: 0.62rem;
+  outline: none;
+}
+
+.study-logging-grid input:disabled,
+.study-logging-grid select:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.study-logging-grid input:focus,
+.study-logging-grid select:focus {
+  border-color: rgba(247, 217, 149, 0.46);
+}
+
+.study-logging-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  color: rgba(255, 244, 218, 0.78);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.study-logging-status {
+  margin-top: 6px;
+  padding: 5px 7px;
+  border: 1px solid rgba(216, 178, 104, 0.13);
+  border-radius: 9px;
+  background: rgba(6, 5, 7, 0.38);
+  color: rgba(203, 189, 167, 0.62);
+  font-size: 0.56rem;
+  line-height: 1.18;
+}
+
+.study-logging-actions {
+  display: grid;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.study-logging-actions--main {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.study-logging-actions--export {
+  grid-template-columns: 1fr 1fr;
+}
+
+.study-logging-actions button {
+  min-width: 0;
+  min-height: 24px;
+  padding: 4px 5px;
+  border: 1px solid rgba(216, 178, 104, 0.24);
+  border-radius: 999px;
+  background: rgba(216, 178, 104, 0.1);
+  color: rgba(255, 239, 205, 0.82);
+  font-size: 0.5rem;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.study-logging-actions button:hover:not(:disabled),
+.study-logging-actions button:focus-visible:not(:disabled) {
+  border-color: rgba(247, 217, 149, 0.5);
+  background: rgba(216, 178, 104, 0.18);
+  color: rgba(255, 248, 226, 0.96);
+}
+
+.study-logging-actions button:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
 }

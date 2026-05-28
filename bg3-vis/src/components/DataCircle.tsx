@@ -1,4 +1,12 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { ClassName } from "../types/buildPlannerTypes";
 import {
   mockAverageDpr,
@@ -28,6 +36,7 @@ import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer
 import { RangeProfileLayer } from "./DataCircle/layers/RangeProfileLayer";
 import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer";
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
+import { logStudyEvent } from "../logic/studyLogger";
 import "./DataCircle.css";
 
 export type DprBarMode = "stacked" | "grouped";
@@ -48,6 +57,26 @@ type DataCircleProps = {
   visualizedItemsOverride?: VisualizedBuildItem[];
 };
 
+function stableStringify(value: unknown): string {
+  if (value === null || value === undefined) return "none";
+
+  try {
+    return JSON.stringify(value, Object.keys(value as object).sort());
+  } catch {
+    return String(value);
+  }
+}
+
+function getFocusLogKey(focus: DataCircleFocus) {
+  if (!focus) return "none";
+
+  if (Array.isArray(focus)) {
+    return focus.map((item) => stableStringify(item)).sort().join("|");
+  }
+
+  return stableStringify(focus);
+}
+
 export default function DataCircle({
   buildName,
   characterName,
@@ -63,6 +92,7 @@ export default function DataCircle({
   visualizedItemsOverride,
 }: DataCircleProps) {
   const rawInstanceId = useId();
+  const lastLoggedHoverKeyRef = useRef<string>("none");
 
   const svgInstanceId = useMemo(
     () => rawInstanceId.replace(/[^a-zA-Z0-9_-]/g, ""),
@@ -77,6 +107,7 @@ export default function DataCircle({
   const [dprBarMode, setDprBarMode] = useState<DprBarMode>("stacked");
 
   const isCompact = variant !== "main";
+
   const activeFocus: DataCircleFocus =
     hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
 
@@ -136,6 +167,7 @@ export default function DataCircle({
     setHoverFocus(null);
     setSelectedFocuses([]);
     setIsSelectionReviewActive(false);
+    lastLoggedHoverKeyRef.current = "none";
   }, [visualizedItemsKey, showDprLayer, variant]);
 
   const displayBuildName = isUsingMockData
@@ -195,6 +227,65 @@ export default function DataCircle({
     0
   );
 
+  const setHoverFocusWithLogging: Dispatch<SetStateAction<DataCircleFocus>> = (
+    nextFocusOrUpdater
+  ) => {
+    setHoverFocus((previousFocus) => {
+      const nextFocus =
+        typeof nextFocusOrUpdater === "function"
+          ? (nextFocusOrUpdater as (previous: DataCircleFocus) => DataCircleFocus)(
+              previousFocus
+            )
+          : nextFocusOrUpdater;
+
+      if (!isCompact && nextFocus && !Array.isArray(nextFocus)) {
+        const nextKey = getFocusLogKey(nextFocus);
+
+        if (nextKey !== lastLoggedHoverKeyRef.current) {
+          lastLoggedHoverKeyRef.current = nextKey;
+
+          logStudyEvent({
+            eventCategory: "visualization",
+            eventType: "data_circle_focus_hovered",
+            activeBuildLabel: buildLabel,
+            activeView: `data-circle-${variant}`,
+            payload: {
+              focus: nextFocus,
+              focusKey: nextKey,
+              buildLabel,
+              characterLabel,
+              variant,
+            },
+          });
+        }
+      }
+
+      if (!nextFocus) {
+        lastLoggedHoverKeyRef.current = "none";
+      }
+
+      return nextFocus;
+    });
+  };
+
+  function setDprBarModeWithLogging(nextMode: DprBarMode) {
+    if (nextMode === dprBarMode) return;
+
+    logStudyEvent({
+      eventCategory: "visualization",
+      eventType: "data_circle_dpr_layout_changed",
+      activeBuildLabel: buildLabel,
+      activeView: `data-circle-${variant}`,
+      payload: {
+        previousMode: dprBarMode,
+        nextMode,
+        buildLabel,
+      },
+    });
+
+    setDprBarMode(nextMode);
+  }
+
   function toggleSelectedFocus(nextFocus: DataCircleFocusItem) {
     if (isCompact) return;
 
@@ -203,18 +294,46 @@ export default function DataCircle({
         isSameFocusItem(item, nextFocus)
       );
 
-      if (alreadySelected) {
-        return current.filter((item) => !isSameFocusItem(item, nextFocus));
-      }
+      const nextSelectedFocuses = alreadySelected
+        ? current.filter((item) => !isSameFocusItem(item, nextFocus))
+        : [...current, nextFocus];
 
-      return [...current, nextFocus];
+      logStudyEvent({
+        eventCategory: "visualization",
+        eventType: "data_circle_focus_selected",
+        activeBuildLabel: buildLabel,
+        activeView: `data-circle-${variant}`,
+        payload: {
+          action: alreadySelected ? "removed" : "added",
+          focus: nextFocus,
+          focusKey: stableStringify(nextFocus),
+          selectedFocusCount: nextSelectedFocuses.length,
+          selectedFocuses: nextSelectedFocuses,
+          buildLabel,
+        },
+      });
+
+      return nextSelectedFocuses;
     });
   }
 
   function clearSelectedFocuses() {
+    logStudyEvent({
+      eventCategory: "visualization",
+      eventType: "data_circle_focus_cleared",
+      activeBuildLabel: buildLabel,
+      activeView: `data-circle-${variant}`,
+      payload: {
+        clearedFocusCount: selectedFocuses.length,
+        clearedFocuses: selectedFocuses,
+        buildLabel,
+      },
+    });
+
     setSelectedFocuses([]);
     setHoverFocus(null);
     setIsSelectionReviewActive(false);
+    lastLoggedHoverKeyRef.current = "none";
   }
 
   return (
@@ -234,7 +353,7 @@ export default function DataCircle({
                   ? "data-circle-dpr-toggle-button--active"
                   : ""
               }`}
-              onClick={() => setDprBarMode("stacked")}
+              onClick={() => setDprBarModeWithLogging("stacked")}
             >
               Stacked
             </button>
@@ -246,7 +365,7 @@ export default function DataCircle({
                   ? "data-circle-dpr-toggle-button--active"
                   : ""
               }`}
-              onClick={() => setDprBarMode("grouped")}
+              onClick={() => setDprBarModeWithLogging("grouped")}
             >
               Side-by-side
             </button>
@@ -278,7 +397,7 @@ export default function DataCircle({
           className="data-circle-svg"
           role="img"
           aria-label={`${buildLabel} Data Circle visualization`}
-          onMouseLeave={() => setHoverFocus(null)}
+          onMouseLeave={() => setHoverFocusWithLogging(null)}
         >
           <DataCircleDefs />
 
@@ -289,7 +408,7 @@ export default function DataCircle({
               rounds={mockDprByRound}
               averageDpr={mockAverageDpr}
               focus={activeFocus}
-              setFocus={setHoverFocus}
+              setFocus={setHoverFocusWithLogging}
               relationshipIndex={relationshipIndex}
               onToggleSelection={toggleSelectedFocus}
               selectedFocuses={selectedFocuses}
@@ -302,7 +421,7 @@ export default function DataCircle({
             damageTypeCounts={damageTypeCounts}
             damageTypeTotal={damageTypeTotal}
             focus={activeFocus}
-            setFocus={setHoverFocus}
+            setFocus={setHoverFocusWithLogging}
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
@@ -312,7 +431,7 @@ export default function DataCircle({
           <RoleDistributionLayer
             roleData={roleData}
             focus={activeFocus}
-            setFocus={setHoverFocus}
+            setFocus={setHoverFocusWithLogging}
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
@@ -325,7 +444,7 @@ export default function DataCircle({
             maxRangeCount={maxRangeCount}
             roleData={roleData}
             focus={activeFocus}
-            setFocus={setHoverFocus}
+            setFocus={setHoverFocusWithLogging}
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
