@@ -298,9 +298,21 @@ export function downloadTextFile(filename: string, content: string) {
 
 export function downloadStudyLogs(format: "json" | "jsonl" | "csv") {
   const metadata = loadStudySessionMetadata();
+
+  logStudyEvent({
+    eventCategory: "export",
+    eventType: "logs_exported",
+    activeView: "study-logging-panel",
+    payload: {
+      format,
+      exportedEventCount: loadStudyLogs().length + 1,
+    },
+  });
+
   const safeParticipantId = metadata.participantId.trim() || "unknown-participant";
   const safeTaskId = metadata.taskId.trim() || "unknown-task";
-  const safeConditionId = String(metadata.conditionId).trim() || "unknown-condition";
+  const safeConditionId =
+    String(metadata.conditionId).trim() || "unknown-condition";
   const nowLabel = new Date().toISOString().replaceAll(":", "-");
 
   const baseFilename = `bg3-study-logs_${safeParticipantId}_${safeTaskId}_${safeConditionId}_${nowLabel}`;
@@ -316,13 +328,4 @@ export function downloadStudyLogs(format: "json" | "jsonl" | "csv") {
   if (format === "csv") {
     downloadTextFile(`${baseFilename}.csv`, exportStudyLogsAsCsv());
   }
-
-  logStudyEvent({
-    eventCategory: "export",
-    eventType: "logs_exported",
-    payload: {
-      format,
-      exportedEventCount: loadStudyLogs().length,
-    },
-  });
 }

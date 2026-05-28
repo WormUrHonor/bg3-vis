@@ -8,6 +8,7 @@ import {
   logStudyEvent,
   saveStudySessionMetadata,
   startStudyTask,
+  updateStudySessionMetadata,
 } from "../logic/studyLogger";
 import type { BuildEditorSnapshot, SavedBuild } from "../types/savedBuildTypes";
 import type { StudySessionMetadata } from "../types/loggingTypes";
@@ -35,7 +36,7 @@ function getDefaultPartyPayload(
 }
 
 function hasActiveTask(metadata: StudySessionMetadata) {
-  return Boolean(metadata.taskStartedAt);
+  return Boolean(metadata.taskStartedAt) && metadata.isLoggingEnabled;
 }
 
 export default function StudyLoggingPanel({
@@ -57,7 +58,7 @@ export default function StudyLoggingPanel({
     [metadata.participantId, metadata.sessionId, metadata.taskId]
   );
 
-  const taskIsActive = hasActiveTask(metadata) && metadata.isLoggingEnabled;
+  const taskIsActive = hasActiveTask(metadata);
 
   function refreshLogCount() {
     setLogCount(loadStudyLogs().length);
@@ -73,8 +74,8 @@ export default function StudyLoggingPanel({
     saveStudySessionMetadata(nextMetadata);
 
     /*
-      Metadata edits are only logged after a task is active. This avoids messy
-      logs where typing "P001" becomes P, P0, P00, P001.
+      Do not log metadata typing before the task starts. This keeps the real
+      study logs clean and avoids partial participant/task IDs in the dataset.
     */
     if (taskIsActive) {
       logStudyEvent({
@@ -92,7 +93,7 @@ export default function StudyLoggingPanel({
   }
 
   function handleStartTask() {
-    if (!canStart) return;
+    if (!canStart || taskIsActive) return;
 
     const nextMetadata = startStudyTask();
 
@@ -100,9 +101,7 @@ export default function StudyLoggingPanel({
     refreshLogCount();
   }
 
-  function handleSubmitFinalParty() {
-    if (!taskIsActive) return;
-
+  function logFinalPartySubmission() {
     logStudyEvent({
       eventCategory: "task",
       eventType: "final_party_submitted",
@@ -110,45 +109,50 @@ export default function StudyLoggingPanel({
       activeView: "study-logging-panel",
       payload: getDefaultPartyPayload(currentSnapshot, partySlots),
     });
-
-    refreshLogCount();
   }
 
-  function handleCompleteTask() {
+  function handleEndTask() {
     if (!taskIsActive) return;
+
+    const finalPartyPayload = getDefaultPartyPayload(currentSnapshot, partySlots);
+
+    logFinalPartySubmission();
 
     completeStudyTask({
       focusedLabel,
-      finalPartyPreview: getDefaultPartyPayload(currentSnapshot, partySlots),
+      finalPartyPreview: finalPartyPayload,
     });
 
     /*
-      The task is now finished. Logging stays enabled so the export event can
-      still be recorded, but taskStartedAt remains in metadata so elapsed time
-      is preserved in the exported log.
+      Export after final_party_submitted and task_completed have been written,
+      so the downloaded JSONL is the complete study-task file.
     */
+    downloadStudyLogs("jsonl");
+
+    const nextMetadata = updateStudySessionMetadata({
+      isLoggingEnabled: false,
+      taskStartedAt: null,
+    });
+
+    setMetadata(nextMetadata);
     refreshLogCount();
   }
 
-  function handleExport() {
+  function handleClearLogs() {
     /*
-      One export format only. This is the researcher-facing study file.
-      JSON keeps all nested payloads, including build snapshots and party state.
+      Fallback reset. Use this before the next participant/task, after confirming
+      that the exported JSONL file has downloaded correctly.
     */
-    downloadStudyLogs("json");
+    clearStudyLogs();
     refreshLogCount();
   }
 
-function handleClearLogs() {
-  clearStudyLogs();
-  refreshLogCount();
-}
   return (
     <section className="study-logging-panel" aria-label="Study logging controls">
       <div className="study-logging-header">
         <div>
           <h3>Study Logging</h3>
-          <p>Start task, submit final party, end task, then export.</p>
+          <p>Start recording, end task to submit and export JSONL.</p>
         </div>
 
         <span>{logCount}</span>
@@ -235,54 +239,33 @@ function handleClearLogs() {
         </label>
       </div>
 
-      <label className="study-logging-toggle">
-        <input
-          type="checkbox"
-          checked={metadata.isLoggingEnabled}
-          onChange={(event) =>
-            updateMetadata({ isLoggingEnabled: event.target.checked })
-          }
-        />
-        Logging enabled
-      </label>
-
-      <div className="study-logging-status">
-        {taskIsActive ? (
-          <span>Task is recording.</span>
-        ) : canStart ? (
-          <span>Ready to start.</span>
-        ) : (
-          <span>Enter participant and task before starting.</span>
-        )}
+      <div
+        className={
+          taskIsActive
+            ? "study-logging-recording study-logging-recording--active"
+            : "study-logging-recording"
+        }
+      >
+        {taskIsActive ? "Recording" : canStart ? "Ready" : "Setup required"}
       </div>
 
-      <div className="study-logging-actions study-logging-actions--main">
-        <button type="button" onClick={handleStartTask} disabled={!canStart}>
-          Start
-        </button>
+      <div className="study-logging-actions study-logging-actions--single-row">
+  <button
+    type="button"
+    onClick={handleStartTask}
+    disabled={!canStart || taskIsActive}
+  >
+    Start
+  </button>
 
-        <button
-          type="button"
-          onClick={handleSubmitFinalParty}
-          disabled={!taskIsActive}
-        >
-          Submit party
-        </button>
+  <button type="button" onClick={handleEndTask} disabled={!taskIsActive}>
+    End task
+  </button>
 
-        <button type="button" onClick={handleCompleteTask} disabled={!taskIsActive}>
-          End
-        </button>
-      </div>
-
-      <div className="study-logging-actions study-logging-actions--export">
-        <button type="button" onClick={handleExport} disabled={logCount <= 0}>
-          Export
-        </button>
-
-        <button type="button" onClick={handleClearLogs}>
-          Clear
-        </button>
-      </div>
+  <button type="button" onClick={handleClearLogs}>
+    Clear
+  </button>
+</div>
     </section>
   );
 }
