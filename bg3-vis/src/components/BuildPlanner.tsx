@@ -78,6 +78,15 @@ import {
 
 type DataCircleFocusSource = "editor" | "aggregate";
 
+type PartyDockItem = {
+  label: string;
+  fallbackLabel: string;
+  modifier: string;
+  savedBuild: SavedBuild | null;
+  isFocused: boolean;
+  onFocus: () => void;
+};
+
 function getAbilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
@@ -799,27 +808,6 @@ function BuildPlanner() {
     }
   }
 
-  function handleUpdateEditedPartyBuild() {
-    if (!focusedSavedBuild) {
-      const savedBuild = createSavedBuild(currentEditorSnapshot);
-
-      setSavedBuilds((current) => [savedBuild, ...current]);
-      setFocusedSavedBuild(savedBuild);
-      appendBuildHistory(savedBuild, "created");
-      return;
-    }
-
-    const updatedBuild = createUpdatedSavedBuild(
-      focusedSavedBuild,
-      currentEditorSnapshot
-    );
-
-    upsertSavedBuild(updatedBuild);
-    updatePartySlotCopies(updatedBuild);
-    setFocusedSavedBuild(updatedBuild);
-    appendBuildHistory(updatedBuild, "updated");
-  }
-
   function handleLoadHistoryEntry(historyEntryId: string) {
     const historyEntry = buildHistory.find(
       (entry) => entry.id === historyEntryId
@@ -829,23 +817,25 @@ function BuildPlanner() {
 
     applyEditorSnapshot(historyEntry.snapshot, null, null);
   }
-function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
-  const historyEntry = buildHistory.find(
-    (entry) => entry.id === historyEntryId
-  );
 
-  if (!historyEntry) return;
+  function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
+    const historyEntry = buildHistory.find(
+      (entry) => entry.id === historyEntryId
+    );
 
-  const restoredBuild = createSavedBuild(
-    historyEntry.snapshot,
-    `${historyEntry.label} · restored`
-  );
+    if (!historyEntry) return;
 
-  setSavedBuilds((current) => [restoredBuild, ...current]);
-  setFocusedSavedBuild(restoredBuild);
-  setEditingPartySlotIndex(null);
-  appendBuildHistory(restoredBuild, "created");
-}
+    const restoredBuild = createSavedBuild(
+      historyEntry.snapshot,
+      `${historyEntry.label} · restored`
+    );
+
+    setSavedBuilds((current) => [restoredBuild, ...current]);
+    setFocusedSavedBuild(restoredBuild);
+    setEditingPartySlotIndex(null);
+    appendBuildHistory(restoredBuild, "created");
+  }
+
   function handleLoadHistoryEntryIntoPartySlot(
     historyEntryId: string,
     slotIndex: number
@@ -870,27 +860,46 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
     appendBuildHistory(restoredBuild, "created");
   }
 
+  const partyDockItems: PartyDockItem[] = [
+    {
+      label: "Aggregate",
+      fallbackLabel: "Aggregate",
+      modifier: "aggregate",
+      savedBuild: null,
+      isFocused: isAggregateFocused,
+      onFocus: handleFocusAggregate,
+    },
+    ...partySlots.map((slot, index): PartyDockItem => ({
+      label: slot ? getSavedBuildTitle(slot) : `Member ${index + 1}`,
+      fallbackLabel: `Member ${index + 1}`,
+      modifier: slot ? "member-filled" : "member-empty",
+      savedBuild: slot,
+      isFocused: !isAggregateFocused && editingPartySlotIndex === index,
+      onFocus: () => handleEditPartySlot(index),
+    })),
+  ];
+
   return (
     <main className="workspace-page">
       <section
         className={`workspace-half planner-half ${
           isAggregateFocused ? "planner-half--readonly-focus" : ""
-        } ${
-          isProcessSpiralExpanded ? "planner-half--process-expanded" : ""
-        }`}
+        } ${isProcessSpiralExpanded ? "planner-half--process-expanded" : ""}`}
       >
         {isProcessSpiralExpanded ? (
           <ProcessSpiralPanel
-  buildHistory={buildHistory}
-  isExpanded
-  onCollapse={() => setIsProcessSpiralExpanded(false)}
-  onLoadHistoryEntry={(historyEntryId) => {
-    handleLoadHistoryEntry(historyEntryId);
-    setIsProcessSpiralExpanded(false);
-  }}
-  onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
-  onRestoreHistoryEntryAsSavedBuild={handleRestoreHistoryEntryAsSavedBuild}
-/>
+            buildHistory={buildHistory}
+            isExpanded
+            onCollapse={() => setIsProcessSpiralExpanded(false)}
+            onLoadHistoryEntry={(historyEntryId) => {
+              handleLoadHistoryEntry(historyEntryId);
+              setIsProcessSpiralExpanded(false);
+            }}
+            onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
+            onRestoreHistoryEntryAsSavedBuild={
+              handleRestoreHistoryEntryAsSavedBuild
+            }
+          />
         ) : (
           <>
             <header className="workspace-header">
@@ -929,37 +938,37 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
             </nav>
 
             <div className="planner-content-layout">
-              <aside className="summary-card">
-                <h2>Current Build</h2>
-
-                <div className="summary-row">
-                  <span>Focus</span>
-                  <strong>{focusedLabel}</strong>
-                </div>
-
-                <div className="summary-row">
-                  <span>Name</span>
-                  <strong>{buildName || "Untitled Build"}</strong>
-                </div>
-
-                <div className="summary-row">
-                  <span>Race</span>
-                  <strong>{selectedRace || "Not selected"}</strong>
-                </div>
-
-                <div className="summary-row">
-                  <span>Class</span>
-                  <strong>{selectedClass || "Not selected"}</strong>
-                </div>
-
-                <div className="summary-row">
-                  <span>Subclass</span>
-                  <strong>{selectedSubclass || "Not selected"}</strong>
-                </div>
-
-                <div className="summary-row">
-                  <span>Level</span>
+              <aside className="summary-card summary-card--compact">
+                <div className="summary-compact-header">
+                  <h2>Current Build</h2>
                   <strong>{selectedLevel}</strong>
+                </div>
+
+                <div className="summary-compact-grid">
+                  <div className="summary-row">
+                    <span>Focus</span>
+                    <strong>{focusedLabel}</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span>Name</span>
+                    <strong>{buildName || "Untitled Build"}</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span>Race</span>
+                    <strong>{selectedRace || "Not selected"}</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span>Class</span>
+                    <strong>{selectedClass || "Not selected"}</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span>Subclass</span>
+                    <strong>{selectedSubclass || "Not selected"}</strong>
+                  </div>
                 </div>
 
                 <section
@@ -981,7 +990,7 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
                       }
                       onClick={handleFocusCurrentEditor}
                     >
-                      Editable Focus
+                      Editable
                     </button>
 
                     <button
@@ -1016,12 +1025,10 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
                               ? `Swap focused build with ${getSavedBuildTitle(
                                   slot
                                 )}`
-                              : `Member ${
-                                  index + 1
-                                } has no assigned build.`
+                              : `Member ${index + 1} has no assigned build.`
                           }
                         >
-                          Member {index + 1}
+                          Slot {index + 1}
                         </button>
                       );
                     })}
@@ -1029,33 +1036,30 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
 
                   {isAggregateFocused ? (
                     <p className="focus-selector-note">
-                      Aggregate is a read-only calculated view of the large
-                      focused build and the three assigned party members.
+                      Aggregate combines the focused build with party slots 1–3.
                     </p>
                   ) : focusedSavedBuild ? (
                     <p className="focus-selector-note">
-                      Editing {getSavedBuildTitle(focusedSavedBuild)}. Use
-                      Update to save changes to this focused build.
+                      Editing {getSavedBuildTitle(focusedSavedBuild)}.
                     </p>
                   ) : (
                     <p className="focus-selector-note">
-                      The large editable build is the fourth party member.
-                      Selecting a party slot swaps it with the focused build.
+                      The focused build is the fourth party member.
                     </p>
                   )}
-
-                  {!isAggregateFocused ? (
-                    <button
-                      type="button"
-                      className="focus-selector-update-button"
-                      onClick={handleUpdateEditedPartyBuild}
-                    >
-                      {focusedSavedBuild
-                        ? "Update focused build"
-                        : "Save focused build"}
-                    </button>
-                  ) : null}
                 </section>
+
+                <ProcessSpiralPanel
+                  buildHistory={buildHistory}
+                  onExpand={() => setIsProcessSpiralExpanded(true)}
+                  onLoadHistoryEntry={handleLoadHistoryEntry}
+                  onLoadHistoryEntryIntoPartySlot={
+                    handleLoadHistoryEntryIntoPartySlot
+                  }
+                  onRestoreHistoryEntryAsSavedBuild={
+                    handleRestoreHistoryEntryAsSavedBuild
+                  }
+                />
 
                 <SavedBuildsPanel
                   currentSnapshot={currentEditorSnapshot}
@@ -1068,14 +1072,6 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
                   onClearPartySlot={handleClearPartySlot}
                   onDelete={handleDeleteSavedBuild}
                 />
-
-                <ProcessSpiralPanel
-  buildHistory={buildHistory}
-  onExpand={() => setIsProcessSpiralExpanded(true)}
-  onLoadHistoryEntry={handleLoadHistoryEntry}
-  onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
-  onRestoreHistoryEntryAsSavedBuild={handleRestoreHistoryEntryAsSavedBuild}
-/>
               </aside>
 
               <section
@@ -1086,8 +1082,8 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
               >
                 {isAggregateFocused ? (
                   <div className="main-panel-readonly-overlay">
-                    Viewing Aggregate. Select Editable Focus or a party member
-                    to edit.
+                    Viewing Aggregate. Select Editable or a party member to
+                    edit.
                   </div>
                 ) : null}
 
@@ -1229,23 +1225,7 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
           {showPartyPlanner && (
             <section className="party-dock" aria-label="Party planner preview">
               <div className="party-dock-track">
-                {[
-                  {
-                    label: "Aggregate",
-                    modifier: "aggregate",
-                    savedBuild: null,
-                    isFocused: isAggregateFocused,
-                    onFocus: handleFocusAggregate,
-                  },
-                  ...partySlots.map((slot, index) => ({
-                    label: `Member ${index + 1}`,
-                    modifier: slot ? "member-filled" : "member-empty",
-                    savedBuild: slot,
-                    isFocused:
-                      !isAggregateFocused && editingPartySlotIndex === index,
-                    onFocus: () => handleEditPartySlot(index),
-                  })),
-                ].map((slot, index) => {
+                {partyDockItems.map((slot, index) => {
                   const isDisabled = index > 0 && !slot.savedBuild;
 
                   return (
@@ -1253,10 +1233,12 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
                       className={`party-node party-node--${slot.modifier} ${
                         slot.isFocused ? "party-node--focused" : ""
                       }`}
-                      key={slot.label}
+                      key={slot.fallbackLabel}
                       title={
                         slot.savedBuild
-                          ? `${slot.label}: ${slot.savedBuild.label}`
+                          ? `${slot.fallbackLabel}: ${getSavedBuildTitle(
+                              slot.savedBuild
+                            )}`
                           : slot.label
                       }
                     >
@@ -1270,7 +1252,7 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
                             ? "Assign a saved build to this slot first."
                             : index === 0
                               ? "Focus aggregate preview"
-                              : `Swap focused build with ${slot.label}`
+                              : `Swap focused build with ${slot.fallbackLabel}`
                         }
                       >
                         {slot.label}
@@ -1307,7 +1289,9 @@ function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
                               selectedSubclass={
                                 slot.savedBuild.snapshot.selectedSubclass
                               }
-                              selectedLevel={slot.savedBuild.snapshot.selectedLevel}
+                              selectedLevel={
+                                slot.savedBuild.snapshot.selectedLevel
+                              }
                               selectedSpellIds={
                                 slot.savedBuild.snapshot.selectedSpellIds
                               }

@@ -73,7 +73,7 @@ export default function PartyPlanner({
       <div className="party-assignment-grid">
         {partySlots.map((snapshot, slotIndex) => {
           const slotNumber = slotIndex + 1;
-          const fallbackTitle = `Party Slot ${slotNumber}`;
+          const fallbackTitle = `Member ${slotNumber}`;
           const isEmpty = !snapshot;
 
           return (
