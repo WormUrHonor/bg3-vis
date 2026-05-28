@@ -20,6 +20,7 @@ type ProcessSpiralPanelProps = {
     historyEntryId: string,
     slotIndex: number
   ) => void;
+  onRestoreHistoryEntryAsSavedBuild: (historyEntryId: string) => void;
 };
 
 type SpiralNode = {
@@ -27,8 +28,17 @@ type SpiralNode = {
   index: number;
   x: number;
   y: number;
-  size: number;
+  sizePercent: number;
   opacity: number;
+  zIndex: number;
+};
+
+type RingSpec = {
+  capacity: number;
+  radiusX: number;
+  radiusY: number;
+  sizePercent: number;
+  angleOffset: number;
 };
 
 function getFixedClassFeatureIdsForSnapshot(snapshot: BuildEditorSnapshot) {
@@ -81,43 +91,105 @@ function getSortedHistory(buildHistory: BuildHistoryEntry[]) {
   });
 }
 
+function getRingSpecs(isExpanded: boolean): RingSpec[] {
+  if (isExpanded) {
+    return [
+      { capacity: 6, radiusX: 17, radiusY: 14, sizePercent: 8.1, angleOffset: -88 },
+      { capacity: 9, radiusX: 29, radiusY: 23, sizePercent: 6.2, angleOffset: -65 },
+      { capacity: 12, radiusX: 40, radiusY: 31, sizePercent: 4.8, angleOffset: -42 },
+      { capacity: 16, radiusX: 46, radiusY: 37, sizePercent: 3.8, angleOffset: -20 },
+    ];
+  }
+
+  return [
+    { capacity: 5, radiusX: 21, radiusY: 17, sizePercent: 9.8, angleOffset: -90 },
+    { capacity: 8, radiusX: 33, radiusY: 27, sizePercent: 6.7, angleOffset: -56 },
+    { capacity: 10, radiusX: 42, radiusY: 35, sizePercent: 5.0, angleOffset: -22 },
+  ];
+}
+
+function getRingForIndex(indexAfterCenter: number, rings: RingSpec[]) {
+  let remaining = indexAfterCenter;
+
+  for (let ringIndex = 0; ringIndex < rings.length; ringIndex += 1) {
+    const ring = rings[ringIndex];
+
+    if (remaining < ring.capacity) {
+      return {
+        ring,
+        ringIndex,
+        slotIndex: remaining,
+      };
+    }
+
+    remaining -= ring.capacity;
+  }
+
+  const lastRing = rings[rings.length - 1];
+
+  return {
+    ring: lastRing,
+    ringIndex: rings.length - 1,
+    slotIndex: lastRing.capacity - 1,
+  };
+}
+
+function getVisibleCapacity(isExpanded: boolean) {
+  const rings = getRingSpecs(isExpanded);
+  return 1 + rings.reduce((sum, ring) => sum + ring.capacity, 0);
+}
+
 function getSpiralNodes(
   buildHistory: BuildHistoryEntry[],
   isExpanded: boolean
 ): SpiralNode[] {
   const sortedHistory = getSortedHistory(buildHistory);
+  const visibleHistory = sortedHistory.slice(0, getVisibleCapacity(isExpanded));
+  const count = visibleHistory.length;
 
-  const maxVisibleNodes = isExpanded ? 42 : 18;
-  const visibleHistory = sortedHistory.slice(0, maxVisibleNodes);
+  if (count === 0) return [];
 
-  const maxSize = isExpanded ? 132 : 78;
-  const minSize = isExpanded ? 38 : 24;
+  const rings = getRingSpecs(isExpanded);
+  const centerX = 50;
+  const centerY = isExpanded ? 43 : 44;
 
   return visibleHistory.map((entry, index) => {
-    /*
-      This creates a tightening spiral:
-      - newest version starts large and near the outer/top-left curve
-      - older versions move around the spiral and become smaller
-      - distance grows slowly while size shrinks, so it reads as a descending process trail
-    */
-    const angle = -2.35 + index * 0.66;
-    const distance = isExpanded ? 7 + index * 2.05 : 6 + index * 2.75;
+    if (index === 0) {
+      return {
+        entry,
+        index,
+        x: centerX,
+        y: centerY,
+        sizePercent: isExpanded ? 13.2 : 20.5,
+        opacity: 1,
+        zIndex: 2000,
+      };
+    }
 
-    const shrinkRatio =
-      visibleHistory.length <= 1 ? 0 : index / (visibleHistory.length - 1);
+    const { ring, ringIndex, slotIndex } = getRingForIndex(index - 1, rings);
 
-    const size = Math.max(
-      minSize,
-      maxSize - Math.pow(shrinkRatio, 0.72) * (maxSize - minSize)
-    );
+    const usedBeforeThisRing =
+      1 +
+      rings
+        .slice(0, ringIndex)
+        .reduce((sum, previousRing) => sum + previousRing.capacity, 0);
+
+    const remainingVisibleInThisRing = Math.max(0, count - usedBeforeThisRing);
+    const actualSlotsInRing = Math.min(ring.capacity, remainingVisibleInThisRing);
+
+    const step = 360 / actualSlotsInRing;
+    const angle = ((ring.angleOffset + slotIndex * step) * Math.PI) / 180;
+
+    const altitudeDrop = ringIndex * (isExpanded ? 2.1 : 2.6);
 
     return {
       entry,
       index,
-      x: 50 + Math.cos(angle) * distance,
-      y: 50 + Math.sin(angle) * distance,
-      size,
-      opacity: Math.max(0.48, 1 - shrinkRatio * 0.38),
+      x: centerX + Math.cos(angle) * ring.radiusX,
+      y: centerY + Math.sin(angle) * ring.radiusY + altitudeDrop,
+      sizePercent: ring.sizePercent,
+      opacity: Math.max(0.52, 1 - index * 0.018),
+      zIndex: 1600 - index,
     };
   });
 }
@@ -133,6 +205,24 @@ function getSpiralPath(nodes: SpiralNode[]) {
     .join(" ");
 }
 
+function MiniHistoryCircle({ entry }: { entry: BuildHistoryEntry }) {
+  return (
+    <DataCircle
+      buildName={entry.snapshot.buildName}
+      characterName={entry.snapshot.characterName}
+      selectedClass={entry.snapshot.selectedClass}
+      selectedSubclass={entry.snapshot.selectedSubclass}
+      selectedLevel={entry.snapshot.selectedLevel}
+      selectedSpellIds={entry.snapshot.selectedSpellIds}
+      fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(entry.snapshot)}
+      selectedClassFeatureIds={entry.snapshot.selectedClassFeatureIds}
+      activeClassFeatureIds={entry.snapshot.activeClassFeatureIds}
+      showDprLayer={false}
+      variant="party"
+    />
+  );
+}
+
 export default function ProcessSpiralPanel({
   buildHistory,
   isExpanded = false,
@@ -140,6 +230,7 @@ export default function ProcessSpiralPanel({
   onCollapse,
   onLoadHistoryEntry,
   onLoadHistoryEntryIntoPartySlot,
+  onRestoreHistoryEntryAsSavedBuild,
 }: ProcessSpiralPanelProps) {
   const nodes = useMemo(
     () => getSpiralNodes(buildHistory, isExpanded),
@@ -152,6 +243,10 @@ export default function ProcessSpiralPanel({
     string | null
   >(null);
 
+  const [hoveredHistoryEntryId, setHoveredHistoryEntryId] = useState<
+    string | null
+  >(null);
+
   const selectedEntry = useMemo(() => {
     if (!selectedHistoryEntryId) return nodes[0]?.entry ?? null;
 
@@ -161,6 +256,17 @@ export default function ProcessSpiralPanel({
       null
     );
   }, [nodes, selectedHistoryEntryId]);
+
+  const hoveredEntry = useMemo(() => {
+    if (!hoveredHistoryEntryId) return null;
+
+    return (
+      nodes.find((node) => node.entry.id === hoveredHistoryEntryId)?.entry ??
+      null
+    );
+  }, [nodes, hoveredHistoryEntryId]);
+
+  const previewEntry = hoveredEntry ?? selectedEntry;
 
   useEffect(() => {
     if (nodes.length <= 0) {
@@ -177,6 +283,8 @@ export default function ProcessSpiralPanel({
 
     setSelectedHistoryEntryId(nodes[0].entry.id);
   }, [nodes, selectedHistoryEntryId]);
+
+  const hiddenCount = Math.max(0, buildHistory.length - nodes.length);
 
   return (
     <section
@@ -222,6 +330,21 @@ export default function ProcessSpiralPanel({
               aria-hidden="true"
             >
               <defs>
+                <radialGradient
+                  id={
+                    isExpanded
+                      ? "processMountainGlowExpanded"
+                      : "processMountainGlow"
+                  }
+                  cx="50%"
+                  cy="43%"
+                  r="58%"
+                >
+                  <stop offset="0%" stopColor="rgba(255,222,158,0.22)" />
+                  <stop offset="45%" stopColor="rgba(176,119,214,0.09)" />
+                  <stop offset="100%" stopColor="rgba(93,178,255,0)" />
+                </radialGradient>
+
                 <linearGradient
                   id={
                     isExpanded
@@ -233,9 +356,9 @@ export default function ProcessSpiralPanel({
                   x2="100%"
                   y2="100%"
                 >
-                  <stop offset="0%" stopColor="rgba(255,222,158,0.9)" />
-                  <stop offset="48%" stopColor="rgba(170,91,255,0.78)" />
-                  <stop offset="100%" stopColor="rgba(93,178,255,0.5)" />
+                  <stop offset="0%" stopColor="rgba(255,222,158,0.94)" />
+                  <stop offset="44%" stopColor="rgba(174,100,255,0.8)" />
+                  <stop offset="100%" stopColor="rgba(93,178,255,0.48)" />
                 </linearGradient>
 
                 <filter
@@ -245,13 +368,25 @@ export default function ProcessSpiralPanel({
                       : "processSpiralGlow"
                   }
                 >
-                  <feGaussianBlur stdDeviation="1.6" result="blur" />
+                  <feGaussianBlur stdDeviation="1.25" result="blur" />
                   <feMerge>
                     <feMergeNode in="blur" />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
               </defs>
+
+              <rect
+                x="0"
+                y="0"
+                width="100"
+                height="100"
+                fill={
+                  isExpanded
+                    ? "url(#processMountainGlowExpanded)"
+                    : "url(#processMountainGlow)"
+                }
+              />
 
               <g className="process-spiral-grid">
                 {Array.from({ length: isExpanded ? 12 : 8 }, (_, index) => (
@@ -288,23 +423,30 @@ export default function ProcessSpiralPanel({
 
             {nodes.map((node) => {
               const isSelected = selectedEntry?.id === node.entry.id;
+              const isHovered = hoveredHistoryEntryId === node.entry.id;
 
               return (
                 <button
                   key={node.entry.id}
                   type="button"
-                  className={
-                    isSelected
-                      ? "process-spiral-node process-spiral-node--selected"
-                      : "process-spiral-node"
-                  }
+                  className={[
+                    "process-spiral-node",
+                    isSelected ? "process-spiral-node--selected" : "",
+                    isHovered ? "process-spiral-node--hovered" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   style={{
-                    width: `${node.size}px`,
-                    height: `${node.size}px`,
+                    width: `${node.sizePercent}%`,
                     left: `${node.x}%`,
                     top: `${node.y}%`,
                     opacity: node.opacity,
+                    zIndex: isHovered ? 5000 : isSelected ? 3500 : node.zIndex,
                   }}
+                  onMouseEnter={() => setHoveredHistoryEntryId(node.entry.id)}
+                  onMouseLeave={() => setHoveredHistoryEntryId(null)}
+                  onFocus={() => setHoveredHistoryEntryId(node.entry.id)}
+                  onBlur={() => setHoveredHistoryEntryId(null)}
                   onClick={() => setSelectedHistoryEntryId(node.entry.id)}
                   title={getHistoryLabel(node.entry)}
                 >
@@ -312,28 +454,31 @@ export default function ProcessSpiralPanel({
                     {node.index + 1}
                   </span>
 
-                  <DataCircle
-                    buildName={node.entry.snapshot.buildName}
-                    characterName={node.entry.snapshot.characterName}
-                    selectedClass={node.entry.snapshot.selectedClass}
-                    selectedSubclass={node.entry.snapshot.selectedSubclass}
-                    selectedLevel={node.entry.snapshot.selectedLevel}
-                    selectedSpellIds={node.entry.snapshot.selectedSpellIds}
-                    fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(
-                      node.entry.snapshot
-                    )}
-                    selectedClassFeatureIds={
-                      node.entry.snapshot.selectedClassFeatureIds
-                    }
-                    activeClassFeatureIds={
-                      node.entry.snapshot.activeClassFeatureIds
-                    }
-                    showDprLayer={false}
-                    variant="party"
-                  />
+                  <MiniHistoryCircle entry={node.entry} />
                 </button>
               );
             })}
+
+            {isExpanded && previewEntry ? (
+              <div className="process-spiral-loupe process-spiral-loupe--expanded">
+                <div className="process-spiral-loupe-circle">
+                  <MiniHistoryCircle entry={previewEntry} />
+                </div>
+
+                <div className="process-spiral-loupe-caption">
+                  <span>
+                    {hoveredEntry ? "Hovered version" : "Selected version"}
+                  </span>
+                  <strong>{getHistoryLabel(previewEntry)}</strong>
+                </div>
+              </div>
+            ) : null}
+
+            {hiddenCount > 0 ? (
+              <div className="process-spiral-hidden-count">
+                +{hiddenCount} older versions
+              </div>
+            ) : null}
           </div>
 
           {selectedEntry ? (
@@ -359,6 +504,15 @@ export default function ProcessSpiralPanel({
                   onClick={() => onLoadHistoryEntry(selectedEntry.id)}
                 >
                   Load
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onRestoreHistoryEntryAsSavedBuild(selectedEntry.id)
+                  }
+                >
+                  Restore
                 </button>
 
                 {[0, 1, 2].map((slotIndex) => (

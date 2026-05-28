@@ -829,7 +829,23 @@ function BuildPlanner() {
 
     applyEditorSnapshot(historyEntry.snapshot, null, null);
   }
+function handleRestoreHistoryEntryAsSavedBuild(historyEntryId: string) {
+  const historyEntry = buildHistory.find(
+    (entry) => entry.id === historyEntryId
+  );
 
+  if (!historyEntry) return;
+
+  const restoredBuild = createSavedBuild(
+    historyEntry.snapshot,
+    `${historyEntry.label} · restored`
+  );
+
+  setSavedBuilds((current) => [restoredBuild, ...current]);
+  setFocusedSavedBuild(restoredBuild);
+  setEditingPartySlotIndex(null);
+  appendBuildHistory(restoredBuild, "created");
+}
   function handleLoadHistoryEntryIntoPartySlot(
     historyEntryId: string,
     slotIndex: number
@@ -865,15 +881,16 @@ function BuildPlanner() {
       >
         {isProcessSpiralExpanded ? (
           <ProcessSpiralPanel
-            buildHistory={buildHistory}
-            isExpanded
-            onCollapse={() => setIsProcessSpiralExpanded(false)}
-            onLoadHistoryEntry={(historyEntryId) => {
-              handleLoadHistoryEntry(historyEntryId);
-              setIsProcessSpiralExpanded(false);
-            }}
-            onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
-          />
+  buildHistory={buildHistory}
+  isExpanded
+  onCollapse={() => setIsProcessSpiralExpanded(false)}
+  onLoadHistoryEntry={(historyEntryId) => {
+    handleLoadHistoryEntry(historyEntryId);
+    setIsProcessSpiralExpanded(false);
+  }}
+  onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
+  onRestoreHistoryEntryAsSavedBuild={handleRestoreHistoryEntryAsSavedBuild}
+/>
         ) : (
           <>
             <header className="workspace-header">
@@ -1053,13 +1070,12 @@ function BuildPlanner() {
                 />
 
                 <ProcessSpiralPanel
-                  buildHistory={buildHistory}
-                  onExpand={() => setIsProcessSpiralExpanded(true)}
-                  onLoadHistoryEntry={handleLoadHistoryEntry}
-                  onLoadHistoryEntryIntoPartySlot={
-                    handleLoadHistoryEntryIntoPartySlot
-                  }
-                />
+  buildHistory={buildHistory}
+  onExpand={() => setIsProcessSpiralExpanded(true)}
+  onLoadHistoryEntry={handleLoadHistoryEntry}
+  onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
+  onRestoreHistoryEntryAsSavedBuild={handleRestoreHistoryEntryAsSavedBuild}
+/>
               </aside>
 
               <section
