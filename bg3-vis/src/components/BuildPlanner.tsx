@@ -191,9 +191,11 @@ function BuildPlanner() {
   const [focusedDataCircle, setFocusedDataCircle] =
     useState<DataCircleFocusSource>("editor");
 
-  const [focusedSavedBuild, setFocusedSavedBuild] = useState<SavedBuild | null>(
-    null
-  );
+  const [isProcessSpiralExpanded, setIsProcessSpiralExpanded] =
+    useState(false);
+
+  const [focusedSavedBuild, setFocusedSavedBuild] =
+    useState<SavedBuild | null>(null);
 
   const [editingPartySlotIndex, setEditingPartySlotIndex] = useState<
     number | null
@@ -566,7 +568,10 @@ function BuildPlanner() {
     featSelections,
   ]);
 
-  function appendBuildHistory(savedBuild: SavedBuild, eventType: "created" | "updated") {
+  function appendBuildHistory(
+    savedBuild: SavedBuild,
+    eventType: "created" | "updated"
+  ) {
     const historyEntry = createBuildHistoryEntry(savedBuild, eventType);
     setBuildHistory((current) => [historyEntry, ...current]);
   }
@@ -577,7 +582,9 @@ function BuildPlanner() {
 
       if (!alreadyExists) return [nextBuild, ...current];
 
-      return current.map((item) => (item.id === nextBuild.id ? nextBuild : item));
+      return current.map((item) =>
+        item.id === nextBuild.id ? nextBuild : item
+      );
     });
   }
 
@@ -692,7 +699,8 @@ function BuildPlanner() {
   }
 
   function handleOverwriteSavedBuild(buildId: string) {
-    const partySlotBuild = partySlots.find((slot) => slot?.id === buildId) ?? null;
+    const partySlotBuild =
+      partySlots.find((slot) => slot?.id === buildId) ?? null;
 
     const existingBuild =
       savedBuilds.find((savedBuild) => savedBuild.id === buildId) ??
@@ -725,7 +733,10 @@ function BuildPlanner() {
     applyEditorSnapshot(savedBuild.snapshot, savedBuild, null);
   }
 
-  function handleLoadSavedBuildIntoPartySlot(buildId: string, slotIndex: number) {
+  function handleLoadSavedBuildIntoPartySlot(
+    buildId: string,
+    slotIndex: number
+  ) {
     const savedBuild = savedBuilds.find((item) => item.id === buildId);
 
     if (!savedBuild) return;
@@ -750,7 +761,11 @@ function BuildPlanner() {
       )
     );
 
-    applyEditorSnapshot(selectedSlotBuild.snapshot, selectedSlotBuild, slotIndex);
+    applyEditorSnapshot(
+      selectedSlotBuild.snapshot,
+      selectedSlotBuild,
+      slotIndex
+    );
   }
 
   function handleFocusAggregate() {
@@ -806,7 +821,9 @@ function BuildPlanner() {
   }
 
   function handleLoadHistoryEntry(historyEntryId: string) {
-    const historyEntry = buildHistory.find((entry) => entry.id === historyEntryId);
+    const historyEntry = buildHistory.find(
+      (entry) => entry.id === historyEntryId
+    );
 
     if (!historyEntry) return;
 
@@ -817,7 +834,9 @@ function BuildPlanner() {
     historyEntryId: string,
     slotIndex: number
   ) {
-    const historyEntry = buildHistory.find((entry) => entry.id === historyEntryId);
+    const historyEntry = buildHistory.find(
+      (entry) => entry.id === historyEntryId
+    );
 
     if (!historyEntry) return;
 
@@ -840,281 +859,308 @@ function BuildPlanner() {
       <section
         className={`workspace-half planner-half ${
           isAggregateFocused ? "planner-half--readonly-focus" : ""
+        } ${
+          isProcessSpiralExpanded ? "planner-half--process-expanded" : ""
         }`}
       >
-        <header className="workspace-header">
-          <div>
-            <p className="eyebrow">BG3 Build Planner</p>
-            <h1>Build Creation</h1>
-          </div>
-
-          <button
-            className="evaluate-button"
-            type="button"
-            onClick={handleEvaluateBuild}
-            disabled={isAggregateFocused}
-            title={
-              isAggregateFocused
-                ? "Aggregate is a read-only calculated preview."
-                : "Evaluate the current editable build."
-            }
-          >
-            {hasEvaluatedBuild ? "Re-evaluate Build" : "Evaluate Build"}
-          </button>
-        </header>
-
-        <nav className="tab-bar" aria-label="Build creation sections">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={activeTab === tab.id ? "tab active" : "tab"}
-              onClick={() => setActiveTab(tab.id)}
-              type="button"
-              disabled={isAggregateFocused}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="planner-content-layout">
-          <aside className="summary-card">
-            <h2>Current Build</h2>
-
-            <div className="summary-row">
-              <span>Focus</span>
-              <strong>{focusedLabel}</strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Name</span>
-              <strong>{buildName || "Untitled Build"}</strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Race</span>
-              <strong>{selectedRace || "Not selected"}</strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Class</span>
-              <strong>{selectedClass || "Not selected"}</strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Subclass</span>
-              <strong>{selectedSubclass || "Not selected"}</strong>
-            </div>
-
-            <div className="summary-row">
-              <span>Level</span>
-              <strong>{selectedLevel}</strong>
-            </div>
-
-            <section className="focus-selector" aria-label="Focused data circle">
-              <div className="focus-selector-header">
-                <span>Big circle focus</span>
-                <strong>{focusedLabel}</strong>
+        {isProcessSpiralExpanded ? (
+          <ProcessSpiralPanel
+            buildHistory={buildHistory}
+            isExpanded
+            onCollapse={() => setIsProcessSpiralExpanded(false)}
+            onLoadHistoryEntry={(historyEntryId) => {
+              handleLoadHistoryEntry(historyEntryId);
+              setIsProcessSpiralExpanded(false);
+            }}
+            onLoadHistoryEntryIntoPartySlot={handleLoadHistoryEntryIntoPartySlot}
+          />
+        ) : (
+          <>
+            <header className="workspace-header">
+              <div>
+                <p className="eyebrow">BG3 Build Planner</p>
+                <h1>Build Creation</h1>
               </div>
 
-              <div className="focus-selector-grid">
+              <button
+                className="evaluate-button"
+                type="button"
+                onClick={handleEvaluateBuild}
+                disabled={isAggregateFocused}
+                title={
+                  isAggregateFocused
+                    ? "Aggregate is a read-only calculated preview."
+                    : "Evaluate the current editable build."
+                }
+              >
+                {hasEvaluatedBuild ? "Re-evaluate Build" : "Evaluate Build"}
+              </button>
+            </header>
+
+            <nav className="tab-bar" aria-label="Build creation sections">
+              {tabs.map((tab) => (
                 <button
+                  key={tab.id}
+                  className={activeTab === tab.id ? "tab active" : "tab"}
+                  onClick={() => setActiveTab(tab.id)}
                   type="button"
-                  className={
-                    !isAggregateFocused
-                      ? "focus-selector-button focus-selector-button--active"
-                      : "focus-selector-button"
-                  }
-                  onClick={handleFocusCurrentEditor}
+                  disabled={isAggregateFocused}
                 >
-                  Editable Focus
+                  {tab.label}
                 </button>
+              ))}
+            </nav>
 
-                <button
-                  type="button"
-                  className={
-                    isAggregateFocused
-                      ? "focus-selector-button focus-selector-button--active focus-selector-button--aggregate"
-                      : "focus-selector-button focus-selector-button--aggregate"
-                  }
-                  onClick={handleFocusAggregate}
+            <div className="planner-content-layout">
+              <aside className="summary-card">
+                <h2>Current Build</h2>
+
+                <div className="summary-row">
+                  <span>Focus</span>
+                  <strong>{focusedLabel}</strong>
+                </div>
+
+                <div className="summary-row">
+                  <span>Name</span>
+                  <strong>{buildName || "Untitled Build"}</strong>
+                </div>
+
+                <div className="summary-row">
+                  <span>Race</span>
+                  <strong>{selectedRace || "Not selected"}</strong>
+                </div>
+
+                <div className="summary-row">
+                  <span>Class</span>
+                  <strong>{selectedClass || "Not selected"}</strong>
+                </div>
+
+                <div className="summary-row">
+                  <span>Subclass</span>
+                  <strong>{selectedSubclass || "Not selected"}</strong>
+                </div>
+
+                <div className="summary-row">
+                  <span>Level</span>
+                  <strong>{selectedLevel}</strong>
+                </div>
+
+                <section
+                  className="focus-selector"
+                  aria-label="Focused data circle"
                 >
-                  Aggregate
-                </button>
+                  <div className="focus-selector-header">
+                    <span>Big circle focus</span>
+                    <strong>{focusedLabel}</strong>
+                  </div>
 
-                {partySlots.map((slot, index) => {
-                  const isFocused =
-                    !isAggregateFocused && editingPartySlotIndex === index;
-
-                  return (
+                  <div className="focus-selector-grid">
                     <button
-                      key={`focus-party-${index}`}
                       type="button"
                       className={
-                        isFocused
+                        !isAggregateFocused
                           ? "focus-selector-button focus-selector-button--active"
                           : "focus-selector-button"
                       }
-                      onClick={() => handleEditPartySlot(index)}
-                      disabled={!slot || isAggregateFocused}
-                      title={
-                        slot
-                          ? `Swap focused build with ${getSavedBuildTitle(slot)}`
-                          : `Member ${index + 1} has no assigned build.`
-                      }
+                      onClick={handleFocusCurrentEditor}
                     >
-                      Member {index + 1}
+                      Editable Focus
                     </button>
-                  );
-                })}
-              </div>
 
-              {isAggregateFocused ? (
-                <p className="focus-selector-note">
-                  Aggregate is a read-only calculated view of the large focused
-                  build and the three assigned party members.
-                </p>
-              ) : focusedSavedBuild ? (
-                <p className="focus-selector-note">
-                  Editing {getSavedBuildTitle(focusedSavedBuild)}. Use Update to
-                  save changes to this focused build.
-                </p>
-              ) : (
-                <p className="focus-selector-note">
-                  The large editable build is the fourth party member. Selecting
-                  a party slot swaps it with the focused build.
-                </p>
-              )}
+                    <button
+                      type="button"
+                      className={
+                        isAggregateFocused
+                          ? "focus-selector-button focus-selector-button--active focus-selector-button--aggregate"
+                          : "focus-selector-button focus-selector-button--aggregate"
+                      }
+                      onClick={handleFocusAggregate}
+                    >
+                      Aggregate
+                    </button>
 
-              {!isAggregateFocused ? (
-                <button
-                  type="button"
-                  className="focus-selector-update-button"
-                  onClick={handleUpdateEditedPartyBuild}
-                >
-                  {focusedSavedBuild
-                    ? "Update focused build"
-                    : "Save focused build"}
-                </button>
-              ) : null}
-            </section>
+                    {partySlots.map((slot, index) => {
+                      const isFocused =
+                        !isAggregateFocused && editingPartySlotIndex === index;
 
-            <SavedBuildsPanel
-              currentSnapshot={currentEditorSnapshot}
-              savedBuilds={savedBuilds}
-              partySlots={partySlots}
-              onSaveNew={handleSaveNewBuild}
-              onOverwrite={handleOverwriteSavedBuild}
-              onLoad={handleLoadSavedBuild}
-              onLoadIntoPartySlot={handleLoadSavedBuildIntoPartySlot}
-              onClearPartySlot={handleClearPartySlot}
-              onDelete={handleDeleteSavedBuild}
-            />
+                      return (
+                        <button
+                          key={`focus-party-${index}`}
+                          type="button"
+                          className={
+                            isFocused
+                              ? "focus-selector-button focus-selector-button--active"
+                              : "focus-selector-button"
+                          }
+                          onClick={() => handleEditPartySlot(index)}
+                          disabled={!slot || isAggregateFocused}
+                          title={
+                            slot
+                              ? `Swap focused build with ${getSavedBuildTitle(
+                                  slot
+                                )}`
+                              : `Member ${
+                                  index + 1
+                                } has no assigned build.`
+                          }
+                        >
+                          Member {index + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-            <ProcessSpiralPanel
-              buildHistory={buildHistory}
-              onLoadHistoryEntry={handleLoadHistoryEntry}
-              onLoadHistoryEntryIntoPartySlot={
-                handleLoadHistoryEntryIntoPartySlot
-              }
-            />
-          </aside>
+                  {isAggregateFocused ? (
+                    <p className="focus-selector-note">
+                      Aggregate is a read-only calculated view of the large
+                      focused build and the three assigned party members.
+                    </p>
+                  ) : focusedSavedBuild ? (
+                    <p className="focus-selector-note">
+                      Editing {getSavedBuildTitle(focusedSavedBuild)}. Use
+                      Update to save changes to this focused build.
+                    </p>
+                  ) : (
+                    <p className="focus-selector-note">
+                      The large editable build is the fourth party member.
+                      Selecting a party slot swaps it with the focused build.
+                    </p>
+                  )}
 
-          <section
-            className={`main-panel ${
-              isAggregateFocused ? "main-panel--readonly-preview" : ""
-            }`}
-            aria-disabled={isAggregateFocused}
-          >
-            {isAggregateFocused ? (
-              <div className="main-panel-readonly-overlay">
-                Viewing Aggregate. Select Editable Focus or a party member to
-                edit.
-              </div>
-            ) : null}
+                  {!isAggregateFocused ? (
+                    <button
+                      type="button"
+                      className="focus-selector-update-button"
+                      onClick={handleUpdateEditedPartyBuild}
+                    >
+                      {focusedSavedBuild
+                        ? "Update focused build"
+                        : "Save focused build"}
+                    </button>
+                  ) : null}
+                </section>
 
-            {activeTab === "character" && (
-              <CharacterTab
-                buildName={buildName}
-                setBuildName={setBuildName}
-                characterName={characterName}
-                setCharacterName={setCharacterName}
-                selectedRace={selectedRace}
-                selectedSubrace={selectedSubrace}
-                selectedBackground={selectedBackground}
-                selectedClass={selectedClass}
-                selectedClassSkills={selectedClassSkills}
-                lockedSkills={lockedSkills}
-                allProficiencies={allProficiencies}
-                allExpertise={allExpertise}
-                onRaceChange={handleRaceChange}
-                setSelectedSubrace={(value) => {
-                  setSelectedSubrace(value);
-                  setSelectedClassFeatureIds([]);
-                  setActiveClassFeatureIds([]);
-                }}
-                setSelectedBackground={setSelectedBackground}
-                onClassChange={handleClassChange}
-                setSelectedClassSkills={setSelectedClassSkills}
-              />
-            )}
+                <SavedBuildsPanel
+                  currentSnapshot={currentEditorSnapshot}
+                  savedBuilds={savedBuilds}
+                  partySlots={partySlots}
+                  onSaveNew={handleSaveNewBuild}
+                  onOverwrite={handleOverwriteSavedBuild}
+                  onLoad={handleLoadSavedBuild}
+                  onLoadIntoPartySlot={handleLoadSavedBuildIntoPartySlot}
+                  onClearPartySlot={handleClearPartySlot}
+                  onDelete={handleDeleteSavedBuild}
+                />
 
-            {activeTab === "classScores" && (
-              <ClassScoresTab
-                selectedClass={selectedClass}
-                selectedSubclass={selectedSubclass}
-                selectedLevel={selectedLevel}
-                selectedRace={selectedRace}
-                selectedSubrace={selectedSubrace}
-                allProficiencies={allProficiencies}
-                bardExpertise={bardExpertise}
-                rogueExpertise={rogueExpertise}
-                loreBardSkills={loreBardSkills}
-                knowledgeClericExpertise={knowledgeClericExpertise}
-                rangerFavouredEnemy={rangerFavouredEnemy}
-                rangerNaturalExplorer={rangerNaturalExplorer}
-                selectedWarlockInvocations={selectedWarlockInvocations}
-                baseAbilityScores={baseAbilityScores}
-                bonusPlusTwo={bonusPlusTwo}
-                bonusPlusOne={bonusPlusOne}
-                featSelections={featSelections}
-                featAbilityIncreases={featAbilityIncreases}
-                onClassChange={handleClassChange}
-                setSelectedSubclass={setSelectedSubclass}
-                setSelectedLevel={setSelectedLevel}
-                setBardExpertise={setBardExpertise}
-                setRogueExpertise={setRogueExpertise}
-                setLoreBardSkills={setLoreBardSkills}
-                setKnowledgeClericExpertise={setKnowledgeClericExpertise}
-                setRangerFavouredEnemy={setRangerFavouredEnemy}
-                setRangerNaturalExplorer={setRangerNaturalExplorer}
-                setSelectedWarlockInvocations={setSelectedWarlockInvocations}
-                setBaseAbilityScores={setBaseAbilityScores}
-                setBonusPlusTwo={setBonusPlusTwo}
-                setBonusPlusOne={setBonusPlusOne}
-                setFeatSelections={setFeatSelections}
-              />
-            )}
+                <ProcessSpiralPanel
+                  buildHistory={buildHistory}
+                  onExpand={() => setIsProcessSpiralExpanded(true)}
+                  onLoadHistoryEntry={handleLoadHistoryEntry}
+                  onLoadHistoryEntryIntoPartySlot={
+                    handleLoadHistoryEntryIntoPartySlot
+                  }
+                />
+              </aside>
 
-            {activeTab === "spellsAbilities" && (
-              <SpellsAbilitiesTab
-                selectedClass={selectedClass}
-                selectedSubclass={selectedSubclass}
-                selectedLevel={selectedLevel}
-                selectedWarlockInvocations={selectedWarlockInvocations}
-                selectedSpellIds={selectedSpellIds}
-                setSelectedSpellIds={setSelectedSpellIds}
-                availableClassFeatures={availableClassFeatures}
-                selectedClassFeatureIds={selectedClassFeatureIds}
-                fixedClassFeatureIds={fixedClassFeatureIds}
-                setSelectedClassFeatureIds={setSelectedClassFeatureIds}
-                activeClassFeatureIds={activeClassFeatureIds}
-                setActiveClassFeatureIds={setActiveClassFeatureIds}
-                spellChoiceMaxOverrides={spellChoiceMaxOverrides}
-              />
-            )}
-          </section>
-        </div>
+              <section
+                className={`main-panel ${
+                  isAggregateFocused ? "main-panel--readonly-preview" : ""
+                }`}
+                aria-disabled={isAggregateFocused}
+              >
+                {isAggregateFocused ? (
+                  <div className="main-panel-readonly-overlay">
+                    Viewing Aggregate. Select Editable Focus or a party member
+                    to edit.
+                  </div>
+                ) : null}
+
+                {activeTab === "character" && (
+                  <CharacterTab
+                    buildName={buildName}
+                    setBuildName={setBuildName}
+                    characterName={characterName}
+                    setCharacterName={setCharacterName}
+                    selectedRace={selectedRace}
+                    selectedSubrace={selectedSubrace}
+                    selectedBackground={selectedBackground}
+                    selectedClass={selectedClass}
+                    selectedClassSkills={selectedClassSkills}
+                    lockedSkills={lockedSkills}
+                    allProficiencies={allProficiencies}
+                    allExpertise={allExpertise}
+                    onRaceChange={handleRaceChange}
+                    setSelectedSubrace={(value) => {
+                      setSelectedSubrace(value);
+                      setSelectedClassFeatureIds([]);
+                      setActiveClassFeatureIds([]);
+                    }}
+                    setSelectedBackground={setSelectedBackground}
+                    onClassChange={handleClassChange}
+                    setSelectedClassSkills={setSelectedClassSkills}
+                  />
+                )}
+
+                {activeTab === "classScores" && (
+                  <ClassScoresTab
+                    selectedClass={selectedClass}
+                    selectedSubclass={selectedSubclass}
+                    selectedLevel={selectedLevel}
+                    selectedRace={selectedRace}
+                    selectedSubrace={selectedSubrace}
+                    allProficiencies={allProficiencies}
+                    bardExpertise={bardExpertise}
+                    rogueExpertise={rogueExpertise}
+                    loreBardSkills={loreBardSkills}
+                    knowledgeClericExpertise={knowledgeClericExpertise}
+                    rangerFavouredEnemy={rangerFavouredEnemy}
+                    rangerNaturalExplorer={rangerNaturalExplorer}
+                    selectedWarlockInvocations={selectedWarlockInvocations}
+                    baseAbilityScores={baseAbilityScores}
+                    bonusPlusTwo={bonusPlusTwo}
+                    bonusPlusOne={bonusPlusOne}
+                    featSelections={featSelections}
+                    featAbilityIncreases={featAbilityIncreases}
+                    onClassChange={handleClassChange}
+                    setSelectedSubclass={setSelectedSubclass}
+                    setSelectedLevel={setSelectedLevel}
+                    setBardExpertise={setBardExpertise}
+                    setRogueExpertise={setRogueExpertise}
+                    setLoreBardSkills={setLoreBardSkills}
+                    setKnowledgeClericExpertise={setKnowledgeClericExpertise}
+                    setRangerFavouredEnemy={setRangerFavouredEnemy}
+                    setRangerNaturalExplorer={setRangerNaturalExplorer}
+                    setSelectedWarlockInvocations={
+                      setSelectedWarlockInvocations
+                    }
+                    setBaseAbilityScores={setBaseAbilityScores}
+                    setBonusPlusTwo={setBonusPlusTwo}
+                    setBonusPlusOne={setBonusPlusOne}
+                    setFeatSelections={setFeatSelections}
+                  />
+                )}
+
+                {activeTab === "spellsAbilities" && (
+                  <SpellsAbilitiesTab
+                    selectedClass={selectedClass}
+                    selectedSubclass={selectedSubclass}
+                    selectedLevel={selectedLevel}
+                    selectedWarlockInvocations={selectedWarlockInvocations}
+                    selectedSpellIds={selectedSpellIds}
+                    setSelectedSpellIds={setSelectedSpellIds}
+                    availableClassFeatures={availableClassFeatures}
+                    selectedClassFeatureIds={selectedClassFeatureIds}
+                    fixedClassFeatureIds={fixedClassFeatureIds}
+                    setSelectedClassFeatureIds={setSelectedClassFeatureIds}
+                    activeClassFeatureIds={activeClassFeatureIds}
+                    setActiveClassFeatureIds={setActiveClassFeatureIds}
+                    spellChoiceMaxOverrides={spellChoiceMaxOverrides}
+                  />
+                )}
+              </section>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="workspace-half visualisation-half visualisation-half--immersive">
@@ -1245,9 +1291,7 @@ function BuildPlanner() {
                               selectedSubclass={
                                 slot.savedBuild.snapshot.selectedSubclass
                               }
-                              selectedLevel={
-                                slot.savedBuild.snapshot.selectedLevel
-                              }
+                              selectedLevel={slot.savedBuild.snapshot.selectedLevel}
                               selectedSpellIds={
                                 slot.savedBuild.snapshot.selectedSpellIds
                               }
