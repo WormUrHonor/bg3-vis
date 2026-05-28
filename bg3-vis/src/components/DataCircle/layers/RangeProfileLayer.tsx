@@ -58,6 +58,9 @@ const MIXED_GLOW_COLOR = "rgba(176,119,214,0.95)";
 const FALLBACK_DOT_FILL = "rgba(176,119,214,1)";
 const FALLBACK_DOT_STROKE = "rgba(255,239,185,0.58)";
 
+const SOFT_SELECTION_GLOW = "rgba(255,214,140,0.32)";
+const SOFT_SELECTION_STROKE = "rgba(255,228,186,0.42)";
+
 const ROLE_COLORS: Record<AbilityRole, string> = {
   "single-target-damage": "rgba(255,108,93,1)",
   "area-damage": "rgba(255,143,74,1)",
@@ -105,6 +108,15 @@ function isAbilitySelected(
 
   return selectedFocuses.some(
     (item) => item.type === "ability" && item.abilityId === abilityId
+  );
+}
+
+function isRangeSelected(
+  range: RangeBandKey,
+  selectedFocuses: DataCircleFocusItem[] = []
+) {
+  return selectedFocuses.some(
+    (item) => item.type === "range" && item.range === range
   );
 }
 
@@ -709,8 +721,12 @@ export function RangeProfileLayer({
         );
 
         const active = hasActiveFocus(focus);
+        const rangeIsSelected = isRangeSelected(band.key, selectedFocuses);
+
         const groupOpacity = active && !isRelated ? 0.28 : 1;
         const focusBoost = active && isRelated ? 1.35 : 1;
+        const selectionReviewBoost =
+          rangeIsSelected && showSelectionMarks ? 1.28 : 1;
 
         return (
           <g
@@ -718,14 +734,34 @@ export function RangeProfileLayer({
             opacity={groupOpacity}
             style={{ cursor: "pointer" }}
             onMouseEnter={() => setFocus({ type: "range", range: band.key })}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSelection?.({ type: "range", range: band.key });
+            }}
           >
+            {rangeIsSelected && showSelectionMarks ? (
+              <circle
+                cx={CX}
+                cy={CY}
+                r={middleRadius}
+                fill="none"
+                stroke={SOFT_SELECTION_GLOW}
+                strokeOpacity="0.36"
+                strokeWidth={bandWidth + 8}
+                filter="url(#arcaneSoftGlow)"
+                pointerEvents="none"
+              />
+            ) : null}
+
             <circle
               cx={CX}
               cy={CY}
               r={middleRadius}
               fill="none"
               stroke="#9b6fd0"
-              strokeOpacity={intensity.smokeOpacity * focusBoost}
+              strokeOpacity={
+                intensity.smokeOpacity * focusBoost * selectionReviewBoost
+              }
               strokeWidth={bandWidth + 3}
               filter={value > 0 ? "url(#arcaneSoftGlow)" : undefined}
             />
@@ -736,7 +772,9 @@ export function RangeProfileLayer({
               r={middleRadius}
               fill="none"
               stroke="#69496f"
-              strokeOpacity={intensity.inlayOpacity * focusBoost}
+              strokeOpacity={
+                intensity.inlayOpacity * focusBoost * selectionReviewBoost
+              }
               strokeWidth={bandWidth}
             />
 
@@ -745,9 +783,23 @@ export function RangeProfileLayer({
               cy={CY}
               r={band.innerRadius}
               fill="none"
-              stroke="rgba(218,178,104,0.9)"
-              strokeOpacity={intensity.rimOpacity * focusBoost}
-              strokeWidth={isRelated && active ? 1.35 : 0.85}
+              stroke={
+                rangeIsSelected && showSelectionMarks
+                  ? SOFT_SELECTION_STROKE
+                  : "rgba(218,178,104,0.9)"
+              }
+              strokeOpacity={
+                rangeIsSelected && showSelectionMarks
+                  ? 0.52
+                  : intensity.rimOpacity * focusBoost
+              }
+              strokeWidth={
+                rangeIsSelected && showSelectionMarks
+                  ? 1.3
+                  : isRelated && active
+                    ? 1.35
+                    : 0.85
+              }
             />
 
             <circle
@@ -755,9 +807,23 @@ export function RangeProfileLayer({
               cy={CY}
               r={band.outerRadius}
               fill="none"
-              stroke="rgba(218,178,104,0.9)"
-              strokeOpacity={intensity.rimOpacity * focusBoost}
-              strokeWidth={isRelated && active ? 1.35 : 0.85}
+              stroke={
+                rangeIsSelected && showSelectionMarks
+                  ? SOFT_SELECTION_STROKE
+                  : "rgba(218,178,104,0.9)"
+              }
+              strokeOpacity={
+                rangeIsSelected && showSelectionMarks
+                  ? 0.52
+                  : intensity.rimOpacity * focusBoost
+              }
+              strokeWidth={
+                rangeIsSelected && showSelectionMarks
+                  ? 1.3
+                  : isRelated && active
+                    ? 1.35
+                    : 0.85
+              }
             />
 
             <text className="data-circle-range-band-label">
