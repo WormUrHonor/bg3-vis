@@ -1,13 +1,19 @@
-import type { BuildEditorSnapshot, SavedBuild } from "../types/savedBuildTypes";
+import type {
+  BuildEditorSnapshot,
+  BuildHistoryEntry,
+  BuildHistoryEventType,
+  SavedBuild,
+} from "../types/savedBuildTypes";
 
 const SAVED_BUILDS_STORAGE_KEY = "bg3-vis.saved-builds.v1";
+const BUILD_HISTORY_STORAGE_KEY = "bg3-vis.build-history.v1";
 
-function createId() {
+function createId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
+    return `${prefix}-${crypto.randomUUID()}`;
   }
 
-  return `saved-build-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function getDefaultSavedBuildLabel(snapshot: BuildEditorSnapshot) {
@@ -27,11 +33,25 @@ export function createSavedBuild(
   const now = new Date().toISOString();
 
   return {
-    id: createId(),
+    id: createId("saved-build"),
     label: label.trim() || "Untitled Build",
     createdAt: now,
     updatedAt: now,
     snapshot,
+  };
+}
+
+export function createBuildHistoryEntry(
+  savedBuild: SavedBuild,
+  eventType: BuildHistoryEventType
+): BuildHistoryEntry {
+  return {
+    id: createId("build-history"),
+    savedBuildId: savedBuild.id,
+    label: savedBuild.label,
+    eventType,
+    createdAt: new Date().toISOString(),
+    snapshot: savedBuild.snapshot,
   };
 }
 
@@ -61,6 +81,35 @@ export function loadSavedBuildsFromStorage(): SavedBuild[] {
 
 export function saveSavedBuildsToStorage(savedBuilds: SavedBuild[]) {
   localStorage.setItem(SAVED_BUILDS_STORAGE_KEY, JSON.stringify(savedBuilds));
+}
+
+export function loadBuildHistoryFromStorage(): BuildHistoryEntry[] {
+  try {
+    const rawValue = localStorage.getItem(BUILD_HISTORY_STORAGE_KEY);
+
+    if (!rawValue) return [];
+
+    const parsedValue = JSON.parse(rawValue);
+
+    if (!Array.isArray(parsedValue)) return [];
+
+    return parsedValue.filter(
+      (item): item is BuildHistoryEntry =>
+        typeof item?.id === "string" &&
+        typeof item?.savedBuildId === "string" &&
+        typeof item?.label === "string" &&
+        typeof item?.eventType === "string" &&
+        typeof item?.createdAt === "string" &&
+        typeof item?.snapshot === "object" &&
+        item.snapshot !== null
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function saveBuildHistoryToStorage(buildHistory: BuildHistoryEntry[]) {
+  localStorage.setItem(BUILD_HISTORY_STORAGE_KEY, JSON.stringify(buildHistory));
 }
 
 export function formatSavedBuildDate(value: string) {

@@ -7,6 +7,7 @@ import ClassScoresTab from "./ClassScoresTab";
 import SpellsAbilitiesTab from "./SpellsAbilitiesTab";
 import DataCircle from "./DataCircle";
 import SavedBuildsPanel from "./SavedBuildsPanel";
+import ProcessSpiralPanel from "./ProcessSpiralPanel";
 
 import { bg3ClassFeatures } from "../data/bg3ClassFeatures";
 import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvailability";
@@ -31,12 +32,19 @@ import type {
   WarlockInvocation,
 } from "../types/buildPlannerTypes";
 
-import type { BuildEditorSnapshot, SavedBuild } from "../types/savedBuildTypes";
+import type {
+  BuildEditorSnapshot,
+  BuildHistoryEntry,
+  SavedBuild,
+} from "../types/savedBuildTypes";
 
 import {
+  createBuildHistoryEntry,
   createSavedBuild,
   getDefaultSavedBuildLabel,
+  loadBuildHistoryFromStorage,
   loadSavedBuildsFromStorage,
+  saveBuildHistoryToStorage,
   saveSavedBuildsToStorage,
 } from "../logic/savedBuildStorage";
 
@@ -166,13 +174,31 @@ function getVisualizedItemsForSnapshot(snapshot: BuildEditorSnapshot) {
   });
 }
 
+function createUpdatedSavedBuild(
+  savedBuild: SavedBuild,
+  snapshot: BuildEditorSnapshot
+): SavedBuild {
+  return {
+    ...savedBuild,
+    label: getDefaultSavedBuildLabel(snapshot),
+    updatedAt: new Date().toISOString(),
+    snapshot,
+  };
+}
+
 function BuildPlanner() {
   const [showPartyPlanner, setShowPartyPlanner] = useState(true);
   const [focusedDataCircle, setFocusedDataCircle] =
     useState<DataCircleFocusSource>("editor");
+
+  const [focusedSavedBuild, setFocusedSavedBuild] = useState<SavedBuild | null>(
+    null
+  );
+
   const [editingPartySlotIndex, setEditingPartySlotIndex] = useState<
     number | null
   >(null);
+
   const [activeTab, setActiveTab] = useState<TabId>("character");
 
   const [buildName, setBuildName] = useState("");
@@ -221,6 +247,10 @@ function BuildPlanner() {
     loadSavedBuildsFromStorage()
   );
 
+  const [buildHistory, setBuildHistory] = useState<BuildHistoryEntry[]>(() =>
+    loadBuildHistoryFromStorage()
+  );
+
   const [partySlots, setPartySlots] = useState<Array<SavedBuild | null>>([
     null,
     null,
@@ -236,7 +266,9 @@ function BuildPlanner() {
     ? "Aggregate"
     : isEditingPartySlot
       ? `Member ${editingPartySlotIndex + 1}`
-      : "Current Editor";
+      : focusedSavedBuild
+        ? getSavedBuildTitle(focusedSavedBuild)
+        : "Current Editor";
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "character", label: "Character" },
@@ -307,29 +339,21 @@ function BuildPlanner() {
 
   const spellChoiceMaxOverrides: Record<string, number> = {
     ...(paladinPreparedSpellLimit !== undefined
-      ? {
-          "paladin-prepared-spells": paladinPreparedSpellLimit,
-        }
+      ? { "paladin-prepared-spells": paladinPreparedSpellLimit }
       : {}),
 
     ...(selectedClass === "Cleric" &&
     clericOrDruidPreparedSpellLimit !== undefined
-      ? {
-          "cleric-prepared-spells": clericOrDruidPreparedSpellLimit,
-        }
+      ? { "cleric-prepared-spells": clericOrDruidPreparedSpellLimit }
       : {}),
 
     ...(selectedClass === "Druid" &&
     clericOrDruidPreparedSpellLimit !== undefined
-      ? {
-          "druid-prepared-spells": clericOrDruidPreparedSpellLimit,
-        }
+      ? { "druid-prepared-spells": clericOrDruidPreparedSpellLimit }
       : {}),
 
     ...(druidCantripLimit !== undefined
-      ? {
-          "druid-cantrips": druidCantripLimit,
-        }
+      ? { "druid-cantrips": druidCantripLimit }
       : {}),
   };
 
@@ -474,27 +498,22 @@ function BuildPlanner() {
   );
 
   const partyAggregateItems = useMemo(
-    () =>
-      partySlots.flatMap((slot) =>
+    () => [
+      ...getVisualizedItemsForSnapshot(currentEditorSnapshot),
+      ...partySlots.flatMap((slot) =>
         slot ? getVisualizedItemsForSnapshot(slot.snapshot) : []
       ),
-    [partySlots]
+    ],
+    [currentEditorSnapshot, partySlots]
   );
-  
+
   useEffect(() => {
     saveSavedBuildsToStorage(savedBuilds);
   }, [savedBuilds]);
 
   useEffect(() => {
-    if (isEditingPartySlot && editingPartySlotIndex !== null) {
-      const activeSlot = partySlots[editingPartySlotIndex];
-
-      if (!activeSlot) {
-        setEditingPartySlotIndex(null);
-        setFocusedDataCircle("editor");
-      }
-    }
-  }, [editingPartySlotIndex, isEditingPartySlot, partySlots]);
+    saveBuildHistoryToStorage(buildHistory);
+  }, [buildHistory]);
 
   useEffect(() => {
     setSelectedSpellIds((current) =>
@@ -547,6 +566,48 @@ function BuildPlanner() {
     featSelections,
   ]);
 
+  function appendBuildHistory(savedBuild: SavedBuild, eventType: "created" | "updated") {
+    const historyEntry = createBuildHistoryEntry(savedBuild, eventType);
+    setBuildHistory((current) => [historyEntry, ...current]);
+  }
+
+  function upsertSavedBuild(nextBuild: SavedBuild) {
+    setSavedBuilds((current) => {
+      const alreadyExists = current.some((item) => item.id === nextBuild.id);
+
+      if (!alreadyExists) return [nextBuild, ...current];
+
+      return current.map((item) => (item.id === nextBuild.id ? nextBuild : item));
+    });
+  }
+
+  function updatePartySlotCopies(nextBuild: SavedBuild) {
+    setPartySlots((current) =>
+      current.map((slot) => (slot?.id === nextBuild.id ? nextBuild : slot))
+    );
+  }
+
+  function getCurrentEditorAsSavedBuild() {
+    if (focusedSavedBuild) {
+      return createUpdatedSavedBuild(focusedSavedBuild, currentEditorSnapshot);
+    }
+
+    return createSavedBuild(currentEditorSnapshot);
+  }
+
+  function persistFocusedBuildIfSaved() {
+    if (!focusedSavedBuild) return;
+
+    const updatedBuild = createUpdatedSavedBuild(
+      focusedSavedBuild,
+      currentEditorSnapshot
+    );
+
+    upsertSavedBuild(updatedBuild);
+    updatePartySlotCopies(updatedBuild);
+    setFocusedSavedBuild(updatedBuild);
+  }
+
   function handleRaceChange(value: string) {
     const race = value as RaceName | "";
 
@@ -582,7 +643,8 @@ function BuildPlanner() {
 
   function applyEditorSnapshot(
     snapshot: BuildEditorSnapshot,
-    nextEditingPartySlotIndex: number | null = null
+    sourceSavedBuild: SavedBuild | null = null,
+    sourcePartySlotIndex: number | null = null
   ) {
     setBuildName(snapshot.buildName);
     setCharacterName(snapshot.characterName);
@@ -614,8 +676,9 @@ function BuildPlanner() {
     setSelectedClassFeatureIds(snapshot.selectedClassFeatureIds);
     setActiveClassFeatureIds(snapshot.activeClassFeatureIds);
 
+    setFocusedSavedBuild(sourceSavedBuild);
+    setEditingPartySlotIndex(sourcePartySlotIndex);
     setFocusedDataCircle("editor");
-    setEditingPartySlotIndex(nextEditingPartySlotIndex);
     setHasEvaluatedBuild(false);
   }
 
@@ -623,31 +686,34 @@ function BuildPlanner() {
     const savedBuild = createSavedBuild(currentEditorSnapshot);
 
     setSavedBuilds((current) => [savedBuild, ...current]);
+    setFocusedSavedBuild(savedBuild);
+    setEditingPartySlotIndex(null);
+    appendBuildHistory(savedBuild, "created");
   }
 
   function handleOverwriteSavedBuild(buildId: string) {
-    const updatedAt = new Date().toISOString();
-    const existingBuild = savedBuilds.find(
-      (savedBuild) => savedBuild.id === buildId
+    const partySlotBuild = partySlots.find((slot) => slot?.id === buildId) ?? null;
+
+    const existingBuild =
+      savedBuilds.find((savedBuild) => savedBuild.id === buildId) ??
+      partySlotBuild ??
+      (focusedSavedBuild?.id === buildId ? focusedSavedBuild : null);
+
+    if (!existingBuild) return;
+
+    const updatedBuild = createUpdatedSavedBuild(
+      existingBuild,
+      currentEditorSnapshot
     );
 
-    const updatedBuild: SavedBuild = {
-      id: buildId,
-      label: getDefaultSavedBuildLabel(currentEditorSnapshot),
-      createdAt: existingBuild?.createdAt ?? updatedAt,
-      updatedAt,
-      snapshot: currentEditorSnapshot,
-    };
+    upsertSavedBuild(updatedBuild);
+    updatePartySlotCopies(updatedBuild);
 
-    setSavedBuilds((current) =>
-      current.map((savedBuild) =>
-        savedBuild.id === buildId ? updatedBuild : savedBuild
-      )
-    );
+    if (focusedSavedBuild?.id === buildId) {
+      setFocusedSavedBuild(updatedBuild);
+    }
 
-    setPartySlots((current) =>
-      current.map((slot) => (slot?.id === buildId ? updatedBuild : slot))
-    );
+    appendBuildHistory(updatedBuild, "updated");
   }
 
   function handleLoadSavedBuild(buildId: string) {
@@ -655,7 +721,8 @@ function BuildPlanner() {
 
     if (!savedBuild) return;
 
-    applyEditorSnapshot(savedBuild.snapshot, null);
+    persistFocusedBuildIfSaved();
+    applyEditorSnapshot(savedBuild.snapshot, savedBuild, null);
   }
 
   function handleLoadSavedBuildIntoPartySlot(buildId: string, slotIndex: number) {
@@ -666,37 +733,40 @@ function BuildPlanner() {
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? savedBuild : slot))
     );
-
-    applyEditorSnapshot(savedBuild.snapshot, slotIndex);
   }
 
   function handleEditPartySlot(slotIndex: number) {
-    const savedBuild = partySlots[slotIndex];
+    const selectedSlotBuild = partySlots[slotIndex];
 
-    if (!savedBuild) return;
+    if (!selectedSlotBuild || isAggregateFocused) return;
 
-    applyEditorSnapshot(savedBuild.snapshot, slotIndex);
+    const outgoingFocusedBuild = getCurrentEditorAsSavedBuild();
+
+    upsertSavedBuild(outgoingFocusedBuild);
+
+    setPartySlots((current) =>
+      current.map((slot, index) =>
+        index === slotIndex ? outgoingFocusedBuild : slot
+      )
+    );
+
+    applyEditorSnapshot(selectedSlotBuild.snapshot, selectedSlotBuild, slotIndex);
   }
 
   function handleFocusAggregate() {
+    persistFocusedBuildIfSaved();
     setFocusedDataCircle("aggregate");
     setEditingPartySlotIndex(null);
   }
 
   function handleFocusCurrentEditor() {
     setFocusedDataCircle("editor");
-    setEditingPartySlotIndex(null);
   }
 
   function handleClearPartySlot(slotIndex: number) {
     setPartySlots((current) =>
       current.map((slot, index) => (index === slotIndex ? null : slot))
     );
-
-    if (editingPartySlotIndex === slotIndex) {
-      setEditingPartySlotIndex(null);
-      setFocusedDataCircle("editor");
-    }
   }
 
   function handleDeleteSavedBuild(buildId: string) {
@@ -707,16 +777,62 @@ function BuildPlanner() {
     setPartySlots((current) =>
       current.map((slot) => (slot?.id === buildId ? null : slot))
     );
+
+    if (focusedSavedBuild?.id === buildId) {
+      setFocusedSavedBuild(null);
+      setEditingPartySlotIndex(null);
+    }
   }
 
   function handleUpdateEditedPartyBuild() {
-    if (editingPartySlotIndex === null) return;
+    if (!focusedSavedBuild) {
+      const savedBuild = createSavedBuild(currentEditorSnapshot);
 
-    const editedSlot = partySlots[editingPartySlotIndex];
+      setSavedBuilds((current) => [savedBuild, ...current]);
+      setFocusedSavedBuild(savedBuild);
+      appendBuildHistory(savedBuild, "created");
+      return;
+    }
 
-    if (!editedSlot) return;
+    const updatedBuild = createUpdatedSavedBuild(
+      focusedSavedBuild,
+      currentEditorSnapshot
+    );
 
-    handleOverwriteSavedBuild(editedSlot.id);
+    upsertSavedBuild(updatedBuild);
+    updatePartySlotCopies(updatedBuild);
+    setFocusedSavedBuild(updatedBuild);
+    appendBuildHistory(updatedBuild, "updated");
+  }
+
+  function handleLoadHistoryEntry(historyEntryId: string) {
+    const historyEntry = buildHistory.find((entry) => entry.id === historyEntryId);
+
+    if (!historyEntry) return;
+
+    applyEditorSnapshot(historyEntry.snapshot, null, null);
+  }
+
+  function handleLoadHistoryEntryIntoPartySlot(
+    historyEntryId: string,
+    slotIndex: number
+  ) {
+    const historyEntry = buildHistory.find((entry) => entry.id === historyEntryId);
+
+    if (!historyEntry) return;
+
+    const restoredBuild = createSavedBuild(
+      historyEntry.snapshot,
+      `${historyEntry.label} · restored`
+    );
+
+    setSavedBuilds((current) => [restoredBuild, ...current]);
+
+    setPartySlots((current) =>
+      current.map((slot, index) => (index === slotIndex ? restoredBuild : slot))
+    );
+
+    appendBuildHistory(restoredBuild, "created");
   }
 
   return (
@@ -766,6 +882,11 @@ function BuildPlanner() {
             <h2>Current Build</h2>
 
             <div className="summary-row">
+              <span>Focus</span>
+              <strong>{focusedLabel}</strong>
+            </div>
+
+            <div className="summary-row">
               <span>Name</span>
               <strong>{buildName || "Untitled Build"}</strong>
             </div>
@@ -800,13 +921,13 @@ function BuildPlanner() {
                 <button
                   type="button"
                   className={
-                    !isAggregateFocused && !isEditingPartySlot
+                    !isAggregateFocused
                       ? "focus-selector-button focus-selector-button--active"
                       : "focus-selector-button"
                   }
                   onClick={handleFocusCurrentEditor}
                 >
-                  Current Editor
+                  Editable Focus
                 </button>
 
                 <button
@@ -838,7 +959,7 @@ function BuildPlanner() {
                       disabled={!slot || isAggregateFocused}
                       title={
                         slot
-                          ? `Edit ${getSavedBuildTitle(slot)}`
+                          ? `Swap focused build with ${getSavedBuildTitle(slot)}`
                           : `Member ${index + 1} has no assigned build.`
                       }
                     >
@@ -850,23 +971,30 @@ function BuildPlanner() {
 
               {isAggregateFocused ? (
                 <p className="focus-selector-note">
-                  Aggregate is a read-only calculated view of the assigned party
-                  members.
+                  Aggregate is a read-only calculated view of the large focused
+                  build and the three assigned party members.
                 </p>
-              ) : isEditingPartySlot ? (
+              ) : focusedSavedBuild ? (
                 <p className="focus-selector-note">
-                  Editing Member {editingPartySlotIndex + 1}. Use Update to
-                  save changes back into this party slot.
+                  Editing {getSavedBuildTitle(focusedSavedBuild)}. Use Update to
+                  save changes to this focused build.
                 </p>
-              ) : null}
+              ) : (
+                <p className="focus-selector-note">
+                  The large editable build is the fourth party member. Selecting
+                  a party slot swaps it with the focused build.
+                </p>
+              )}
 
-              {isEditingPartySlot ? (
+              {!isAggregateFocused ? (
                 <button
                   type="button"
                   className="focus-selector-update-button"
                   onClick={handleUpdateEditedPartyBuild}
                 >
-                  Update edited party member
+                  {focusedSavedBuild
+                    ? "Update focused build"
+                    : "Save focused build"}
                 </button>
               ) : null}
             </section>
@@ -882,6 +1010,14 @@ function BuildPlanner() {
               onClearPartySlot={handleClearPartySlot}
               onDelete={handleDeleteSavedBuild}
             />
+
+            <ProcessSpiralPanel
+              buildHistory={buildHistory}
+              onLoadHistoryEntry={handleLoadHistoryEntry}
+              onLoadHistoryEntryIntoPartySlot={
+                handleLoadHistoryEntryIntoPartySlot
+              }
+            />
           </aside>
 
           <section
@@ -892,7 +1028,7 @@ function BuildPlanner() {
           >
             {isAggregateFocused ? (
               <div className="main-panel-readonly-overlay">
-                Viewing Aggregate. Select Current Editor or a party member to
+                Viewing Aggregate. Select Editable Focus or a party member to
                 edit.
               </div>
             ) : null}
@@ -1072,7 +1208,7 @@ function BuildPlanner() {
                             ? "Assign a saved build to this slot first."
                             : index === 0
                               ? "Focus aggregate preview"
-                              : `Edit ${slot.label}`
+                              : `Swap focused build with ${slot.label}`
                         }
                       >
                         {slot.label}
@@ -1093,6 +1229,7 @@ function BuildPlanner() {
                               activeClassFeatureIds={[]}
                               showDprLayer={false}
                               visualizedItemsOverride={partyAggregateItems}
+                              variant="aggregate"
                             />
                           </div>
                         ) : slot.savedBuild ? (
@@ -1124,6 +1261,7 @@ function BuildPlanner() {
                                 slot.savedBuild.snapshot.activeClassFeatureIds
                               }
                               showDprLayer={false}
+                              variant="party"
                             />
                           </div>
                         ) : (

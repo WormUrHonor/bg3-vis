@@ -49,3 +49,14 @@ export type SavedBuild = {
   updatedAt: string;
   snapshot: BuildEditorSnapshot;
 };
+
+export type BuildHistoryEventType = "created" | "updated";
+
+export type BuildHistoryEntry = {
+  id: string;
+  savedBuildId: string;
+  label: string;
+  eventType: BuildHistoryEventType;
+  createdAt: string;
+  snapshot: BuildEditorSnapshot;
+};
