@@ -34,6 +34,7 @@ import {
 import type { DamageRingKey } from "../dataCircleTypes";
 
 type DamageTypesLayerProps = {
+  svgInstanceId: string;
   damageTypeCounts: Record<DamageRingKey, number>;
   damageTypeTotal: number;
   focus: DataCircleFocus;
@@ -79,7 +80,7 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Radiant: radiantIcon,
   Slashing: slashingIcon,
   Thunder: thunderIcon,
-  Weapon : weaponIcon,
+  Weapon: weaponIcon,
   Variable: forceIcon,
 };
 
@@ -558,6 +559,7 @@ function renderDamageIcons(
 }
 
 export function DamageTypesLayer({
+  svgInstanceId,
   damageTypeCounts,
   damageTypeTotal,
   focus,
@@ -637,7 +639,7 @@ export function DamageTypesLayer({
               value
             );
 
-            const clipPathId = `damage-segment-clip-${type.key}`;
+            const clipPathId = `${svgInstanceId}-damage-segment-clip-${type.key}`;
 
             const isRelated = isDamageTypeVisuallyRelated(
               type.key,

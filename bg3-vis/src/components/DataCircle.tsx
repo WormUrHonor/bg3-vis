@@ -418,15 +418,16 @@ export default function DataCircle({
           ) : null}
 
           <DamageTypesLayer
-            damageTypeCounts={damageTypeCounts}
-            damageTypeTotal={damageTypeTotal}
-            focus={activeFocus}
-            setFocus={setHoverFocusWithLogging}
-            relationshipIndex={relationshipIndex}
-            onToggleSelection={toggleSelectedFocus}
-            selectedFocuses={selectedFocuses}
-            showSelectionMarks={isSelectionReviewActive}
-          />
+  svgInstanceId={svgInstanceId}
+  damageTypeCounts={damageTypeCounts}
+  damageTypeTotal={damageTypeTotal}
+  focus={activeFocus}
+  setFocus={setHoverFocusWithLogging}
+  relationshipIndex={relationshipIndex}
+  onToggleSelection={toggleSelectedFocus}
+  selectedFocuses={selectedFocuses}
+  showSelectionMarks={isSelectionReviewActive}
+/>
 
           <RoleDistributionLayer
             roleData={roleData}
