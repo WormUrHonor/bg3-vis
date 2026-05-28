@@ -1,4 +1,13 @@
-import type { Dispatch, SetStateAction } from "react";
+import {
+  useEffect,
+  useState,
+  type Dispatch,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+import { createPortal } from "react-dom";
 import { bg3Spells, type BG3Spell } from "../data/bg3Spells";
 import type { BG3ClassFeature } from "../data/bg3ClassFeatures";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
@@ -57,6 +66,18 @@ type FeatureDisplayGroup = {
   order: number;
   features: BG3ClassFeature[];
 };
+
+type FloatingTooltipState = {
+  id: string;
+  x: number;
+  y: number;
+  placement: "top" | "bottom";
+  content: ReactNode;
+};
+
+const TOOLTIP_WIDTH = 300;
+const TOOLTIP_MARGIN = 14;
+const TOOLTIP_VERTICAL_GAP = 12;
 
 function toRoman(value: number): string {
   if (value === 0) return "C";
@@ -317,6 +338,65 @@ function renderChoiceCountPill(
   );
 }
 
+function getFloatingTooltipPosition(rect: DOMRect): {
+  x: number;
+  y: number;
+  placement: "top" | "bottom";
+} {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const clampedX = Math.min(
+    Math.max(rect.left + rect.width / 2, TOOLTIP_MARGIN + TOOLTIP_WIDTH / 2),
+    viewportWidth - TOOLTIP_MARGIN - TOOLTIP_WIDTH / 2
+  );
+
+  const hasEnoughSpaceAbove = rect.top > 230;
+  const y = hasEnoughSpaceAbove
+    ? Math.max(TOOLTIP_MARGIN, rect.top - TOOLTIP_VERTICAL_GAP)
+    : Math.min(viewportHeight - TOOLTIP_MARGIN, rect.bottom + TOOLTIP_VERTICAL_GAP);
+
+  return {
+    x: clampedX,
+    y,
+    placement: hasEnoughSpaceAbove ? "top" : "bottom",
+  };
+}
+
+function FloatingSpellTooltip({
+  tooltip,
+}: {
+  tooltip: FloatingTooltipState | null;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !tooltip) return null;
+
+  return createPortal(
+    <div
+      className={[
+        "spell-floating-tooltip",
+        tooltip.placement === "bottom"
+          ? "spell-floating-tooltip--bottom"
+          : "spell-floating-tooltip--top",
+      ].join(" ")}
+      style={{
+        left: tooltip.x,
+        top: tooltip.y,
+        width: TOOLTIP_WIDTH,
+      }}
+      role="tooltip"
+    >
+      {tooltip.content}
+    </div>,
+    document.body
+  );
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -334,6 +414,8 @@ function SpellsAbilitiesTab({
   featSelections,
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
+  const [floatingTooltip, setFloatingTooltip] =
+    useState<FloatingTooltipState | null>(null);
 
   const baseAvailableSpells = getAvailableSpellsForBuild(
     bg3Spells,
@@ -413,252 +495,333 @@ function SpellsAbilitiesTab({
   const fixedFeatureCount = fixedClassFeatureIds.length;
   const activeFeatureCount = activeClassFeatureIds.length;
 
-  function renderFeatureButton(
+function showFloatingTooltip(
+  event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>,
+  id: string,
+  content: ReactNode
+) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const position = getFloatingTooltipPosition(rect);
+
+  setFloatingTooltip({
+    id,
+    content,
+    ...position,
+  });
+}
+
+  function hideFloatingTooltip(id?: string) {
+    setFloatingTooltip((current) => {
+      if (!current) return null;
+      if (id && current.id !== id) return current;
+      return null;
+    });
+  }
+
+  function renderFeatureTooltipContent(
     feature: BG3ClassFeature,
-    groupFull = false,
-    activeGroupFull = false
-  ) {
-    const isInformational = feature.isInformational ?? false;
-    const isActiveToggle = Boolean(feature.activeGroupId);
-    const isFixed =
-      !isInformational &&
-      (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
-    const isSelected = selectedClassFeatureIds.includes(feature.id);
-    const isActive = activeClassFeatureIds.includes(feature.id);
-
-    const isDisabled =
-      isInformational || groupFull || (isFixed && !isActiveToggle);
-
-    function handleClick() {
-      if (isActiveToggle) {
-        setActiveClassFeatureIds((current) =>
-          toggleActiveClassFeatureSelection(
-            feature.id,
-            current,
-            availableClassFeatures
-          )
-        );
-        return;
-      }
-
-      setSelectedClassFeatureIds((current) =>
-        toggleClassFeatureSelection(feature.id, current, availableClassFeatures)
-      );
+    state: {
+      isInformational: boolean;
+      isFixed: boolean;
+      isActiveToggle: boolean;
+      isActive: boolean;
+      activeGroupFull: boolean;
     }
-
+  ) {
     return (
-      <button
-        key={feature.id}
-        className={[
-          "spell-icon-button",
-          isSelected ? "selected-spell" : "",
-          isActive ? "active-ability" : "",
-          isFixed ? "fixed-ability" : "",
-          isInformational ? "informational-ability" : "",
-          groupFull || (activeGroupFull && !isActive)
-            ? "choice-disabled-soft"
-            : "",
-        ].join(" ")}
-        type="button"
-        disabled={isDisabled}
-        onClick={handleClick}
-      >
-        <img
-          src={getClassFeatureIcon(feature)}
-          alt={feature.name}
-          className="spell-icon-image"
-        />
+      <>
+        <strong>{feature.name}</strong>
 
-        <span className="ability-kind-badge">{getKindBadge(feature)}</span>
+        {feature.description && (
+          <span className="spell-description">{feature.description}</span>
+        )}
 
-        <span className="spell-tooltip">
-          <strong>{feature.name}</strong>
-
-          {feature.description && (
-            <span className="spell-description">{feature.description}</span>
-          )}
-
-          <span>
-            <b>Type:</b> {feature.kind.replaceAll("-", " ")}
-          </span>
-
-          {feature.range && (
-            <span>
-              <b>Range:</b> {feature.range.label}
-            </span>
-          )}
-
-          {feature.roles.length > 0 && (
-            <span>
-              <b>Role:</b>{" "}
-              {feature.roles
-                .map((role) => role.replaceAll("-", " "))
-                .join(", ")}
-            </span>
-          )}
-
-          {feature.damageTypes.length > 0 && (
-            <span>
-              <b>Damage:</b> {feature.damageTypes.join(", ")}
-            </span>
-          )}
-
-          <span>
-            <b>Cost:</b>{" "}
-            {formatCost(feature.costs.actions, feature.costs.resources)}
-          </span>
-
-          {feature.requiredFeatureIds && feature.requiredFeatureIds.length > 0 && (
-            <span>Granted by selected feature</span>
-          )}
-
-          {isInformational && <span>Possible effect</span>}
-          {isFixed && <span>Granted automatically</span>}
-          {isActiveToggle && <span>Can be set active for the visualisation</span>}
-          {isActive && <span>Currently active</span>}
-          {activeGroupFull && !isActive && (
-            <span>Click to replace the current active toggle</span>
-          )}
+        <span>
+          <b>Type:</b> {feature.kind.replaceAll("-", " ")}
         </span>
-      </button>
+
+        {feature.range && (
+          <span>
+            <b>Range:</b> {feature.range.label}
+          </span>
+        )}
+
+        {feature.roles.length > 0 && (
+          <span>
+            <b>Role:</b>{" "}
+            {feature.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+          </span>
+        )}
+
+        {feature.damageTypes.length > 0 && (
+          <span>
+            <b>Damage:</b> {feature.damageTypes.join(", ")}
+          </span>
+        )}
+
+        <span>
+          <b>Cost:</b>{" "}
+          {formatCost(feature.costs.actions, feature.costs.resources)}
+        </span>
+
+        {feature.requiredFeatureIds && feature.requiredFeatureIds.length > 0 && (
+          <span>Granted by selected feature</span>
+        )}
+
+        {state.isInformational && <span>Possible effect</span>}
+        {state.isFixed && <span>Granted automatically</span>}
+        {state.isActiveToggle && (
+          <span>Can be set active for the visualisation</span>
+        )}
+        {state.isActive && <span>Currently active</span>}
+        {state.activeGroupFull && !state.isActive && (
+          <span>Click to replace the current active toggle</span>
+        )}
+      </>
     );
   }
 
-  function renderSpellButton(spell: BG3Spell, rule?: ActiveSpellChoiceRule) {
-    const isSelected = selectedSpellIds.includes(spell.id);
-    const isFixed = hasSpellTag(spell, "fixed");
-    const isRitual = hasSpellTag(spell, "ritual");
-
-    const selectedInRule = rule
-      ? getSelectedSpellIdsForRule(selectedSpellIds, rule)
-      : [];
-
-    const groupFull = rule
-      ? selectedInRule.length >= rule.max && !isSelected
-      : isSpellChoiceGroupFull(
-          spell.id,
-          selectedSpellIds,
-          activeSpellChoiceRules
-        );
-
-    const choiceRule =
-      rule ?? getSpellChoiceRuleForSpell(spell.id, activeSpellChoiceRules);
-
-    const isDisabled = isFixed || groupFull;
-
+  function renderSpellTooltipContent(
+    spell: BG3Spell,
+    args: {
+      choiceRule?: ActiveSpellChoiceRule;
+      isRitual: boolean;
+      groupFull: boolean;
+      isSelected: boolean;
+      isFixed: boolean;
+    }
+  ) {
     return (
-      <button
-        key={rule ? `${rule.id}-${spell.id}` : spell.id}
-        className={[
-          "spell-icon-button",
-          isSelected ? "selected-spell" : "",
-          isFixed ? "fixed-ability" : "",
-          groupFull ? "choice-disabled-soft" : "",
-        ].join(" ")}
-        type="button"
-        disabled={isDisabled}
-        onClick={() =>
-          setSelectedSpellIds((current) =>
-            toggleSpellSelection(
-              spell.id,
-              current,
-              availableSpellIds,
-              activeSpellChoiceRules
-            )
-          )
-        }
-      >
-        <img
-          src={getSpellIcon(spell)}
-          alt={spell.name}
-          className="spell-icon-image"
-        />
+      <>
+        <strong>{spell.name}</strong>
 
-        <span className="spell-rank-badge">
-          {spell.rank === 0 ? "C" : toRoman(spell.rank)}
-        </span>
-
-        {spell.costs.requiresConcentration && (
-          <span
-            className="spell-concentration-badge"
-            title="Requires concentration"
-          >
-            <img src={concentrationIcon} alt="Concentration" />
-          </span>
+        {spell.description && (
+          <span className="spell-description">{spell.description}</span>
         )}
 
-        {isRitual && (
-          <span className="spell-ritual-badge" title="Ritual spell">
-            <img src={ritualIcon} alt="Ritual" />
-          </span>
-        )}
-
-        <span className="spell-tooltip">
-          <strong>{spell.name}</strong>
-
-          {spell.description && (
-            <span className="spell-description">{spell.description}</span>
-          )}
-
-          {choiceRule && (
-            <span>
-              <b>Choice:</b> {choiceRule.displayGroupLabel}{" "}
-              {
-                getSelectedSpellIdsForRule(selectedSpellIds, choiceRule).length
-              }
-              /{choiceRule.max}
-            </span>
-          )}
-
+        {args.choiceRule && (
           <span>
-            <b>Level:</b>{" "}
-            {spell.rank === 0 ? "Cantrip" : toRoman(spell.rank)}
+            <b>Choice:</b> {args.choiceRule.displayGroupLabel}{" "}
+            {
+              getSelectedSpellIdsForRule(selectedSpellIds, args.choiceRule)
+                .length
+            }
+            /{args.choiceRule.max}
           </span>
+        )}
 
-          {spell.range && (
-            <span>
-              <b>Range:</b> {spell.range.label}
-            </span>
-          )}
-
-          {spell.roles.length > 0 && (
-            <span>
-              <b>Role:</b>{" "}
-              {spell.roles
-                .map((role) => role.replaceAll("-", " "))
-                .join(", ")}
-            </span>
-          )}
-
-          {spell.damageTypes.length > 0 && (
-            <span>
-              <b>Damage:</b> {spell.damageTypes.join(", ")}
-            </span>
-          )}
-
-          {(spell.costs.actions.length > 0 ||
-            spell.costs.resources.length > 0) && (
-            <span>
-              <b>Cost:</b>{" "}
-              {formatCost(spell.costs.actions, spell.costs.resources)}
-            </span>
-          )}
-
-          {spell.costs.requiresConcentration && (
-            <span>Requires concentration</span>
-          )}
-
-          {isRitual && <span>Ritual spell</span>}
-
-          {groupFull && !isSelected && <span>Choice limit reached</span>}
-          {isFixed && <span>Granted automatically</span>}
+        <span>
+          <b>Level:</b> {spell.rank === 0 ? "Cantrip" : toRoman(spell.rank)}
         </span>
-      </button>
+
+        {spell.range && (
+          <span>
+            <b>Range:</b> {spell.range.label}
+          </span>
+        )}
+
+        {spell.roles.length > 0 && (
+          <span>
+            <b>Role:</b>{" "}
+            {spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+          </span>
+        )}
+
+        {spell.damageTypes.length > 0 && (
+          <span>
+            <b>Damage:</b> {spell.damageTypes.join(", ")}
+          </span>
+        )}
+
+        {(spell.costs.actions.length > 0 ||
+          spell.costs.resources.length > 0) && (
+          <span>
+            <b>Cost:</b>{" "}
+            {formatCost(spell.costs.actions, spell.costs.resources)}
+          </span>
+        )}
+
+        {spell.costs.requiresConcentration && <span>Requires concentration</span>}
+        {args.isRitual && <span>Ritual spell</span>}
+        {args.groupFull && !args.isSelected && <span>Choice limit reached</span>}
+        {args.isFixed && <span>Granted automatically</span>}
+      </>
+    );
+  }
+function renderFeatureButton(
+  feature: BG3ClassFeature,
+  groupFull = false,
+  activeGroupFull = false
+) {
+  const isInformational = feature.isInformational ?? false;
+  const isActiveToggle = Boolean(feature.activeGroupId);
+  const isFixed =
+    !isInformational &&
+    (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
+  const isSelected = selectedClassFeatureIds.includes(feature.id);
+  const isActive = activeClassFeatureIds.includes(feature.id);
+
+  const isDisabled =
+    isInformational || groupFull || (isFixed && !isActiveToggle);
+
+  const tooltipId = `feature-${feature.id}`;
+
+  const tooltipContent = renderFeatureTooltipContent(feature, {
+    isInformational,
+    isFixed,
+    isActiveToggle,
+    isActive,
+    activeGroupFull,
+  });
+
+  function handleClick() {
+    if (isDisabled) return;
+
+    if (isActiveToggle) {
+      setActiveClassFeatureIds((current) =>
+        toggleActiveClassFeatureSelection(
+          feature.id,
+          current,
+          availableClassFeatures
+        )
+      );
+      return;
+    }
+
+    setSelectedClassFeatureIds((current) =>
+      toggleClassFeatureSelection(feature.id, current, availableClassFeatures)
     );
   }
 
   return (
+    <button
+      key={feature.id}
+      className={[
+        "spell-icon-button",
+        isSelected ? "selected-spell" : "",
+        isActive ? "active-ability" : "",
+        isFixed ? "fixed-ability" : "",
+        isInformational ? "informational-ability" : "",
+        groupFull || (activeGroupFull && !isActive)
+          ? "choice-disabled-soft"
+          : "",
+      ].join(" ")}
+      type="button"
+      aria-disabled={isDisabled}
+      onClick={handleClick}
+      onMouseEnter={(event) =>
+        showFloatingTooltip(event, tooltipId, tooltipContent)
+      }
+      onMouseLeave={() => hideFloatingTooltip(tooltipId)}
+      onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
+      onBlur={() => hideFloatingTooltip(tooltipId)}
+    >
+      <img
+        src={getClassFeatureIcon(feature)}
+        alt={feature.name}
+        className="spell-icon-image"
+      />
+
+      <span className="ability-kind-badge">{getKindBadge(feature)}</span>
+    </button>
+  );
+}
+
+function renderSpellButton(spell: BG3Spell, rule?: ActiveSpellChoiceRule) {
+  const isSelected = selectedSpellIds.includes(spell.id);
+  const isFixed = hasSpellTag(spell, "fixed");
+  const isRitual = hasSpellTag(spell, "ritual");
+
+  const selectedInRule = rule
+    ? getSelectedSpellIdsForRule(selectedSpellIds, rule)
+    : [];
+
+  const groupFull = rule
+    ? selectedInRule.length >= rule.max && !isSelected
+    : isSpellChoiceGroupFull(
+        spell.id,
+        selectedSpellIds,
+        activeSpellChoiceRules
+      );
+
+  const choiceRule =
+    rule ?? getSpellChoiceRuleForSpell(spell.id, activeSpellChoiceRules);
+
+  const isDisabled = isFixed || groupFull;
+  const tooltipId = rule ? `spell-${rule.id}-${spell.id}` : `spell-${spell.id}`;
+
+  const tooltipContent = renderSpellTooltipContent(spell, {
+    choiceRule,
+    isRitual,
+    groupFull,
+    isSelected,
+    isFixed,
+  });
+
+  function handleClick() {
+    if (isDisabled) return;
+
+    setSelectedSpellIds((current) =>
+      toggleSpellSelection(
+        spell.id,
+        current,
+        availableSpellIds,
+        activeSpellChoiceRules
+      )
+    );
+  }
+
+  return (
+    <button
+      key={rule ? `${rule.id}-${spell.id}` : spell.id}
+      className={[
+        "spell-icon-button",
+        isSelected ? "selected-spell" : "",
+        isFixed ? "fixed-ability" : "",
+        groupFull ? "choice-disabled-soft" : "",
+      ].join(" ")}
+      type="button"
+      aria-disabled={isDisabled}
+      onClick={handleClick}
+      onMouseEnter={(event) =>
+        showFloatingTooltip(event, tooltipId, tooltipContent)
+      }
+      onMouseLeave={() => hideFloatingTooltip(tooltipId)}
+      onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
+      onBlur={() => hideFloatingTooltip(tooltipId)}
+    >
+      <img
+        src={getSpellIcon(spell)}
+        alt={spell.name}
+        className="spell-icon-image"
+      />
+
+      <span className="spell-rank-badge">
+        {spell.rank === 0 ? "C" : toRoman(spell.rank)}
+      </span>
+
+      {spell.costs.requiresConcentration && (
+        <span
+          className="spell-concentration-badge"
+          title="Requires concentration"
+        >
+          <img src={concentrationIcon} alt="Concentration" />
+        </span>
+      )}
+
+      {isRitual && (
+        <span className="spell-ritual-badge" title="Ritual spell">
+          <img src={ritualIcon} alt="Ritual" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+  return (
     <div className="tab-content">
+      <FloatingSpellTooltip tooltip={floatingTooltip} />
+
       <div className="section-heading-row">
         <div>
           <h2>{getClassAbilityTabTitle(selectedClass, selectedSubclass)}</h2>
