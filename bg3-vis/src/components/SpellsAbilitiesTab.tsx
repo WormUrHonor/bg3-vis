@@ -7,7 +7,11 @@ import {
   toggleActiveClassFeatureSelection,
   toggleClassFeatureSelection,
 } from "../logic/classFeatureSelectionLogic";
-import type { ClassName, WarlockInvocation } from "../types/buildPlannerTypes";
+import type {
+  ClassName,
+  FeatSelection,
+  WarlockInvocation,
+} from "../types/buildPlannerTypes";
 import { getSpellIcon } from "../logic/spellIconLogic";
 import { getClassFeatureIcon } from "../logic/classFeatureIconLogic";
 import concentrationIcon from "../assets/UI Icons/20px-Concentration_Icon.png.webp";
@@ -25,6 +29,10 @@ import {
   mergeSpellLists,
 } from "../data/bardMagicalSecrets";
 import { getAvailableRogueArcaneTricksterSpells } from "../data/rogueArcaneTricksterSpells";
+import {
+  getFeatSpellChoiceData,
+  isFeatSpellChoiceRule,
+} from "../logic/featSpellChoiceLogic";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -40,6 +48,7 @@ type SpellsAbilitiesTabProps = {
   activeClassFeatureIds: string[];
   setActiveClassFeatureIds: Dispatch<SetStateAction<string[]>>;
   spellChoiceMaxOverrides?: Record<string, number>;
+  featSelections: FeatSelection[];
 };
 
 type FeatureDisplayGroup = {
@@ -322,6 +331,7 @@ function SpellsAbilitiesTab({
   activeClassFeatureIds,
   setActiveClassFeatureIds,
   spellChoiceMaxOverrides = {},
+  featSelections,
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
 
@@ -345,14 +355,17 @@ function SpellsAbilitiesTab({
     selectedLevel
   );
 
+  const featSpellChoiceData = getFeatSpellChoiceData(featSelections);
+
   const availableSpells = mergeSpellLists(baseAvailableSpells, [
     ...magicalSecretSpells,
     ...arcaneTricksterSpells,
+    ...featSpellChoiceData.spells,
   ]);
 
   const availableSpellIds = availableSpells.map((spell) => spell.id);
 
-  const activeSpellChoiceRules = getActiveSpellChoiceRulesForBuild(
+  const baseSpellChoiceRules = getActiveSpellChoiceRulesForBuild(
     availableSpells,
     selectedClass,
     selectedSubclass,
@@ -360,7 +373,16 @@ function SpellsAbilitiesTab({
     spellChoiceMaxOverrides
   );
 
+  const activeSpellChoiceRules = [
+    ...baseSpellChoiceRules,
+    ...featSpellChoiceData.rules,
+  ];
+
   const visibleSpellChoiceRules = activeSpellChoiceRules
+    .filter((rule) => rule.spellIds.length > 0)
+    .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder);
+
+  const featSpellChoiceRules = featSpellChoiceData.rules
     .filter((rule) => rule.spellIds.length > 0)
     .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder);
 
@@ -368,9 +390,21 @@ function SpellsAbilitiesTab({
     .filter(isMagicalSecretsRule)
     .sort((a, b) => a.displayGroupOrder - b.displayGroupOrder);
 
-  const nonMagicalAvailableSpells = availableSpells.filter(
-    (spell) => !hasSpellTag(spell, BARD_MAGICAL_SECRET_TAG)
-  );
+  const baseAvailableSpellIds = new Set([
+    ...baseAvailableSpells.map((spell) => spell.id),
+    ...magicalSecretSpells.map((spell) => spell.id),
+    ...arcaneTricksterSpells.map((spell) => spell.id),
+  ]);
+
+  const nonMagicalAvailableSpells = availableSpells.filter((spell) => {
+    if (hasSpellTag(spell, BARD_MAGICAL_SECRET_TAG)) return false;
+
+    const isFeatOnlySpell =
+      featSpellChoiceData.featSpellIds.includes(spell.id) &&
+      !baseAvailableSpellIds.has(spell.id);
+
+    return !isFeatOnlySpell;
+  });
 
   const featureDisplayGroups = groupClassFeatures(availableClassFeatures);
 
@@ -786,6 +820,36 @@ function SpellsAbilitiesTab({
           </div>
 
           <div className="spell-book">
+            {featSpellChoiceRules.map((rule) => {
+              const spellsForRule = getSpellsForChoiceRule(
+                availableSpells,
+                rule
+              );
+
+              if (spellsForRule.length === 0) return null;
+
+              return (
+                <section
+                  key={rule.id}
+                  className="spell-rank-section feat-spell-choice-section"
+                >
+                  <div className="spell-rank-title-row spell-choice-section-header">
+                    <h4>{rule.displayGroupLabel}</h4>
+
+                    <div className="spell-rank-choice-counts">
+                      {renderChoiceCountPill(rule, selectedSpellIds)}
+                    </div>
+                  </div>
+
+                  <div className="spell-icon-grid">
+                    {spellsForRule.map((spell) =>
+                      renderSpellButton(spell, rule)
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+
             {magicalSecretsRules.map((rule) => {
               const spellsForRule = getSpellsForChoiceRule(
                 availableSpells,
@@ -823,7 +887,9 @@ function SpellsAbilitiesTab({
               const rankChoiceRules = getChoiceRulesForRank(
                 rank,
                 visibleSpellChoiceRules.filter(
-                  (rule) => !isMagicalSecretsRule(rule)
+                  (rule) =>
+                    !isMagicalSecretsRule(rule) &&
+                    !isFeatSpellChoiceRule(rule)
                 ),
                 nonMagicalAvailableSpells
               );

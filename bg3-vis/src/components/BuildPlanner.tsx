@@ -6,7 +6,7 @@ import {
   type SetStateAction,
 } from "react";
 import "./BuildPlanner.css";
-
+import { getFeatAvailableSpellIds } from "../logic/featSpellChoiceLogic";
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import CharacterTab from "./CharacterTab";
 import ClassScoresTab from "./ClassScoresTab";
@@ -430,13 +430,20 @@ function BuildPlanner() {
     ...proficiencyBasedExpertise,
   ]);
 
-  const availableSpellIds = getAvailableSpellIdsForBuild(
-    bg3Spells,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedWarlockInvocations
-  );
+const classAvailableSpellIds = getAvailableSpellIdsForBuild(
+  bg3Spells,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  selectedWarlockInvocations
+);
+
+const featAvailableSpellIds = getFeatAvailableSpellIds(featSelections);
+
+const availableSpellIds = unique([
+  ...classAvailableSpellIds,
+  ...featAvailableSpellIds,
+]);
 
   const availableClassFeaturesOnly = useMemo(
     () =>
@@ -1574,6 +1581,7 @@ function BuildPlanner() {
                 {activeTab === "spellsAbilities" && (
                   <SpellsAbilitiesTab
                     selectedClass={selectedClass}
+                    featSelections={featSelections}
                     selectedSubclass={selectedSubclass}
                     selectedLevel={selectedLevel}
                     selectedWarlockInvocations={selectedWarlockInvocations}

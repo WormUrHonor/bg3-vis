@@ -26,8 +26,6 @@ import {
   bg3Feats,
   elementalAdeptDamageTypes,
   getFeatDefinition,
-  ritualCasterSpells,
-  spellSniperCantrips,
   weaponMasterWeaponTypes,
 } from "../data/bg3Feats";
 import {
@@ -384,7 +382,6 @@ function decreaseLevel() {
         </div>
       );
     }
-
     if (feat.choiceKind === "skill-proficiencies") {
       const max = feat.chooseSkillCount ?? 3;
 
@@ -400,7 +397,8 @@ function decreaseLevel() {
               const isSelected = selection.selectedSkills.includes(skill);
               const alreadyProficient =
                 allProficiencies.includes(skill) && !isSelected;
-              const maxReached = selection.selectedSkills.length >= max && !isSelected;
+              const maxReached =
+                selection.selectedSkills.length >= max && !isSelected;
 
               return (
                 <button
@@ -430,81 +428,13 @@ function decreaseLevel() {
       );
     }
 
-    if (feat.choiceKind === "ritual-caster") {
-      const max = feat.chooseSpellCount ?? 2;
-
+    if (
+      feat.choiceKind === "ritual-caster" ||
+      feat.choiceKind === "spell-sniper" ||
+      feat.choiceKind === "magic-initiate"
+    ) {
       return (
         <div className="feat-subsection">
-          <p className="panel-intro compact-intro">
-            Choose {max} ritual spells. Selected:{" "}
-            {selection.selectedSpells.length}/{max}.
-          </p>
-
-          <div className="chip-grid compact-chip-grid">
-            {ritualCasterSpells.map((spell) => {
-              const isSelected = selection.selectedSpells.includes(spell);
-              const maxReached = selection.selectedSpells.length >= max && !isSelected;
-
-              return (
-                <button
-                  key={spell}
-                  type="button"
-                  disabled={maxReached}
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                  onClick={() =>
-                    toggleFeatListItem(
-                      selection.slotLevel,
-                      "selectedSpells",
-                      spell,
-                      max
-                    )
-                  }
-                >
-                  {spell}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (feat.choiceKind === "spell-sniper") {
-      const max = feat.chooseCantripCount ?? 1;
-
-      return (
-        <div className="feat-subsection">
-          <p className="panel-intro compact-intro">
-            Choose {max} cantrip. Selected:{" "}
-            {selection.selectedCantrips.length}/{max}.
-          </p>
-
-          <div className="chip-grid compact-chip-grid">
-            {spellSniperCantrips.map((cantrip) => {
-              const isSelected = selection.selectedCantrips.includes(cantrip);
-              const maxReached =
-                selection.selectedCantrips.length >= max && !isSelected;
-
-              return (
-                <button
-                  key={cantrip}
-                  type="button"
-                  disabled={maxReached}
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                  onClick={() =>
-                    toggleFeatListItem(
-                      selection.slotLevel,
-                      "selectedCantrips",
-                      cantrip,
-                      max
-                    )
-                  }
-                >
-                  {cantrip}
-                </button>
-              );
-            })}
-          </div>
         </div>
       );
     }
@@ -555,7 +485,10 @@ function decreaseLevel() {
                     key={weaponType}
                     type="button"
                     disabled={maxReached}
-                    className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
+                    className={[
+                      "choice-chip",
+                      isSelected ? "selected" : "",
+                    ].join(" ")}
                     onClick={() =>
                       toggleFeatListItem(
                         selection.slotLevel,
@@ -615,14 +548,6 @@ function decreaseLevel() {
       );
     }
 
-    if (feat.choiceKind === "magic-initiate") {
-      return (
-        <div className="placeholder-box feat-note-box">
-          This feat is recorded here. Its exact cantrip and spell choices should be
-          connected to the spell data once Magic Initiate spell-list filtering is added.
-        </div>
-      );
-    }
 
     return null;
   }
