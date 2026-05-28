@@ -6,6 +6,7 @@ import {
   type SetStateAction,
 } from "react";
 import "./BuildPlanner.css";
+
 import { getFeatAvailableSpellIds } from "../logic/featSpellChoiceLogic";
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import CharacterTab from "./CharacterTab";
@@ -59,7 +60,9 @@ import { logStudyEvent } from "../logic/studyLogger";
 
 import {
   backgroundSkills,
+  classSkillRules,
   rangerFavouredEnemySkills,
+  skills as allSkillOptions,
 } from "../data/bg3CharacterData";
 
 import { bg3Spells } from "../data/bg3Spells";
@@ -120,6 +123,67 @@ function getSnapshotSummary(snapshot: BuildEditorSnapshot) {
     selectedSkillCount: snapshot.selectedClassSkills.length,
     featCount: snapshot.featSelections.length,
   };
+}
+
+function getClassSkillOptionsForBuild(
+  selectedClass: ClassName | "",
+  selectedRace: RaceName | ""
+): Skill[] {
+  if (!selectedClass) return [];
+
+  const classRule = classSkillRules[selectedClass];
+
+  if (selectedRace === "Human") {
+    return unique([...classRule.options, ...allSkillOptions]);
+  }
+
+  return classRule.options;
+}
+
+function cleanClassSkillSelectionsForBuild(args: {
+  selectedClass: ClassName | "";
+  selectedRace: RaceName | "";
+  selectedClassSkills: Skill[];
+  unavailableClassSkillProficiencies: Skill[];
+}): Skill[] {
+  const {
+    selectedClass,
+    selectedRace,
+    selectedClassSkills,
+    unavailableClassSkillProficiencies,
+  } = args;
+
+  if (!selectedClass) return [];
+
+  const classRule = classSkillRules[selectedClass];
+  const allowedOptions = getClassSkillOptionsForBuild(selectedClass, selectedRace);
+  const unavailable = new Set(unavailableClassSkillProficiencies);
+
+  const maxClassSkills = classRule.choose + (selectedRace === "Human" ? 1 : 0);
+
+  const cleaned: Skill[] = [];
+  let outsideClassOptionCount = 0;
+
+  for (const skill of selectedClassSkills) {
+    if (cleaned.includes(skill)) continue;
+    if (!allowedOptions.includes(skill)) continue;
+    if (unavailable.has(skill)) continue;
+
+    const outsideClassOptions = !classRule.options.includes(skill);
+
+    if (outsideClassOptions) {
+      if (selectedRace !== "Human") continue;
+      if (outsideClassOptionCount >= 1) continue;
+
+      outsideClassOptionCount += 1;
+    }
+
+    if (cleaned.length >= maxClassSkills) break;
+
+    cleaned.push(skill);
+  }
+
+  return cleaned;
 }
 
 function getWisdomPreparedSpellMax(
@@ -407,6 +471,12 @@ function BuildPlanner() {
     ...warlockInvocationSkills,
   ]);
 
+  const unavailableClassSkillProficiencies: Skill[] = unique([
+    ...lockedSkills,
+    ...loreBardSkills,
+    ...featSkillProficiencies,
+  ]);
+
   const allProficiencies: Skill[] = unique([
     ...lockedSkills,
     ...selectedClassSkills,
@@ -430,20 +500,20 @@ function BuildPlanner() {
     ...proficiencyBasedExpertise,
   ]);
 
-const classAvailableSpellIds = getAvailableSpellIdsForBuild(
-  bg3Spells,
-  selectedClass,
-  selectedSubclass,
-  selectedLevel,
-  selectedWarlockInvocations
-);
+  const classAvailableSpellIds = getAvailableSpellIdsForBuild(
+    bg3Spells,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    selectedWarlockInvocations
+  );
 
-const featAvailableSpellIds = getFeatAvailableSpellIds(featSelections);
+  const featAvailableSpellIds = getFeatAvailableSpellIds(featSelections);
 
-const availableSpellIds = unique([
-  ...classAvailableSpellIds,
-  ...featAvailableSpellIds,
-]);
+  const availableSpellIds = unique([
+    ...classAvailableSpellIds,
+    ...featAvailableSpellIds,
+  ]);
 
   const availableClassFeaturesOnly = useMemo(
     () =>
@@ -613,6 +683,21 @@ const availableSpellIds = unique([
       cleanSelectedSpellIds(current, availableSpellIds)
     );
   }, [availableSpellIds.join("|")]);
+
+  useEffect(() => {
+    setSelectedClassSkills((current) =>
+      cleanClassSkillSelectionsForBuild({
+        selectedClass,
+        selectedRace,
+        selectedClassSkills: current,
+        unavailableClassSkillProficiencies,
+      })
+    );
+  }, [
+    selectedClass,
+    selectedRace,
+    unavailableClassSkillProficiencies.join("|"),
+  ]);
 
   useEffect(() => {
     setSelectedClassFeatureIds((current) =>
@@ -1460,16 +1545,24 @@ const availableSpellIds = unique([
                     selectedClass={selectedClass}
                     selectedClassSkills={selectedClassSkills}
                     lockedSkills={lockedSkills}
+                    unavailableClassSkillProficiencies={
+                      unavailableClassSkillProficiencies
+                    }
                     allProficiencies={allProficiencies}
                     allExpertise={allExpertise}
                     onRaceChange={handleRaceChange}
                     setSelectedSubrace={(value) => {
-                      logCurrentBuildEdit("selectedSubrace", selectedSubrace, value, {
-                        resetFields: [
-                          "selectedClassFeatureIds",
-                          "activeClassFeatureIds",
-                        ],
-                      });
+                      logCurrentBuildEdit(
+                        "selectedSubrace",
+                        selectedSubrace,
+                        value,
+                        {
+                          resetFields: [
+                            "selectedClassFeatureIds",
+                            "activeClassFeatureIds",
+                          ],
+                        }
+                      );
 
                       setSelectedSubrace(value);
                       setSelectedClassFeatureIds([]);

@@ -1,5 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { Background, ClassName, RaceName, Skill } from "../types/buildPlannerTypes";
+import type {
+  Background,
+  ClassName,
+  RaceName,
+  Skill,
+} from "../types/buildPlannerTypes";
 import {
   backgrounds,
   classSkillRules,
@@ -21,6 +26,7 @@ type CharacterTabProps = {
   selectedClass: ClassName | "";
   selectedClassSkills: Skill[];
   lockedSkills: Skill[];
+  unavailableClassSkillProficiencies: Skill[];
   allProficiencies: Skill[];
   allExpertise: Skill[];
   onRaceChange: (value: string) => void;
@@ -41,6 +47,7 @@ function CharacterTab({
   selectedClass,
   selectedClassSkills,
   lockedSkills,
+  unavailableClassSkillProficiencies,
   allProficiencies,
   allExpertise,
   onRaceChange,
@@ -62,19 +69,28 @@ function CharacterTab({
 
   function toggleClassSkill(skill: Skill) {
     if (!classRule) return;
-    if (lockedSkills.includes(skill)) return;
 
     setSelectedClassSkills((current) => {
       const isSelected = current.includes(skill);
+      const isUnavailableFromOtherSource =
+        unavailableClassSkillProficiencies.includes(skill) && !isSelected;
+
+      if (isUnavailableFromOtherSource) return current;
 
       if (isSelected) {
         return current.filter((item) => item !== skill);
       }
 
-      const outsideClassOptions = current.filter((item) => !classRule.options.includes(item));
+      const outsideClassOptions = current.filter(
+        (item) => !classRule.options.includes(item)
+      );
       const skillIsOutsideClassOptions = !classRule.options.includes(skill);
 
-      if (selectedRace === "Human" && skillIsOutsideClassOptions && outsideClassOptions.length >= 1) {
+      if (
+        selectedRace === "Human" &&
+        skillIsOutsideClassOptions &&
+        outsideClassOptions.length >= 1
+      ) {
         return current;
       }
 
@@ -93,7 +109,9 @@ function CharacterTab({
   return (
     <div className="tab-content">
       <h2>Character</h2>
-      <p className="panel-intro">Basic BG3 character setup and skill proficiencies.</p>
+      <p className="panel-intro">
+        Basic BG3 character setup and skill proficiencies.
+      </p>
 
       <div className="form-grid">
         <label>
@@ -116,7 +134,10 @@ function CharacterTab({
 
         <label>
           Race
-          <select value={selectedRace} onChange={(e) => onRaceChange(e.target.value)}>
+          <select
+            value={selectedRace}
+            onChange={(e) => onRaceChange(e.target.value)}
+          >
             <option value="">Select race</option>
             {races.map((race) => (
               <option key={race} value={race}>
@@ -134,10 +155,13 @@ function CharacterTab({
             disabled={!selectedRace || availableSubraces.length === 0}
           >
             <option value="">
-              {selectedRace && availableSubraces.length === 0 ? "No subrace" : "Select subrace"}
+              {selectedRace && availableSubraces.length === 0
+                ? "No subrace"
+                : "Select subrace"}
             </option>
+
             {availableSubraces.map((subrace) => (
-                              <option key={subrace} value={subrace}>
+              <option key={subrace} value={subrace}>
                 {subrace}
               </option>
             ))}
@@ -148,7 +172,9 @@ function CharacterTab({
           Background
           <select
             value={selectedBackground}
-            onChange={(e) => setSelectedBackground(e.target.value as Background | "")}
+            onChange={(e) =>
+              setSelectedBackground(e.target.value as Background | "")
+            }
           >
             <option value="">Select background</option>
             {backgrounds.map((background) => (
@@ -161,7 +187,10 @@ function CharacterTab({
 
         <label>
           Class
-          <select value={selectedClass} onChange={(e) => onClassChange(e.target.value)}>
+          <select
+            value={selectedClass}
+            onChange={(e) => onClassChange(e.target.value)}
+          >
             <option value="">Select class</option>
             {classes.map((className) => (
               <option key={className} value={className}>
@@ -176,8 +205,9 @@ function CharacterTab({
         <div className="section-block">
           <h3>Githyanki Astral Knowledge</h3>
           <div className="placeholder-box">
-            Astral Knowledge grants temporary proficiency in all skills linked to one chosen
-            ability. It is not added to permanent build proficiencies here.
+            Astral Knowledge grants temporary proficiency in all skills linked
+            to one chosen ability. It is not added to permanent build
+            proficiencies here.
           </div>
         </div>
       )}
@@ -185,11 +215,15 @@ function CharacterTab({
       <div className="section-block">
         <h3>Locked proficiencies</h3>
         <p className="panel-intro">
-          These come from background, race, subclass, class features, or selected class options.
+          These come from background, race, subclass, class features, or fixed
+          feature choices.
         </p>
 
         <div className="chip-grid">
-          {lockedSkills.length === 0 && <span className="muted-text">No locked skills yet.</span>}
+          {lockedSkills.length === 0 && (
+            <span className="muted-text">No locked skills yet.</span>
+          )}
+
           {lockedSkills.map((skill) => (
             <span key={skill} className="choice-chip locked">
               {skill}
@@ -202,26 +236,33 @@ function CharacterTab({
         <h3>Class skill proficiencies</h3>
         <p className="panel-intro">
           {classRule
-            ? `Choose ${maxClassSkills} skill${maxClassSkills > 1 ? "s" : ""}. Selected: ${
-                selectedClassSkills.length
-              }/${maxClassSkills}.`
+            ? `Choose ${maxClassSkills} skill${
+                maxClassSkills > 1 ? "s" : ""
+              }. Selected: ${selectedClassSkills.length}/${maxClassSkills}.`
             : "Select a class first."}
         </p>
 
         {selectedRace === "Human" && classRule && (
           <p className="panel-intro">
-            Human adds one extra free skill proficiency. One selected skill may come from outside
-            the class skill list.
+            Human adds one extra free skill proficiency. One selected skill may
+            come from outside the class skill list.
           </p>
         )}
 
         <div className="skill-grid">
           {skillOptions.map((skill) => {
-            const isLocked = lockedSkills.includes(skill);
             const isSelected = selectedClassSkills.includes(skill);
-            const outsideClassOptions = classRule ? !classRule.options.includes(skill) : false;
+            const isUnavailableFromOtherSource =
+              unavailableClassSkillProficiencies.includes(skill) && !isSelected;
+
+            const outsideClassOptions = classRule
+              ? !classRule.options.includes(skill)
+              : false;
+
             const currentOutsideClassCount = classRule
-              ? selectedClassSkills.filter((item) => !classRule.options.includes(item)).length
+              ? selectedClassSkills.filter(
+                  (item) => !classRule.options.includes(item)
+                ).length
               : 0;
 
             const humanOutsideLimitReached =
@@ -230,10 +271,17 @@ function CharacterTab({
               currentOutsideClassCount >= 1 &&
               !isSelected;
 
-            const nonHumanOutsideClass = selectedRace !== "Human" && outsideClassOptions;
-            const maxReached = selectedClassSkills.length >= maxClassSkills && !isSelected;
+            const nonHumanOutsideClass =
+              selectedRace !== "Human" && outsideClassOptions;
+
+            const maxReached =
+              selectedClassSkills.length >= maxClassSkills && !isSelected;
+
             const disabled =
-              isLocked || maxReached || humanOutsideLimitReached || nonHumanOutsideClass;
+              isUnavailableFromOtherSource ||
+              maxReached ||
+              humanOutsideLimitReached ||
+              nonHumanOutsideClass;
 
             return (
               <button
@@ -243,7 +291,7 @@ function CharacterTab({
                 className={[
                   "choice-chip",
                   isSelected ? "selected" : "",
-                  isLocked ? "locked" : "",
+                  isUnavailableFromOtherSource ? "locked" : "",
                   outsideClassOptions ? "outside-class-skill" : "",
                 ].join(" ")}
                 onClick={() => toggleClassSkill(skill)}
@@ -261,6 +309,7 @@ function CharacterTab({
           {allProficiencies.length === 0 && (
             <span className="muted-text">No skills selected yet.</span>
           )}
+
           {allProficiencies.map((skill) => (
             <span key={skill} className="choice-chip summary-chip">
               {skill}
@@ -272,7 +321,10 @@ function CharacterTab({
       <div className="section-block">
         <h3>Expertise</h3>
         <div className="chip-grid">
-          {allExpertise.length === 0 && <span className="muted-text">No expertise yet.</span>}
+          {allExpertise.length === 0 && (
+            <span className="muted-text">No expertise yet.</span>
+          )}
+
           {allExpertise.map((skill) => (
             <span key={skill} className="choice-chip expertise-chip">
               {skill}
