@@ -26,6 +26,7 @@ import {
   isSameFocusItem,
   type DataCircleFocus,
   type DataCircleFocusItem,
+  type DprRound,
 } from "./DataCircle/dataCircleInteraction";
 import type { VisualizedBuildItem } from "./DataCircle/dataCircleTypes";
 import { BackgroundLayer } from "./DataCircle/layers/BackgroundLayer";
@@ -55,6 +56,13 @@ type DataCircleProps = {
   showDprLayer?: boolean;
   variant?: DataCircleVariant;
   visualizedItemsOverride?: VisualizedBuildItem[];
+
+  dprRounds?: DprRound[];
+  averageDpr?: number;
+  dprStatus?: "idle" | "loading" | "success" | "error";
+  dprError?: string | null;
+
+  setLinkedFocus?: Dispatch<SetStateAction<DataCircleFocus>>;
 };
 
 function stableStringify(value: unknown): string {
@@ -90,6 +98,13 @@ export default function DataCircle({
   showDprLayer = false,
   variant = "main",
   visualizedItemsOverride,
+
+  dprRounds,
+  averageDpr,
+  dprStatus = "idle",
+  dprError = null,
+
+  setLinkedFocus,
 }: DataCircleProps) {
   const rawInstanceId = useId();
   const lastLoggedHoverKeyRef = useRef<string>("none");
@@ -110,6 +125,12 @@ export default function DataCircle({
 
   const activeFocus: DataCircleFocus =
     hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
+
+  useEffect(() => {
+    if (variant !== "main") return;
+
+    setLinkedFocus?.(activeFocus);
+  }, [activeFocus, setLinkedFocus, variant]);
 
   const resolvedVisualizedItems = useMemo(
     () =>
@@ -154,6 +175,12 @@ export default function DataCircle({
     resolvedVisualizedItems,
   ]);
 
+  const resolvedDprRounds =
+    dprRounds && dprRounds.length > 0 ? dprRounds : mockDprByRound;
+
+  const resolvedAverageDpr =
+    typeof averageDpr === "number" ? averageDpr : mockAverageDpr;
+
   const visualizedItemsKey = useMemo(
     () =>
       visualizedItems
@@ -168,7 +195,11 @@ export default function DataCircle({
     setSelectedFocuses([]);
     setIsSelectionReviewActive(false);
     lastLoggedHoverKeyRef.current = "none";
-  }, [visualizedItemsKey, showDprLayer, variant]);
+
+    if (variant === "main") {
+      setLinkedFocus?.(null);
+    }
+  }, [visualizedItemsKey, showDprLayer, variant, setLinkedFocus]);
 
   const displayBuildName = isUsingMockData
     ? mockDataCircleBuild.buildName
@@ -218,11 +249,11 @@ export default function DataCircle({
   );
 
   const relationshipIndex = useMemo(
-    () => buildLayerRelationshipIndex(visualizedItems, mockDprByRound),
-    [visualizedItems]
+    () => buildLayerRelationshipIndex(visualizedItems, resolvedDprRounds),
+    [visualizedItems, resolvedDprRounds]
   );
 
-  const totalDamage = mockDprByRound.reduce(
+  const totalDamage = resolvedDprRounds.reduce(
     (sum, round) => sum + round.damage,
     0
   );
@@ -233,9 +264,9 @@ export default function DataCircle({
     setHoverFocus((previousFocus) => {
       const nextFocus =
         typeof nextFocusOrUpdater === "function"
-          ? (nextFocusOrUpdater as (previous: DataCircleFocus) => DataCircleFocus)(
-              previousFocus
-            )
+          ? (nextFocusOrUpdater as (
+              previous: DataCircleFocus
+            ) => DataCircleFocus)(previousFocus)
           : nextFocusOrUpdater;
 
       if (!isCompact && nextFocus && !Array.isArray(nextFocus)) {
@@ -334,6 +365,7 @@ export default function DataCircle({
     setHoverFocus(null);
     setIsSelectionReviewActive(false);
     lastLoggedHoverKeyRef.current = "none";
+    setLinkedFocus?.(null);
   }
 
   return (
@@ -344,7 +376,13 @@ export default function DataCircle({
       {shouldShowFullDprLayer ? (
         <div className="data-circle-controls">
           <div className="data-circle-dpr-toggle" aria-label="DPR bar layout">
-            <span className="data-circle-dpr-toggle-label">DPR layout</span>
+            <span className="data-circle-dpr-toggle-label">
+              {dprStatus === "loading"
+                ? "Running simulator"
+                : dprStatus === "error"
+                  ? "Simulator unavailable"
+                  : "DPR layout"}
+            </span>
 
             <button
               type="button"
@@ -370,6 +408,10 @@ export default function DataCircle({
               Side-by-side
             </button>
           </div>
+
+          {dprStatus === "error" && dprError ? (
+            <p className="data-circle-dpr-error">{dprError}</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -405,8 +447,8 @@ export default function DataCircle({
 
           {shouldShowFullDprLayer ? (
             <DprByRoundLayer
-              rounds={mockDprByRound}
-              averageDpr={mockAverageDpr}
+              rounds={resolvedDprRounds}
+              averageDpr={resolvedAverageDpr}
               focus={activeFocus}
               setFocus={setHoverFocusWithLogging}
               relationshipIndex={relationshipIndex}
@@ -418,16 +460,16 @@ export default function DataCircle({
           ) : null}
 
           <DamageTypesLayer
-  svgInstanceId={svgInstanceId}
-  damageTypeCounts={damageTypeCounts}
-  damageTypeTotal={damageTypeTotal}
-  focus={activeFocus}
-  setFocus={setHoverFocusWithLogging}
-  relationshipIndex={relationshipIndex}
-  onToggleSelection={toggleSelectedFocus}
-  selectedFocuses={selectedFocuses}
-  showSelectionMarks={isSelectionReviewActive}
-/>
+            svgInstanceId={svgInstanceId}
+            damageTypeCounts={damageTypeCounts}
+            damageTypeTotal={damageTypeTotal}
+            focus={activeFocus}
+            setFocus={setHoverFocusWithLogging}
+            relationshipIndex={relationshipIndex}
+            onToggleSelection={toggleSelectedFocus}
+            selectedFocuses={selectedFocuses}
+            showSelectionMarks={isSelectionReviewActive}
+          />
 
           <RoleDistributionLayer
             roleData={roleData}
@@ -474,7 +516,7 @@ export default function DataCircle({
               spellCount={abilityCount}
               averageDpr={
                 shouldShowFullDprLayer || shouldShowCompactDprNumber
-                  ? mockAverageDpr
+                  ? resolvedAverageDpr
                   : undefined
               }
               totalDamage={shouldShowFullDprLayer ? totalDamage : undefined}

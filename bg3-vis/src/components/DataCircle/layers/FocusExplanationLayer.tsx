@@ -12,7 +12,7 @@ import radiantIcon from "../../../assets/Damage Types/Radiant_Damage_Icon.png";
 import slashingIcon from "../../../assets/Damage Types/Slashing_Damage_Icon.png";
 import thunderIcon from "../../../assets/Damage Types/Thunder_Damage_Icon.png";
 import weaponIcon from "../../../assets/Damage Types/weapon.webp";
-
+import variableIcon from "../../../assets/Damage Types/variableIcon.webp";
 import { getClassFeatureById } from "../../../data/bg3ClassFeatures";
 import { getSpellById } from "../../../data/bg3Spells";
 import { getClassFeatureIcon } from "../../../logic/classFeatureIconLogic";
@@ -66,7 +66,7 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Slashing: slashingIcon,
   Thunder: thunderIcon,
   Weapon: weaponIcon,
-  Variable: forceIcon,
+  Variable: variableIcon,
 };
 
 const DAMAGE_TYPE_SHORT_LABELS: Record<DamageRingKey, string> = {

@@ -662,6 +662,54 @@ select {
   object-fit: contain;
   display: block;
 }
+.spell-icon-button.data-circle-linked-highlight {
+  border-color: var(--data-circle-focus-color, rgba(215, 176, 106, 0.95));
+  box-shadow:
+    0 0 0 1px var(--data-circle-focus-color, rgba(215, 176, 106, 0.95)),
+    0 0 16px color-mix(
+      in srgb,
+      var(--data-circle-focus-color, #d7b06a) 52%,
+      transparent
+    );
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-color, #d7b06a) 24%,
+        transparent
+      ),
+      transparent 62%
+    ),
+    rgba(20, 14, 16, 0.96);
+}
+
+.spell-icon-button.selected-spell.data-circle-linked-highlight,
+.spell-icon-button.active-ability.data-circle-linked-highlight,
+.spell-icon-button.fixed-ability.data-circle-linked-highlight {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.14),
+    0 0 0 3px var(--data-circle-focus-color, rgba(215, 176, 106, 0.95)),
+    0 0 20px color-mix(
+      in srgb,
+      var(--data-circle-focus-color, #d7b06a) 58%,
+      transparent
+    );
+}
+
+.spell-icon-button.data-circle-linked-highlight .spell-icon-image {
+  filter:
+    saturate(1.2)
+    brightness(1.08)
+    drop-shadow(
+      0 0 8px
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-color, #d7b06a) 70%,
+        transparent
+      )
+    );
+}
 /* -------------------------------------------------------------------------- */
 /* Floating spell / ability tooltip                                           */
 /* -------------------------------------------------------------------------- */
@@ -3299,4 +3347,167 @@ select {
 .study-logging-actions button:disabled {
   opacity: 0.34;
   cursor: not-allowed;
+}
+.spell-icon-button.data-circle-linked-highlight {
+  border-color: var(--data-circle-focus-color, rgba(215, 176, 106, 0.95));
+  box-shadow:
+    0 0 0 1px var(--data-circle-focus-color, rgba(215, 176, 106, 0.95)),
+    0 0 16px color-mix(
+      in srgb,
+      var(--data-circle-focus-color, #d7b06a) 52%,
+      transparent
+    );
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-color, #d7b06a) 24%,
+        transparent
+      ),
+      transparent 62%
+    ),
+    rgba(20, 14, 16, 0.96);
+}
+
+.spell-icon-button.selected-spell.data-circle-linked-highlight,
+.spell-icon-button.active-ability.data-circle-linked-highlight,
+.spell-icon-button.fixed-ability.data-circle-linked-highlight {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.14),
+    0 0 0 3px var(--data-circle-focus-color, rgba(215, 176, 106, 0.95)),
+    0 0 20px color-mix(
+      in srgb,
+      var(--data-circle-focus-color, #d7b06a) 58%,
+      transparent
+    );
+}
+
+.spell-icon-button.data-circle-linked-highlight .spell-icon-image {
+  filter:
+    saturate(1.2)
+    brightness(1.08)
+    drop-shadow(
+      0 0 8px
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-color, #d7b06a) 70%,
+        transparent
+      )
+    );
+}
+.spell-icon-button.data-circle-linked-highlight {
+  position: relative;
+  isolation: isolate;
+  border-color: var(--data-circle-focus-stroke, rgba(255, 239, 185, 0.86));
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-fill, #d7b06a) 44%,
+        transparent
+      ),
+      transparent 63%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-fill, #d7b06a) 28%,
+        rgba(22, 15, 18, 0.98)
+      ),
+      rgba(12, 8, 11, 0.98)
+    );
+  box-shadow:
+    0 0 0 1px color-mix(
+      in srgb,
+      var(--data-circle-focus-stroke, #ffe6b8) 82%,
+      transparent
+    ),
+    0 0 14px color-mix(
+      in srgb,
+      var(--data-circle-focus-glow, #d7b06a) 42%,
+      transparent
+    ),
+    inset 0 0 18px color-mix(
+      in srgb,
+      var(--data-circle-focus-fill, #d7b06a) 20%,
+      transparent
+    );
+}
+
+.spell-icon-button.data-circle-linked-highlight::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--data-circle-focus-glow, #d7b06a) 64%,
+      transparent
+    );
+  opacity: 0.82;
+  box-shadow:
+    0 0 18px color-mix(
+      in srgb,
+      var(--data-circle-focus-glow, #d7b06a) 48%,
+      transparent
+    );
+  pointer-events: none;
+}
+
+.spell-icon-button.selected-spell.data-circle-linked-highlight,
+.spell-icon-button.active-ability.data-circle-linked-highlight,
+.spell-icon-button.fixed-ability.data-circle-linked-highlight {
+  border-color: var(--data-circle-focus-stroke, rgba(255, 239, 185, 0.95));
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.14),
+    0 0 0 4px color-mix(
+      in srgb,
+      var(--data-circle-focus-glow, #d7b06a) 76%,
+      transparent
+    ),
+    0 0 22px color-mix(
+      in srgb,
+      var(--data-circle-focus-glow, #d7b06a) 58%,
+      transparent
+    ),
+    inset 0 0 18px color-mix(
+      in srgb,
+      var(--data-circle-focus-fill, #d7b06a) 24%,
+      transparent
+    );
+}
+
+.spell-icon-button.data-circle-linked-highlight .spell-icon-image {
+  filter:
+    saturate(1.18)
+    brightness(1.08)
+    contrast(1.04)
+    drop-shadow(
+      0 0 8px
+      color-mix(
+        in srgb,
+        var(--data-circle-focus-glow, #d7b06a) 70%,
+        transparent
+      )
+    );
+}
+
+.spell-icon-button.data-circle-linked-highlight .spell-rank-badge,
+.spell-icon-button.data-circle-linked-highlight .ability-kind-badge {
+  border-color: color-mix(
+    in srgb,
+    var(--data-circle-focus-stroke, #ffe6b8) 70%,
+    transparent
+  );
+  box-shadow:
+    0 0 8px color-mix(
+      in srgb,
+      var(--data-circle-focus-glow, #d7b06a) 36%,
+      transparent
+    );
 }

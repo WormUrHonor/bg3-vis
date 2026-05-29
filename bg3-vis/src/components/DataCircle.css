@@ -263,3 +263,10 @@
 .data-circle-panel--aggregate .data-circle-center-seal {
   pointer-events: none;
 }
+.data-circle-dpr-error {
+  margin: 0;
+  max-width: 360px;
+  color: rgba(255, 192, 156, 0.84);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}

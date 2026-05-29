@@ -1,6 +1,7 @@
 import {
   useEffect,
   useState,
+  type CSSProperties,
   type Dispatch,
   type FocusEvent,
   type MouseEvent,
@@ -8,7 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
-import { bg3Spells, type BG3Spell } from "../data/bg3Spells";
+import { bg3Spells, type AbilityRole, type BG3Spell } from "../data/bg3Spells";
 import type { BG3ClassFeature } from "../data/bg3ClassFeatures";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 import { toggleSpellSelection } from "../logic/spellSelectionLogic";
@@ -42,6 +43,17 @@ import {
   getFeatSpellChoiceData,
   isFeatSpellChoiceRule,
 } from "../logic/featSpellChoiceLogic";
+import {
+  getFocusItems,
+  type DataCircleFocus,
+  type DataCircleFocusItem,
+} from "./DataCircle/dataCircleInteraction";
+import {
+  DAMAGE_ROLE_KEYS,
+  DAMAGE_TYPES,
+  ROLE_VISUALS,
+  UTILITY_ROLE_KEYS,
+} from "./DataCircle/dataCircleConfig";
 
 type SpellsAbilitiesTabProps = {
   selectedClass: ClassName | "";
@@ -58,6 +70,7 @@ type SpellsAbilitiesTabProps = {
   setActiveClassFeatureIds: Dispatch<SetStateAction<string[]>>;
   spellChoiceMaxOverrides?: Record<string, number>;
   featSelections: FeatSelection[];
+  dataCircleFocus?: DataCircleFocus;
 };
 
 type FeatureDisplayGroup = {
@@ -75,9 +88,61 @@ type FloatingTooltipState = {
   content: ReactNode;
 };
 
+type HighlightableAbility = {
+  id: string;
+  roles: AbilityRole[];
+  damageTypes: string[];
+  range?: {
+    category?: string;
+  };
+};
+
+type DataCircleHighlightVisual = {
+  fillColor: string;
+  glowColor: string;
+  strokeColor: string;
+};
+
 const TOOLTIP_WIDTH = 300;
 const TOOLTIP_MARGIN = 14;
 const TOOLTIP_VERTICAL_GAP = 12;
+
+const SUBCATEGORY_SHADE_COLORS: Partial<Record<AbilityRole, string>> = {
+  "single-target-damage": "rgba(255, 108, 93, 1)",
+  "area-damage": "rgba(255, 143, 74, 1)",
+
+  control: "rgba(91, 154, 255, 1)",
+  "support-buff": "rgba(86, 199, 255, 1)",
+  "defense-protection": "rgba(113, 181, 235, 1)",
+  healing: "rgba(96, 222, 218, 1)",
+  "mobility-positioning": "rgba(126, 166, 255, 1)",
+  "narrative-interaction": "rgba(151, 188, 255, 1)",
+  "investigation-world-interaction": "rgba(107, 214, 255, 1)",
+  summon: "rgba(135, 143, 255, 1)",
+};
+
+const RANGE_HIGHLIGHT_VISUALS: Record<string, DataCircleHighlightVisual> = {
+  self: {
+    fillColor: "#caa46a",
+    glowColor: "#e6c47d",
+    strokeColor: "rgba(255, 239, 185, 0.82)",
+  },
+  melee: {
+    fillColor: "#d7b06a",
+    glowColor: "#f0cf86",
+    strokeColor: "rgba(255, 239, 185, 0.82)",
+  },
+  mid: {
+    fillColor: "#9fc27f",
+    glowColor: "#c7e59d",
+    strokeColor: "rgba(238, 255, 204, 0.82)",
+  },
+  long: {
+    fillColor: "#72a7e8",
+    glowColor: "#9fc7ff",
+    strokeColor: "rgba(215, 234, 255, 0.86)",
+  },
+};
 
 function toRoman(value: number): string {
   if (value === 0) return "C";
@@ -397,6 +462,221 @@ function FloatingSpellTooltip({
   );
 }
 
+function normalizeDamageType(value: string): string {
+  if (value === "Weapon" || value === "Physical") return "Weapon";
+  return value;
+}
+
+function getAbilityRangeBand(ability: HighlightableAbility): string | null {
+  const category = ability.range?.category;
+
+  if (!category) return null;
+
+  if (category === "self") return "self";
+  if (category === "melee" || category === "weapon-range") return "melee";
+  if (category === "mid") return "mid";
+  if (category === "long") return "long";
+
+  return null;
+}
+
+function abilityMatchesRoleFocus(
+  ability: HighlightableAbility,
+  focusItems: DataCircleFocusItem[]
+): boolean {
+  const roleItems = focusItems.filter((item) => item.type === "role");
+  const roleGroupItems = focusItems.filter((item) => item.type === "roleGroup");
+
+  if (roleItems.length === 0 && roleGroupItems.length === 0) return true;
+
+  const matchesRole = roleItems.some((item) => ability.roles.includes(item.role));
+
+  const matchesRoleGroup = roleGroupItems.some((item) => {
+    if (item.roleGroup === "damage") {
+      return ability.roles.some((role) => DAMAGE_ROLE_KEYS.includes(role));
+    }
+
+    return ability.roles.some((role) => UTILITY_ROLE_KEYS.includes(role));
+  });
+
+  return matchesRole || matchesRoleGroup;
+}
+
+function abilityMatchesDamageFocus(
+  ability: HighlightableAbility,
+  focusItems: DataCircleFocusItem[]
+): boolean {
+  const damageTypeItems = focusItems.filter(
+    (item) => item.type === "damageType"
+  );
+
+  if (damageTypeItems.length === 0) return true;
+
+  const abilityDamageTypes = ability.damageTypes.map(normalizeDamageType);
+
+  return damageTypeItems.some((item) =>
+    abilityDamageTypes.includes(normalizeDamageType(item.damageType))
+  );
+}
+
+function abilityMatchesRangeFocus(
+  ability: HighlightableAbility,
+  focusItems: DataCircleFocusItem[]
+): boolean {
+  const rangeItems = focusItems.filter((item) => item.type === "range");
+
+  if (rangeItems.length === 0) return true;
+
+  const abilityRangeBand = getAbilityRangeBand(ability);
+
+  if (!abilityRangeBand) return false;
+
+  return rangeItems.some((item) => item.range === abilityRangeBand);
+}
+
+function abilityMatchesAbilityFocus(
+  ability: HighlightableAbility,
+  focusItems: DataCircleFocusItem[]
+): boolean {
+  const abilityItems = focusItems.filter((item) => item.type === "ability");
+
+  if (abilityItems.length === 0) return true;
+
+  return abilityItems.some((item) => item.abilityId === ability.id);
+}
+
+function isAbilityHighlightedByDataCircleFocus(
+  ability: HighlightableAbility,
+  focus: DataCircleFocus | undefined
+): boolean {
+  const focusItems = getFocusItems(focus ?? null);
+
+  if (focusItems.length === 0) return false;
+
+  const hasRoundFocus = focusItems.some((item) => item.type === "round");
+
+  if (hasRoundFocus) return false;
+
+  return (
+    abilityMatchesAbilityFocus(ability, focusItems) &&
+    abilityMatchesRoleFocus(ability, focusItems) &&
+    abilityMatchesDamageFocus(ability, focusItems) &&
+    abilityMatchesRangeFocus(ability, focusItems)
+  );
+}
+
+function getDamageTypeHighlightVisual(
+  damageType: string
+): DataCircleHighlightVisual | undefined {
+  const normalizedDamageType =
+    damageType === "Physical" ? "Weapon" : damageType;
+
+  const damageTypeVisual = DAMAGE_TYPES.find(
+    (type) => type.key === normalizedDamageType
+  );
+
+  if (!damageTypeVisual) return undefined;
+
+  return {
+    fillColor: damageTypeVisual.color,
+    glowColor: damageTypeVisual.glowColor,
+    strokeColor: damageTypeVisual.glowColor,
+  };
+}
+
+function getRoleGroupHighlightVisual(
+  roleGroup: "damage" | "utility"
+): DataCircleHighlightVisual {
+  const visual = ROLE_VISUALS[roleGroup];
+
+  return {
+    fillColor: visual.color,
+    glowColor: visual.glowColor,
+    strokeColor: visual.lineColor ?? visual.glowColor,
+  };
+}
+
+function getRoleHighlightVisual(role: AbilityRole): DataCircleHighlightVisual {
+  const isDamageRole = DAMAGE_ROLE_KEYS.includes(role);
+  const roleGroupVisual = isDamageRole
+    ? ROLE_VISUALS.damage
+    : ROLE_VISUALS.utility;
+
+  const subcategoryColor = SUBCATEGORY_SHADE_COLORS[role];
+
+  if (subcategoryColor) {
+    return {
+      fillColor: subcategoryColor,
+      glowColor: subcategoryColor,
+      strokeColor: isDamageRole
+        ? "rgba(255, 218, 190, 0.92)"
+        : "rgba(214, 238, 255, 0.9)",
+    };
+  }
+
+  return {
+    fillColor: roleGroupVisual.color,
+    glowColor: roleGroupVisual.glowColor,
+    strokeColor: roleGroupVisual.lineColor ?? roleGroupVisual.glowColor,
+  };
+}
+
+function getDataCircleHighlightVisual(
+  focus: DataCircleFocus | undefined
+): DataCircleHighlightVisual | undefined {
+  const focusItems = getFocusItems(focus ?? null);
+
+  if (focusItems.length === 0) return undefined;
+
+  const damageTypeFocus = focusItems.find((item) => item.type === "damageType");
+  if (damageTypeFocus?.type === "damageType") {
+    return getDamageTypeHighlightVisual(damageTypeFocus.damageType);
+  }
+
+  const roleFocus = focusItems.find((item) => item.type === "role");
+  if (roleFocus?.type === "role") {
+    return getRoleHighlightVisual(roleFocus.role);
+  }
+
+  const roleGroupFocus = focusItems.find((item) => item.type === "roleGroup");
+  if (roleGroupFocus?.type === "roleGroup") {
+    return getRoleGroupHighlightVisual(roleGroupFocus.roleGroup);
+  }
+
+  const rangeFocus = focusItems.find((item) => item.type === "range");
+  if (rangeFocus?.type === "range") {
+    return RANGE_HIGHLIGHT_VISUALS[rangeFocus.range];
+  }
+
+  const abilityFocus = focusItems.find((item) => item.type === "ability");
+  if (abilityFocus?.type === "ability") {
+    return {
+      fillColor: "rgba(215, 176, 106, 1)",
+      glowColor: "rgba(240, 207, 134, 1)",
+      strokeColor: "rgba(255, 239, 185, 0.86)",
+    };
+  }
+
+  return undefined;
+}
+
+function getDataCircleHighlightStyle(
+  isHighlighted: boolean,
+  focus: DataCircleFocus | undefined
+): CSSProperties | undefined {
+  if (!isHighlighted) return undefined;
+
+  const visual = getDataCircleHighlightVisual(focus);
+
+  if (!visual) return undefined;
+
+  return {
+    "--data-circle-focus-fill": visual.fillColor,
+    "--data-circle-focus-glow": visual.glowColor,
+    "--data-circle-focus-stroke": visual.strokeColor,
+  } as CSSProperties;
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -412,6 +692,7 @@ function SpellsAbilitiesTab({
   setActiveClassFeatureIds,
   spellChoiceMaxOverrides = {},
   featSelections,
+  dataCircleFocus = null,
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
   const [floatingTooltip, setFloatingTooltip] =
@@ -495,20 +776,20 @@ function SpellsAbilitiesTab({
   const fixedFeatureCount = fixedClassFeatureIds.length;
   const activeFeatureCount = activeClassFeatureIds.length;
 
-function showFloatingTooltip(
-  event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>,
-  id: string,
-  content: ReactNode
-) {
-  const rect = event.currentTarget.getBoundingClientRect();
-  const position = getFloatingTooltipPosition(rect);
+  function showFloatingTooltip(
+    event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>,
+    id: string,
+    content: ReactNode
+  ) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const position = getFloatingTooltipPosition(rect);
 
-  setFloatingTooltip({
-    id,
-    content,
-    ...position,
-  });
-}
+    setFloatingTooltip({
+      id,
+      content,
+      ...position,
+    });
+  }
 
   function hideFloatingTooltip(id?: string) {
     setFloatingTooltip((current) => {
@@ -526,6 +807,7 @@ function showFloatingTooltip(
       isActiveToggle: boolean;
       isActive: boolean;
       activeGroupFull: boolean;
+      isDataCircleHighlighted: boolean;
     }
   ) {
     return (
@@ -577,6 +859,9 @@ function showFloatingTooltip(
         {state.activeGroupFull && !state.isActive && (
           <span>Click to replace the current active toggle</span>
         )}
+        {state.isDataCircleHighlighted && (
+          <span>Matches the current Data Circle focus</span>
+        )}
       </>
     );
   }
@@ -589,6 +874,7 @@ function showFloatingTooltip(
       groupFull: boolean;
       isSelected: boolean;
       isFixed: boolean;
+      isDataCircleHighlighted: boolean;
     }
   ) {
     return (
@@ -645,178 +931,204 @@ function showFloatingTooltip(
         {args.isRitual && <span>Ritual spell</span>}
         {args.groupFull && !args.isSelected && <span>Choice limit reached</span>}
         {args.isFixed && <span>Granted automatically</span>}
+        {args.isDataCircleHighlighted && (
+          <span>Matches the current Data Circle focus</span>
+        )}
       </>
     );
   }
-function renderFeatureButton(
-  feature: BG3ClassFeature,
-  groupFull = false,
-  activeGroupFull = false
-) {
-  const isInformational = feature.isInformational ?? false;
-  const isActiveToggle = Boolean(feature.activeGroupId);
-  const isFixed =
-    !isInformational &&
-    (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
-  const isSelected = selectedClassFeatureIds.includes(feature.id);
-  const isActive = activeClassFeatureIds.includes(feature.id);
 
-  const isDisabled =
-    isInformational || groupFull || (isFixed && !isActiveToggle);
+  function renderFeatureButton(
+    feature: BG3ClassFeature,
+    groupFull = false,
+    activeGroupFull = false
+  ) {
+    const isInformational = feature.isInformational ?? false;
+    const isActiveToggle = Boolean(feature.activeGroupId);
+    const isFixed =
+      !isInformational &&
+      (fixedClassFeatureIds.includes(feature.id) || feature.isFixed);
+    const isSelected = selectedClassFeatureIds.includes(feature.id);
+    const isActive = activeClassFeatureIds.includes(feature.id);
 
-  const tooltipId = `feature-${feature.id}`;
+    const isDataCircleHighlighted = isAbilityHighlightedByDataCircleFocus(
+      feature,
+      dataCircleFocus
+    );
 
-  const tooltipContent = renderFeatureTooltipContent(feature, {
-    isInformational,
-    isFixed,
-    isActiveToggle,
-    isActive,
-    activeGroupFull,
-  });
+    const isDisabled =
+      isInformational || groupFull || (isFixed && !isActiveToggle);
 
-  function handleClick() {
-    if (isDisabled) return;
+    const tooltipId = `feature-${feature.id}`;
 
-    if (isActiveToggle) {
-      setActiveClassFeatureIds((current) =>
-        toggleActiveClassFeatureSelection(
-          feature.id,
-          current,
-          availableClassFeatures
-        )
+    const tooltipContent = renderFeatureTooltipContent(feature, {
+      isInformational,
+      isFixed,
+      isActiveToggle,
+      isActive,
+      activeGroupFull,
+      isDataCircleHighlighted,
+    });
+
+    function handleClick() {
+      if (isDisabled) return;
+
+      if (isActiveToggle) {
+        setActiveClassFeatureIds((current) =>
+          toggleActiveClassFeatureSelection(
+            feature.id,
+            current,
+            availableClassFeatures
+          )
+        );
+        return;
+      }
+
+      setSelectedClassFeatureIds((current) =>
+        toggleClassFeatureSelection(feature.id, current, availableClassFeatures)
       );
-      return;
     }
 
-    setSelectedClassFeatureIds((current) =>
-      toggleClassFeatureSelection(feature.id, current, availableClassFeatures)
+    return (
+      <button
+        key={feature.id}
+        className={[
+          "spell-icon-button",
+          isSelected ? "selected-spell" : "",
+          isActive ? "active-ability" : "",
+          isFixed ? "fixed-ability" : "",
+          isInformational ? "informational-ability" : "",
+          isDataCircleHighlighted ? "data-circle-linked-highlight" : "",
+          groupFull || (activeGroupFull && !isActive)
+            ? "choice-disabled-soft"
+            : "",
+        ].join(" ")}
+        style={getDataCircleHighlightStyle(
+          isDataCircleHighlighted,
+          dataCircleFocus
+        )}
+        type="button"
+        aria-disabled={isDisabled}
+        onClick={handleClick}
+        onMouseEnter={(event) =>
+          showFloatingTooltip(event, tooltipId, tooltipContent)
+        }
+        onMouseLeave={() => hideFloatingTooltip(tooltipId)}
+        onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
+        onBlur={() => hideFloatingTooltip(tooltipId)}
+      >
+        <img
+          src={getClassFeatureIcon(feature)}
+          alt={feature.name}
+          className="spell-icon-image"
+        />
+
+        <span className="ability-kind-badge">{getKindBadge(feature)}</span>
+      </button>
     );
   }
 
-  return (
-    <button
-      key={feature.id}
-      className={[
-        "spell-icon-button",
-        isSelected ? "selected-spell" : "",
-        isActive ? "active-ability" : "",
-        isFixed ? "fixed-ability" : "",
-        isInformational ? "informational-ability" : "",
-        groupFull || (activeGroupFull && !isActive)
-          ? "choice-disabled-soft"
-          : "",
-      ].join(" ")}
-      type="button"
-      aria-disabled={isDisabled}
-      onClick={handleClick}
-      onMouseEnter={(event) =>
-        showFloatingTooltip(event, tooltipId, tooltipContent)
-      }
-      onMouseLeave={() => hideFloatingTooltip(tooltipId)}
-      onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
-      onBlur={() => hideFloatingTooltip(tooltipId)}
-    >
-      <img
-        src={getClassFeatureIcon(feature)}
-        alt={feature.name}
-        className="spell-icon-image"
-      />
+  function renderSpellButton(spell: BG3Spell, rule?: ActiveSpellChoiceRule) {
+    const isSelected = selectedSpellIds.includes(spell.id);
+    const isFixed = hasSpellTag(spell, "fixed");
+    const isRitual = hasSpellTag(spell, "ritual");
 
-      <span className="ability-kind-badge">{getKindBadge(feature)}</span>
-    </button>
-  );
-}
+    const selectedInRule = rule
+      ? getSelectedSpellIdsForRule(selectedSpellIds, rule)
+      : [];
 
-function renderSpellButton(spell: BG3Spell, rule?: ActiveSpellChoiceRule) {
-  const isSelected = selectedSpellIds.includes(spell.id);
-  const isFixed = hasSpellTag(spell, "fixed");
-  const isRitual = hasSpellTag(spell, "ritual");
+    const groupFull = rule
+      ? selectedInRule.length >= rule.max && !isSelected
+      : isSpellChoiceGroupFull(
+          spell.id,
+          selectedSpellIds,
+          activeSpellChoiceRules
+        );
 
-  const selectedInRule = rule
-    ? getSelectedSpellIdsForRule(selectedSpellIds, rule)
-    : [];
+    const choiceRule =
+      rule ?? getSpellChoiceRuleForSpell(spell.id, activeSpellChoiceRules);
 
-  const groupFull = rule
-    ? selectedInRule.length >= rule.max && !isSelected
-    : isSpellChoiceGroupFull(
-        spell.id,
-        selectedSpellIds,
-        activeSpellChoiceRules
+    const isDisabled = isFixed || groupFull;
+    const tooltipId = rule ? `spell-${rule.id}-${spell.id}` : `spell-${spell.id}`;
+
+    const isDataCircleHighlighted = isAbilityHighlightedByDataCircleFocus(
+      spell,
+      dataCircleFocus
+    );
+
+    const tooltipContent = renderSpellTooltipContent(spell, {
+      choiceRule,
+      isRitual,
+      groupFull,
+      isSelected,
+      isFixed,
+      isDataCircleHighlighted,
+    });
+
+    function handleClick() {
+      if (isDisabled) return;
+
+      setSelectedSpellIds((current) =>
+        toggleSpellSelection(
+          spell.id,
+          current,
+          availableSpellIds,
+          activeSpellChoiceRules
+        )
       );
+    }
 
-  const choiceRule =
-    rule ?? getSpellChoiceRuleForSpell(spell.id, activeSpellChoiceRules);
+    return (
+      <button
+        key={rule ? `${rule.id}-${spell.id}` : spell.id}
+        className={[
+          "spell-icon-button",
+          isSelected ? "selected-spell" : "",
+          isFixed ? "fixed-ability" : "",
+          isDataCircleHighlighted ? "data-circle-linked-highlight" : "",
+          groupFull ? "choice-disabled-soft" : "",
+        ].join(" ")}
+        style={getDataCircleHighlightStyle(
+          isDataCircleHighlighted,
+          dataCircleFocus
+        )}
+        type="button"
+        aria-disabled={isDisabled}
+        onClick={handleClick}
+        onMouseEnter={(event) =>
+          showFloatingTooltip(event, tooltipId, tooltipContent)
+        }
+        onMouseLeave={() => hideFloatingTooltip(tooltipId)}
+        onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
+        onBlur={() => hideFloatingTooltip(tooltipId)}
+      >
+        <img
+          src={getSpellIcon(spell)}
+          alt={spell.name}
+          className="spell-icon-image"
+        />
 
-  const isDisabled = isFixed || groupFull;
-  const tooltipId = rule ? `spell-${rule.id}-${spell.id}` : `spell-${spell.id}`;
+        <span className="spell-rank-badge">
+          {spell.rank === 0 ? "C" : toRoman(spell.rank)}
+        </span>
 
-  const tooltipContent = renderSpellTooltipContent(spell, {
-    choiceRule,
-    isRitual,
-    groupFull,
-    isSelected,
-    isFixed,
-  });
+        {spell.costs.requiresConcentration && (
+          <span
+            className="spell-concentration-badge"
+            title="Requires concentration"
+          >
+            <img src={concentrationIcon} alt="Concentration" />
+          </span>
+        )}
 
-  function handleClick() {
-    if (isDisabled) return;
-
-    setSelectedSpellIds((current) =>
-      toggleSpellSelection(
-        spell.id,
-        current,
-        availableSpellIds,
-        activeSpellChoiceRules
-      )
+        {isRitual && (
+          <span className="spell-ritual-badge" title="Ritual spell">
+            <img src={ritualIcon} alt="Ritual" />
+          </span>
+        )}
+      </button>
     );
   }
-
-  return (
-    <button
-      key={rule ? `${rule.id}-${spell.id}` : spell.id}
-      className={[
-        "spell-icon-button",
-        isSelected ? "selected-spell" : "",
-        isFixed ? "fixed-ability" : "",
-        groupFull ? "choice-disabled-soft" : "",
-      ].join(" ")}
-      type="button"
-      aria-disabled={isDisabled}
-      onClick={handleClick}
-      onMouseEnter={(event) =>
-        showFloatingTooltip(event, tooltipId, tooltipContent)
-      }
-      onMouseLeave={() => hideFloatingTooltip(tooltipId)}
-      onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
-      onBlur={() => hideFloatingTooltip(tooltipId)}
-    >
-      <img
-        src={getSpellIcon(spell)}
-        alt={spell.name}
-        className="spell-icon-image"
-      />
-
-      <span className="spell-rank-badge">
-        {spell.rank === 0 ? "C" : toRoman(spell.rank)}
-      </span>
-
-      {spell.costs.requiresConcentration && (
-        <span
-          className="spell-concentration-badge"
-          title="Requires concentration"
-        >
-          <img src={concentrationIcon} alt="Concentration" />
-        </span>
-      )}
-
-      {isRitual && (
-        <span className="spell-ritual-badge" title="Ritual spell">
-          <img src={ritualIcon} alt="Ritual" />
-        </span>
-      )}
-    </button>
-  );
-}
 
   return (
     <div className="tab-content">

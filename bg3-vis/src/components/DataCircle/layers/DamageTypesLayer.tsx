@@ -13,6 +13,7 @@ import radiantIcon from "../../../assets/Damage Types/Radiant_Damage_Icon.png";
 import slashingIcon from "../../../assets/Damage Types/Slashing_Damage_Icon.png";
 import thunderIcon from "../../../assets/Damage Types/Thunder_Damage_Icon.png";
 import weaponIcon from "../../../assets/Damage Types/weapon.webp";
+import variableIcon from "../../../assets/Damage Types/variableIcon.webp";
 import { DAMAGE_TYPES } from "../dataCircleConfig";
 import {
   CX,
@@ -81,7 +82,7 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Slashing: slashingIcon,
   Thunder: thunderIcon,
   Weapon: weaponIcon,
-  Variable: forceIcon,
+  Variable: variableIcon,
 };
 
 function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {

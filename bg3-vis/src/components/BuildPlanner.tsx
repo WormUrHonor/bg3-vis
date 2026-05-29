@@ -6,7 +6,19 @@ import {
   type SetStateAction,
 } from "react";
 import "./BuildPlanner.css";
-
+import {
+  getAverageDpr,
+  getSimulatorBuildNameForSnapshot,
+  mapBg3SimulationToDprRounds,
+} from "../logic/bg3SimulatorDprMapping";
+import {
+  runBg3PrioritySimulation,
+  type Bg3SimulatorStatus,
+} from "../services/bg3SimulatorApi";
+import type {
+  DataCircleFocus,
+  DprRound,
+} from "./DataCircle/dataCircleInteraction";
 import { getFeatAvailableSpellIds } from "../logic/featSpellChoiceLogic";
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import CharacterTab from "./CharacterTab";
@@ -291,10 +303,22 @@ function createUpdatedSavedBuild(
 }
 
 function BuildPlanner() {
+  const [simulatorStatus, setSimulatorStatus] =
+  useState<Bg3SimulatorStatus>("idle");
+
+const [simulatorError, setSimulatorError] = useState<string | null>(null);
+
+const [simulatorDprRounds, setSimulatorDprRounds] = useState<DprRound[]>([]);
+
+const simulatorAverageDpr = useMemo(
+  () => getAverageDpr(simulatorDprRounds),
+  [simulatorDprRounds]
+);
   const [showPartyPlanner, setShowPartyPlanner] = useState(true);
   const [focusedDataCircle, setFocusedDataCircle] =
     useState<DataCircleFocusSource>("editor");
-
+const [dataCircleFocus, setDataCircleFocus] =
+  useState<DataCircleFocus>(null);
   const [isProcessSpiralExpanded, setIsProcessSpiralExpanded] =
     useState(false);
 
@@ -715,34 +739,36 @@ function BuildPlanner() {
     const featLevels = getFeatLevelsForClass(selectedClass, selectedLevel);
     setFeatSelections((current) => cleanFeatSelections(current, featLevels));
   }, [selectedClass, selectedLevel]);
-
-  useEffect(() => {
-    setHasEvaluatedBuild(false);
-  }, [
-    buildName,
-    characterName,
-    selectedRace,
-    selectedSubrace,
-    selectedBackground,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    selectedClassSkills,
-    bardExpertise,
-    rogueExpertise,
-    loreBardSkills,
-    knowledgeClericExpertise,
-    rangerFavouredEnemy,
-    rangerNaturalExplorer,
-    selectedWarlockInvocations,
-    selectedSpellIds,
-    selectedClassFeatureIds,
-    activeClassFeatureIds,
-    baseAbilityScores,
-    bonusPlusTwo,
-    bonusPlusOne,
-    featSelections,
-  ]);
+useEffect(() => {
+  setHasEvaluatedBuild(false);
+  setSimulatorStatus("idle");
+  setSimulatorError(null);
+  setSimulatorDprRounds([]);
+}, [
+  buildName,
+  characterName,
+  selectedRace,
+  selectedSubrace,
+  selectedBackground,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  selectedClassSkills,
+  bardExpertise,
+  rogueExpertise,
+  loreBardSkills,
+  knowledgeClericExpertise,
+  rangerFavouredEnemy,
+  rangerNaturalExplorer,
+  selectedWarlockInvocations,
+  selectedSpellIds,
+  selectedClassFeatureIds,
+  activeClassFeatureIds,
+  baseAbilityScores,
+  bonusPlusTwo,
+  bonusPlusOne,
+  featSelections,
+]);
 
   function appendBuildHistory(
     savedBuild: SavedBuild,
@@ -859,23 +885,50 @@ function BuildPlanner() {
     setActiveClassFeatureIds([]);
   }
 
-  function handleEvaluateBuild() {
-    if (isAggregateFocused) return;
+  async function handleEvaluateBuild() {
+  if (isAggregateFocused || simulatorStatus === "loading") return;
 
-    logStudyEvent({
-      eventCategory: "evaluation",
-      eventType: "evaluation_requested",
-      activeBuildId: focusedSavedBuild?.id,
-      activeBuildLabel: focusedLabel,
-      activeView: "main-data-circle",
-      payload: {
-        resultSource: "prototype_mock_dpr",
-        buildSnapshot: currentEditorSnapshot,
-        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-      },
+  const simulatorBuildName = getSimulatorBuildNameForSnapshot(
+    currentEditorSnapshot
+  );
+
+  logStudyEvent({
+    eventCategory: "evaluation",
+    eventType: "evaluation_requested",
+    activeBuildId: focusedSavedBuild?.id,
+    activeBuildLabel: focusedLabel,
+    activeView: "main-data-circle",
+    payload: {
+      resultSource: "bg3_simulator_api",
+      simulatorBuildName,
+      buildSnapshot: currentEditorSnapshot,
+      buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+    },
+  });
+
+  setHasEvaluatedBuild(true);
+  setSimulatorStatus("loading");
+  setSimulatorError(null);
+
+  try {
+    const response = await runBg3PrioritySimulation({
+      build: simulatorBuildName,
+      max_rounds: 10,
+      rotation: [],
+      charname: characterName || "Player",
+      include_history: true,
     });
 
-    setHasEvaluatedBuild(true);
+    const rounds = mapBg3SimulationToDprRounds(response);
+
+    if (!rounds.some((round) => round.damage > 0)) {
+      throw new Error(
+        "The simulator returned a response, but no round damage could be extracted yet. Check the response shape in the console."
+      );
+    }
+
+    setSimulatorDprRounds(rounds);
+    setSimulatorStatus("success");
 
     logStudyEvent({
       eventCategory: "evaluation",
@@ -884,12 +937,40 @@ function BuildPlanner() {
       activeBuildLabel: focusedLabel,
       activeView: "main-data-circle",
       payload: {
-        resultSource: "prototype_mock_dpr",
-        note: "Replace this payload with simulator outputs once API integration is active.",
+        resultSource: "bg3_simulator_api",
+        simulatorBuildName,
+        averageDpr: getAverageDpr(rounds),
+        rounds,
+        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown simulator error.";
+
+    console.error("BG3 simulator evaluation failed:", error);
+
+    setSimulatorStatus("error");
+    setSimulatorError(message);
+    setSimulatorDprRounds([]);
+
+    logStudyEvent({
+      eventCategory: "evaluation",
+      eventType: "evaluation_failed",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activeView: "main-data-circle",
+      payload: {
+        resultSource: "bg3_simulator_api",
+        simulatorBuildName,
+        errorMessage: message,
         buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
       },
     });
   }
+}
 
   function applyEditorSnapshot(
     snapshot: BuildEditorSnapshot,
@@ -1105,6 +1186,7 @@ function BuildPlanner() {
     persistFocusedBuildIfSaved();
     setFocusedDataCircle("aggregate");
     setEditingPartySlotIndex(null);
+    setDataCircleFocus(null);
   }
 
   function handleFocusCurrentEditor() {
@@ -1121,6 +1203,7 @@ function BuildPlanner() {
     });
 
     setFocusedDataCircle("editor");
+        setDataCircleFocus(null);
   }
 
   function handleClearPartySlot(slotIndex: number) {
@@ -1337,7 +1420,11 @@ function BuildPlanner() {
                     : "Evaluate the current editable build."
                 }
               >
-                {hasEvaluatedBuild ? "Re-evaluate Build" : "Evaluate Build"}
+                {simulatorStatus === "loading"
+  ? "Running Simulator..."
+  : hasEvaluatedBuild
+    ? "Re-evaluate Build"
+    : "Evaluate Build"}
               </button>
             </header>
 
@@ -1673,33 +1760,34 @@ function BuildPlanner() {
 
                 {activeTab === "spellsAbilities" && (
                   <SpellsAbilitiesTab
-                    selectedClass={selectedClass}
-                    featSelections={featSelections}
-                    selectedSubclass={selectedSubclass}
-                    selectedLevel={selectedLevel}
-                    selectedWarlockInvocations={selectedWarlockInvocations}
-                    selectedSpellIds={selectedSpellIds}
-                    setSelectedSpellIds={createLoggedSetter(
-                      "selectedSpellIds",
-                      selectedSpellIds,
-                      setSelectedSpellIds
-                    )}
-                    availableClassFeatures={availableClassFeatures}
-                    selectedClassFeatureIds={selectedClassFeatureIds}
-                    fixedClassFeatureIds={fixedClassFeatureIds}
-                    setSelectedClassFeatureIds={createLoggedSetter(
-                      "selectedClassFeatureIds",
-                      selectedClassFeatureIds,
-                      setSelectedClassFeatureIds
-                    )}
-                    activeClassFeatureIds={activeClassFeatureIds}
-                    setActiveClassFeatureIds={createLoggedSetter(
-                      "activeClassFeatureIds",
-                      activeClassFeatureIds,
-                      setActiveClassFeatureIds
-                    )}
-                    spellChoiceMaxOverrides={spellChoiceMaxOverrides}
-                  />
+  selectedClass={selectedClass}
+  featSelections={featSelections}
+  selectedSubclass={selectedSubclass}
+  selectedLevel={selectedLevel}
+  selectedWarlockInvocations={selectedWarlockInvocations}
+  selectedSpellIds={selectedSpellIds}
+  setSelectedSpellIds={createLoggedSetter(
+    "selectedSpellIds",
+    selectedSpellIds,
+    setSelectedSpellIds
+  )}
+  availableClassFeatures={availableClassFeatures}
+  selectedClassFeatureIds={selectedClassFeatureIds}
+  fixedClassFeatureIds={fixedClassFeatureIds}
+  setSelectedClassFeatureIds={createLoggedSetter(
+    "selectedClassFeatureIds",
+    selectedClassFeatureIds,
+    setSelectedClassFeatureIds
+  )}
+  activeClassFeatureIds={activeClassFeatureIds}
+  setActiveClassFeatureIds={createLoggedSetter(
+    "activeClassFeatureIds",
+    activeClassFeatureIds,
+    setActiveClassFeatureIds
+  )}
+  spellChoiceMaxOverrides={spellChoiceMaxOverrides}
+  dataCircleFocus={dataCircleFocus}
+/>
                 )}
               </section>
             </div>
@@ -1753,18 +1841,23 @@ function BuildPlanner() {
                 visualizedItemsOverride={partyAggregateItems}
               />
             ) : (
-              <DataCircle
-                buildName={buildName}
-                characterName={characterName}
-                selectedClass={selectedClass}
-                selectedSubclass={selectedSubclass}
-                selectedLevel={selectedLevel}
-                selectedSpellIds={selectedSpellIds}
-                fixedClassFeatureIds={fixedClassFeatureIds}
-                selectedClassFeatureIds={selectedClassFeatureIds}
-                activeClassFeatureIds={activeClassFeatureIds}
-                showDprLayer={hasEvaluatedBuild}
-              />
+<DataCircle
+  buildName={buildName}
+  characterName={characterName}
+  selectedClass={selectedClass}
+  selectedSubclass={selectedSubclass}
+  selectedLevel={selectedLevel}
+  selectedSpellIds={selectedSpellIds}
+  fixedClassFeatureIds={fixedClassFeatureIds}
+  selectedClassFeatureIds={selectedClassFeatureIds}
+  activeClassFeatureIds={activeClassFeatureIds}
+  showDprLayer={hasEvaluatedBuild}
+  dprRounds={simulatorDprRounds}
+  averageDpr={simulatorAverageDpr}
+  dprStatus={simulatorStatus}
+  dprError={simulatorError}
+  setLinkedFocus={setDataCircleFocus}
+/>
             )}
           </div>
 
