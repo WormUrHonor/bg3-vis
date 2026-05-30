@@ -11,7 +11,11 @@ import { getAvailableClassFeaturesForBuild } from "../data/bg3ClassFeatureAvaila
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import { getFixedClassFeatureIds } from "../logic/classFeatureSelectionLogic";
 import { formatSavedBuildDate } from "../logic/savedBuildStorage";
-import { logStudyEvent } from "../logic/studyLogger";
+import {
+  createBuildSnapshotSummary,
+  createStableHash,
+  logStudyEvent,
+} from "../logic/studyLogger";
 import type {
   BuildEditorSnapshot,
   BuildHistoryEntry,
@@ -61,6 +65,8 @@ type DragState = {
   lastY: number;
   startedAtX: number;
   startedAtY: number;
+  startedViewport: ViewportState;
+  startedAtMs: number;
   hasMoved: boolean;
 };
 
@@ -69,6 +75,8 @@ const DEFAULT_VIEWPORT: ViewportState = {
   panX: 0,
   panY: 0,
 };
+
+const NODE_HOVER_DWELL_MS = 500;
 
 function getActiveProcessView(isExpanded: boolean) {
   return isExpanded ? "process-spiral-expanded" : "process-spiral-compact";
@@ -127,59 +135,17 @@ function getSortedHistory(buildHistory: BuildHistoryEntry[]) {
 function getRingSpecs(isExpanded: boolean): RingSpec[] {
   if (isExpanded) {
     return [
-      {
-        capacity: 6,
-        radiusX: 17,
-        radiusY: 14,
-        sizePercent: 8.1,
-        angleOffset: -88,
-      },
-      {
-        capacity: 9,
-        radiusX: 29,
-        radiusY: 23,
-        sizePercent: 6.2,
-        angleOffset: -65,
-      },
-      {
-        capacity: 12,
-        radiusX: 40,
-        radiusY: 31,
-        sizePercent: 4.8,
-        angleOffset: -42,
-      },
-      {
-        capacity: 16,
-        radiusX: 46,
-        radiusY: 37,
-        sizePercent: 3.8,
-        angleOffset: -20,
-      },
+      { capacity: 6, radiusX: 17, radiusY: 14, sizePercent: 8.1, angleOffset: -88 },
+      { capacity: 9, radiusX: 29, radiusY: 23, sizePercent: 6.2, angleOffset: -65 },
+      { capacity: 12, radiusX: 40, radiusY: 31, sizePercent: 4.8, angleOffset: -42 },
+      { capacity: 16, radiusX: 46, radiusY: 37, sizePercent: 3.8, angleOffset: -20 },
     ];
   }
 
   return [
-    {
-      capacity: 5,
-      radiusX: 21,
-      radiusY: 17,
-      sizePercent: 9.8,
-      angleOffset: -90,
-    },
-    {
-      capacity: 8,
-      radiusX: 33,
-      radiusY: 27,
-      sizePercent: 6.7,
-      angleOffset: -56,
-    },
-    {
-      capacity: 10,
-      radiusX: 42,
-      radiusY: 35,
-      sizePercent: 5,
-      angleOffset: -22,
-    },
+    { capacity: 5, radiusX: 21, radiusY: 17, sizePercent: 9.8, angleOffset: -90 },
+    { capacity: 8, radiusX: 33, radiusY: 27, sizePercent: 6.7, angleOffset: -56 },
+    { capacity: 10, radiusX: 42, radiusY: 35, sizePercent: 5, angleOffset: -22 },
   ];
 }
 
@@ -190,11 +156,7 @@ function getRingForIndex(indexAfterCenter: number, rings: RingSpec[]) {
     const ring = rings[ringIndex];
 
     if (remaining < ring.capacity) {
-      return {
-        ring,
-        ringIndex,
-        slotIndex: remaining,
-      };
+      return { ring, ringIndex, slotIndex: remaining };
     }
 
     remaining -= ring.capacity;
@@ -255,7 +217,6 @@ function getSpiralNodes(
 
     const remainingVisibleInThisRing = Math.max(0, count - usedBeforeThisRing);
     const actualSlotsInRing = Math.min(ring.capacity, remainingVisibleInThisRing);
-
     const step = 360 / actualSlotsInRing;
     const angle = ((ring.angleOffset + slotIndex * step) * Math.PI) / 180;
     const altitudeDrop = ringIndex * (isExpanded ? 2.1 : 2.6);
@@ -281,6 +242,28 @@ function getSpiralPath(nodes: SpiralNode[]) {
       return `${command} ${node.x.toFixed(2)} ${node.y.toFixed(2)}`;
     })
     .join(" ");
+}
+
+function createHistoryEntrySummary(entry: BuildHistoryEntry, node?: SpiralNode) {
+  return {
+    historyEntryId: entry.id,
+    savedBuildId: entry.savedBuildId,
+    label: getHistoryLabel(entry),
+    subtitle: getHistorySubtitle(entry),
+    eventType: entry.eventType,
+    createdAt: entry.createdAt,
+    snapshotHash: createStableHash(entry.snapshot, "build"),
+    snapshotSummary: createBuildSnapshotSummary(entry.snapshot),
+    nodeIndex: node?.index ?? null,
+    nodePosition: node
+      ? {
+          x: node.x,
+          y: node.y,
+          sizePercent: node.sizePercent,
+          opacity: node.opacity,
+        }
+      : null,
+  };
 }
 
 function MiniHistoryCircle({ entry }: { entry: BuildHistoryEntry }) {
@@ -312,6 +295,9 @@ export default function ProcessSpiralPanel({
 }: ProcessSpiralPanelProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const zoomAnimationTimeoutRef = useRef<number | null>(null);
+  const hoveredNodeStartedAtRef = useRef<number | null>(null);
+  const hoveredNodeIdRef = useRef<string | null>(null);
+  const emptyStateLoggedRef = useRef(false);
 
   const nodes = useMemo(
     () => getSpiralNodes(buildHistory, isExpanded),
@@ -356,18 +342,69 @@ export default function ProcessSpiralPanel({
   const hiddenCount = Math.max(0, buildHistory.length - nodes.length);
   const maxZoom = isExpanded ? 8 : 5;
   const minZoom = 0.62;
+  const activeView = getActiveProcessView(isExpanded);
+
+  const visibleHistorySummary = useMemo(
+    () => ({
+      buildHistoryCount: buildHistory.length,
+      visibleNodeCount: nodes.length,
+      hiddenCount,
+      isExpanded,
+      selectedHistoryEntryId,
+      hoveredHistoryEntryId,
+      visibleEntryIds: nodes.map((node) => node.entry.id),
+      visibleBuildHashes: nodes.map((node) =>
+        createStableHash(node.entry.snapshot, "build")
+      ),
+    }),
+    [
+      buildHistory.length,
+      nodes,
+      hiddenCount,
+      isExpanded,
+      selectedHistoryEntryId,
+      hoveredHistoryEntryId,
+    ]
+  );
 
   useEffect(() => {
     setViewport(DEFAULT_VIEWPORT);
     setDragState(null);
     setIsViewportAnimating(false);
+
+    logStudyEvent({
+      eventCategory: "process",
+      eventType: "process_view_mode_changed",
+      activeView,
+      payload: {
+  nextViewport: DEFAULT_VIEWPORT,
+  ...visibleHistorySummary,
+},
+    });
   }, [isExpanded]);
 
   useEffect(() => {
     if (nodes.length <= 0) {
       setSelectedHistoryEntryId(null);
+
+      if (!emptyStateLoggedRef.current) {
+        emptyStateLoggedRef.current = true;
+
+        logStudyEvent({
+          eventCategory: "process",
+          eventType: "process_empty_state_viewed",
+          activeView,
+          payload: {
+            buildHistoryCount: buildHistory.length,
+            isExpanded,
+          },
+        });
+      }
+
       return;
     }
+
+    emptyStateLoggedRef.current = false;
 
     if (
       selectedHistoryEntryId &&
@@ -377,7 +414,7 @@ export default function ProcessSpiralPanel({
     }
 
     setSelectedHistoryEntryId(nodes[0].entry.id);
-  }, [nodes, selectedHistoryEntryId]);
+  }, [nodes, selectedHistoryEntryId, activeView, buildHistory.length, isExpanded]);
 
   useEffect(() => {
     return () => {
@@ -443,22 +480,36 @@ export default function ProcessSpiralPanel({
     }
   }
 
+  function logViewportEvent(
+    eventType: string,
+    payload: Record<string, unknown>
+  ) {
+    logStudyEvent({
+      eventCategory: "process",
+      eventType,
+      activeView,
+      payload: {
+        viewport,
+        minZoom,
+        maxZoom,
+        ...visibleHistorySummary,
+        ...payload,
+      },
+    });
+  }
+
   function changeZoom(multiplier: number) {
     const previousZoom = viewport.zoom;
+    const requestedZoom = clamp(previousZoom * multiplier, minZoom, maxZoom);
 
     zoomAtPoint(multiplier, undefined, undefined, true);
 
-    logStudyEvent({
-      eventCategory: "process",
-      eventType: "process_zoom_changed",
-      activeView: getActiveProcessView(isExpanded),
-      payload: {
-        interactionSource: "button",
-        multiplier,
-        previousZoom,
-        requestedZoom: clamp(previousZoom * multiplier, minZoom, maxZoom),
-        isExpanded,
-      },
+    logViewportEvent("process_zoom_changed", {
+      interactionSource: "button",
+      multiplier,
+      previousZoom,
+      requestedZoom,
+      zoomDirection: multiplier > 1 ? "in" : "out",
     });
   }
 
@@ -467,15 +518,9 @@ export default function ProcessSpiralPanel({
     setViewport(DEFAULT_VIEWPORT);
     setDragState(null);
 
-    logStudyEvent({
-      eventCategory: "process",
-      eventType: "process_view_reset",
-      activeView: getActiveProcessView(isExpanded),
-      payload: {
-        previousViewport: viewport,
-        nextViewport: DEFAULT_VIEWPORT,
-        isExpanded,
-      },
+    logViewportEvent("process_view_reset", {
+      previousViewport: viewport,
+      nextViewport: DEFAULT_VIEWPORT,
     });
   }
 
@@ -508,16 +553,13 @@ export default function ProcessSpiralPanel({
       eventType: "process_focus_selected_version",
       activeBuildId: selectedEntry.savedBuildId,
       activeBuildLabel: getHistoryLabel(selectedEntry),
-      activeView: getActiveProcessView(isExpanded),
+      activeView,
       payload: {
-        historyEntryId: selectedEntry.id,
-        savedBuildId: selectedEntry.savedBuildId,
-        label: getHistoryLabel(selectedEntry),
-        nodeIndex: selectedNode.index,
+        selectedEntry: createHistoryEntrySummary(selectedEntry, selectedNode),
         previousViewport: viewport,
         nextViewport,
         targetZoom,
-        isExpanded,
+        ...visibleHistorySummary,
       },
     });
   }
@@ -529,20 +571,21 @@ export default function ProcessSpiralPanel({
     const trackpadFineControl = Math.abs(event.deltaY) < 40;
     const baseIntensity = trackpadFineControl ? 1.045 : 1.15;
     const multiplier = event.deltaY < 0 ? baseIntensity : 1 / baseIntensity;
+    const requestedZoom = clamp(previousZoom * multiplier, minZoom, maxZoom);
 
     zoomAtPoint(multiplier, event.clientX, event.clientY, true);
 
-    logStudyEvent({
-      eventCategory: "process",
-      eventType: "process_zoom_changed",
-      activeView: getActiveProcessView(isExpanded),
-      payload: {
-        interactionSource: "wheel",
-        multiplier,
-        previousZoom,
-        requestedZoom: clamp(previousZoom * multiplier, minZoom, maxZoom),
-        deltaY: event.deltaY,
-        isExpanded,
+    logViewportEvent("process_zoom_changed", {
+      interactionSource: "wheel",
+      multiplier,
+      previousZoom,
+      requestedZoom,
+      zoomDirection: multiplier > 1 ? "in" : "out",
+      deltaY: event.deltaY,
+      trackpadFineControl,
+      pointer: {
+        clientX: event.clientX,
+        clientY: event.clientY,
       },
     });
   }
@@ -559,6 +602,8 @@ export default function ProcessSpiralPanel({
       lastY: event.clientY,
       startedAtX: event.clientX,
       startedAtY: event.clientY,
+      startedViewport: viewport,
+      startedAtMs: Date.now(),
       hasMoved: false,
     });
   }
@@ -593,20 +638,164 @@ export default function ProcessSpiralPanel({
       event.currentTarget.releasePointerCapture(event.pointerId);
 
       if (dragState.hasMoved) {
-        logStudyEvent({
-          eventCategory: "process",
-          eventType: "process_zoom_changed",
-          activeView: getActiveProcessView(isExpanded),
-          payload: {
-            interactionSource: "pan",
-            viewport,
-            isExpanded,
-          },
+        const durationMs = Date.now() - dragState.startedAtMs;
+
+        logViewportEvent("process_pan_completed", {
+          interactionSource: "pan",
+          startedViewport: dragState.startedViewport,
+          endedViewport: viewport,
+          durationMs,
+          pointerTravelPx: Math.round(
+            Math.hypot(
+              event.clientX - dragState.startedAtX,
+              event.clientY - dragState.startedAtY
+            )
+          ),
         });
       }
 
       setDragState(null);
     }
+  }
+
+  function handleNodeHoverStart(node: SpiralNode) {
+    hoveredNodeIdRef.current = node.entry.id;
+    hoveredNodeStartedAtRef.current = Date.now();
+    setHoveredHistoryEntryId(node.entry.id);
+
+    logStudyEvent({
+      eventCategory: "process",
+      eventType: "process_node_hover_started",
+      activeBuildId: node.entry.savedBuildId,
+      activeBuildLabel: getHistoryLabel(node.entry),
+      activeView,
+      payload: {
+  hoveredEntry: createHistoryEntrySummary(node.entry, node),
+  ...visibleHistorySummary,
+},
+    });
+  }
+
+  function handleNodeHoverEnd(node: SpiralNode) {
+    const startedAt = hoveredNodeStartedAtRef.current;
+    const durationMs = startedAt ? Date.now() - startedAt : 0;
+    const wasSameNode = hoveredNodeIdRef.current === node.entry.id;
+
+    if (wasSameNode) {
+      logStudyEvent({
+        eventCategory: "process",
+        eventType: "process_node_hover_ended",
+        activeBuildId: node.entry.savedBuildId,
+        activeBuildLabel: getHistoryLabel(node.entry),
+        activeView,
+        payload: {
+          hoveredEntry: createHistoryEntrySummary(node.entry, node),
+          durationMs,
+          producedDwell: durationMs >= NODE_HOVER_DWELL_MS,
+          ...visibleHistorySummary,
+        },
+      });
+
+      if (durationMs >= NODE_HOVER_DWELL_MS) {
+        logStudyEvent({
+          eventCategory: "process",
+          eventType: "process_node_hover_dwell",
+          activeBuildId: node.entry.savedBuildId,
+          activeBuildLabel: getHistoryLabel(node.entry),
+          activeView,
+          payload: {
+            hoveredEntry: createHistoryEntrySummary(node.entry, node),
+            dwellDurationMs: durationMs,
+            ...visibleHistorySummary,
+          },
+        });
+      }
+    }
+
+    hoveredNodeIdRef.current = null;
+    hoveredNodeStartedAtRef.current = null;
+    setHoveredHistoryEntryId(null);
+  }
+
+  function handleNodeSelected(node: SpiralNode) {
+    const previousSelectedHistoryEntryId = selectedHistoryEntryId;
+
+    setSelectedHistoryEntryId(node.entry.id);
+
+    logStudyEvent({
+      eventCategory: "process",
+      eventType: "process_node_selected",
+      activeBuildId: node.entry.savedBuildId,
+      activeBuildLabel: getHistoryLabel(node.entry),
+      activeView,
+      payload: {
+        previousSelectedHistoryEntryId,
+        selectedEntry: createHistoryEntrySummary(node.entry, node),
+        selectionChanged: previousSelectedHistoryEntryId !== node.entry.id,
+        ...visibleHistorySummary,
+      },
+    });
+  }
+
+  function handleLoadSelectedEntry() {
+    if (!selectedEntry) return;
+
+    logStudyEvent({
+      eventCategory: "process",
+      eventType: "process_node_loaded",
+      activeBuildId: selectedEntry.savedBuildId,
+      activeBuildLabel: getHistoryLabel(selectedEntry),
+      activeView,
+      payload: {
+        selectedEntry: createHistoryEntrySummary(selectedEntry),
+        source: "process-spiral-selection",
+        ...visibleHistorySummary,
+      },
+    });
+
+    onLoadHistoryEntry(selectedEntry.id);
+  }
+
+  function handleRestoreSelectedEntry() {
+    if (!selectedEntry) return;
+
+    logStudyEvent({
+      eventCategory: "process",
+      eventType: "process_node_restored",
+      activeBuildId: selectedEntry.savedBuildId,
+      activeBuildLabel: getHistoryLabel(selectedEntry),
+      activeView,
+      payload: {
+        selectedEntry: createHistoryEntrySummary(selectedEntry),
+        source: "process-spiral-selection",
+        ...visibleHistorySummary,
+      },
+    });
+
+    onRestoreHistoryEntryAsSavedBuild(selectedEntry.id);
+  }
+
+  function handleAssignSelectedEntryToPartySlot(slotIndex: number) {
+    if (!selectedEntry) return;
+
+    logStudyEvent({
+      eventCategory: "process",
+      eventType: "process_node_assigned_to_party",
+      activeBuildId: selectedEntry.savedBuildId,
+      activeBuildLabel: getHistoryLabel(selectedEntry),
+      activePartyMemberIndex: slotIndex,
+      activePartyMemberLabel: `Member ${slotIndex + 1}`,
+      activeView,
+      payload: {
+        selectedEntry: createHistoryEntrySummary(selectedEntry),
+        slotIndex,
+        slotNumber: slotIndex + 1,
+        source: "process-spiral-selection",
+        ...visibleHistorySummary,
+      },
+    });
+
+    onLoadHistoryEntryIntoPartySlot(selectedEntry.id, slotIndex);
   }
 
   return (
@@ -617,47 +806,77 @@ export default function ProcessSpiralPanel({
           : "process-spiral-panel"
       }
       aria-label="Build process spiral"
+      data-study-region="process-spiral-panel"
+      data-study-id={isExpanded ? "process-spiral-expanded" : "process-spiral-compact"}
     >
-      <div className="process-spiral-topbar">
+      <div
+        className="process-spiral-topbar"
+        data-study-region="process-spiral-topbar"
+      >
         <div className="process-spiral-title-block">
           <h3>Build Process</h3>
         </div>
 
-        <div className="process-spiral-topbar-controls">
-          <span className="process-spiral-count">{buildHistory.length}</span>
+        <div
+          className="process-spiral-topbar-controls"
+          data-study-region="process-spiral-controls"
+        >
+          <span
+            className="process-spiral-count"
+            data-study-id="process-history-count"
+          >
+            {buildHistory.length}
+          </span>
 
-          <button type="button" onClick={() => changeZoom(1.34)}>
+          <button
+            type="button"
+            onClick={() => changeZoom(1.34)}
+            data-study-id="process-zoom-in"
+          >
             +
           </button>
 
-          <button type="button" onClick={() => changeZoom(1 / 1.34)}>
+          <button
+            type="button"
+            onClick={() => changeZoom(1 / 1.34)}
+            data-study-id="process-zoom-out"
+          >
             −
           </button>
 
-          <button type="button" onClick={focusSelectedVersion}>
+          <button
+            type="button"
+            onClick={focusSelectedVersion}
+            data-study-id="process-focus-selected"
+          >
             Focus
           </button>
 
-          <button type="button" onClick={resetViewport}>
+          <button
+            type="button"
+            onClick={resetViewport}
+            data-study-id="process-reset-view"
+          >
             Reset
           </button>
 
-          <span className="process-spiral-zoom">
+          <span
+            className="process-spiral-zoom"
+            data-study-id="process-zoom-label"
+          >
             {Math.round(viewport.zoom * 100)}%
           </span>
 
           {isExpanded ? (
             <button
               type="button"
+              data-study-id="process-collapse-panel"
               onClick={() => {
                 logStudyEvent({
                   eventCategory: "process",
                   eventType: "process_panel_collapsed",
                   activeView: "process-spiral-expanded",
-                  payload: {
-                    buildHistoryCount: buildHistory.length,
-                    selectedHistoryEntryId,
-                  },
+                  payload: visibleHistorySummary,
                 });
 
                 onCollapse?.();
@@ -668,15 +887,13 @@ export default function ProcessSpiralPanel({
           ) : (
             <button
               type="button"
+              data-study-id="process-expand-panel"
               onClick={() => {
                 logStudyEvent({
                   eventCategory: "process",
                   eventType: "process_panel_expanded",
                   activeView: "process-spiral-compact",
-                  payload: {
-                    buildHistoryCount: buildHistory.length,
-                    selectedHistoryEntryId,
-                  },
+                  payload: visibleHistorySummary,
                 });
 
                 onExpand?.();
@@ -689,7 +906,11 @@ export default function ProcessSpiralPanel({
       </div>
 
       {nodes.length <= 0 ? (
-        <div className="process-spiral-empty">
+        <div
+          className="process-spiral-empty"
+          data-study-region="process-spiral-empty"
+          data-study-id="process-spiral-empty"
+        >
           Save or update a build to start the process trace.
         </div>
       ) : (
@@ -708,9 +929,11 @@ export default function ProcessSpiralPanel({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
+            data-study-region="process-spiral-stage"
           >
             <div
               className="process-spiral-world"
+              data-study-region="process-spiral-world"
               style={{
                 transform: `translate3d(${viewport.panX}px, ${viewport.panY}px, 0) scale(${viewport.zoom})`,
               }}
@@ -836,38 +1059,31 @@ export default function ProcessSpiralPanel({
                       zIndex: isHovered ? 5000 : isSelected ? 3500 : node.zIndex,
                     }}
                     onPointerDown={(event) => event.stopPropagation()}
-                    onMouseEnter={() => setHoveredHistoryEntryId(node.entry.id)}
-                    onMouseLeave={() => setHoveredHistoryEntryId(null)}
-                    onFocus={() => setHoveredHistoryEntryId(node.entry.id)}
-                    onBlur={() => setHoveredHistoryEntryId(null)}
-                    onClick={() => {
+                    onMouseEnter={() => handleNodeHoverStart(node)}
+                    onMouseLeave={() => handleNodeHoverEnd(node)}
+                    onFocus={() => handleNodeHoverStart(node)}
+                    onBlur={() => handleNodeHoverEnd(node)}
+                    onClick={() => handleNodeSelected(node)}
+                    onDoubleClick={() => {
                       setSelectedHistoryEntryId(node.entry.id);
 
                       logStudyEvent({
                         eventCategory: "process",
-                        eventType: "process_node_selected",
+                        eventType: "process_node_double_clicked",
                         activeBuildId: node.entry.savedBuildId,
                         activeBuildLabel: getHistoryLabel(node.entry),
-                        activeView: getActiveProcessView(isExpanded),
+                        activeView,
                         payload: {
-                          historyEntryId: node.entry.id,
-                          savedBuildId: node.entry.savedBuildId,
-                          label: getHistoryLabel(node.entry),
-                          nodeIndex: node.index,
-                          nodePosition: {
-                            x: node.x,
-                            y: node.y,
-                            sizePercent: node.sizePercent,
-                          },
-                          isExpanded,
+                          selectedEntry: createHistoryEntrySummary(node.entry, node),
+                          ...visibleHistorySummary,
                         },
                       });
-                    }}
-                    onDoubleClick={() => {
-                      setSelectedHistoryEntryId(node.entry.id);
+
                       window.setTimeout(focusSelectedVersion, 0);
                     }}
                     title={getHistoryLabel(node.entry)}
+                    data-study-region="process-spiral-node"
+                    data-study-id={`process-node-${node.index + 1}`}
                   >
                     <span className="process-spiral-node-index">
                       {node.index + 1}
@@ -880,7 +1096,10 @@ export default function ProcessSpiralPanel({
             </div>
 
             {isExpanded && previewEntry ? (
-              <div className="process-spiral-loupe process-spiral-loupe--expanded">
+              <div
+                className="process-spiral-loupe process-spiral-loupe--expanded"
+                data-study-region="process-spiral-loupe"
+              >
                 <div className="process-spiral-loupe-circle">
                   <MiniHistoryCircle entry={previewEntry} />
                 </div>
@@ -895,14 +1114,20 @@ export default function ProcessSpiralPanel({
             ) : null}
 
             {hiddenCount > 0 ? (
-              <div className="process-spiral-hidden-count">
+              <div
+                className="process-spiral-hidden-count"
+                data-study-id="process-hidden-count"
+              >
                 +{hiddenCount} older versions
               </div>
             ) : null}
           </div>
 
           {selectedEntry ? (
-            <article className="process-spiral-selection">
+            <article
+              className="process-spiral-selection"
+              data-study-region="process-spiral-selection"
+            >
               <div className="process-spiral-selection-main">
                 <span>
                   {selectedEntry.eventType === "created"
@@ -910,7 +1135,9 @@ export default function ProcessSpiralPanel({
                     : "Updated version"}
                 </span>
 
-                <strong>{getHistoryLabel(selectedEntry)}</strong>
+                <strong data-study-id="process-selected-version-title">
+                  {getHistoryLabel(selectedEntry)}
+                </strong>
                 <p>{getHistorySubtitle(selectedEntry)}</p>
 
                 <small>
@@ -918,49 +1145,22 @@ export default function ProcessSpiralPanel({
                 </small>
               </div>
 
-              <div className="process-spiral-actions">
+              <div
+                className="process-spiral-actions"
+                data-study-region="process-spiral-actions"
+              >
                 <button
                   type="button"
-                  onClick={() => {
-                    logStudyEvent({
-                      eventCategory: "process",
-                      eventType: "process_node_loaded",
-                      activeBuildId: selectedEntry.savedBuildId,
-                      activeBuildLabel: getHistoryLabel(selectedEntry),
-                      activeView: getActiveProcessView(isExpanded),
-                      payload: {
-                        historyEntryId: selectedEntry.id,
-                        savedBuildId: selectedEntry.savedBuildId,
-                        label: getHistoryLabel(selectedEntry),
-                        source: "process-spiral-selection",
-                      },
-                    });
-
-                    onLoadHistoryEntry(selectedEntry.id);
-                  }}
+                  onClick={handleLoadSelectedEntry}
+                  data-study-id="process-load-selected"
                 >
                   Load
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    logStudyEvent({
-                      eventCategory: "process",
-                      eventType: "process_node_restored",
-                      activeBuildId: selectedEntry.savedBuildId,
-                      activeBuildLabel: getHistoryLabel(selectedEntry),
-                      activeView: getActiveProcessView(isExpanded),
-                      payload: {
-                        historyEntryId: selectedEntry.id,
-                        savedBuildId: selectedEntry.savedBuildId,
-                        label: getHistoryLabel(selectedEntry),
-                        source: "process-spiral-selection",
-                      },
-                    });
-
-                    onRestoreHistoryEntryAsSavedBuild(selectedEntry.id);
-                  }}
+                  onClick={handleRestoreSelectedEntry}
+                  data-study-id="process-restore-selected"
                 >
                   Restore
                 </button>
@@ -970,28 +1170,8 @@ export default function ProcessSpiralPanel({
                     key={`history-slot-${slotIndex}`}
                     type="button"
                     title={`Assign to party slot ${slotIndex + 1}`}
-                    onClick={() => {
-                      logStudyEvent({
-                        eventCategory: "process",
-                        eventType: "process_node_assigned_to_party",
-                        activeBuildId: selectedEntry.savedBuildId,
-                        activeBuildLabel: getHistoryLabel(selectedEntry),
-                        activeView: getActiveProcessView(isExpanded),
-                        payload: {
-                          historyEntryId: selectedEntry.id,
-                          savedBuildId: selectedEntry.savedBuildId,
-                          label: getHistoryLabel(selectedEntry),
-                          slotIndex,
-                          slotNumber: slotIndex + 1,
-                          source: "process-spiral-selection",
-                        },
-                      });
-
-                      onLoadHistoryEntryIntoPartySlot(
-                        selectedEntry.id,
-                        slotIndex
-                      );
-                    }}
+                    onClick={() => handleAssignSelectedEntryToPartySlot(slotIndex)}
+                    data-study-id={`process-assign-selected-to-slot-${slotIndex + 1}`}
                   >
                     {slotIndex + 1}
                   </button>

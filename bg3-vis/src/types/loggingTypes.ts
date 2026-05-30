@@ -9,6 +9,7 @@ export type StudyEventCategory =
   | "navigation"
   | "simulator"
   | "evaluation"
+  | "process"
   | "export"
   | "system"
   | "task"

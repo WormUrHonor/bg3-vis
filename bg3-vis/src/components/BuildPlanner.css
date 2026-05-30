@@ -3511,3 +3511,7 @@ select {
       transparent
     );
 }
+.saved-builds-button--blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

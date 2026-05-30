@@ -8,15 +8,41 @@ import type {
 
 type StudyHeatmapCaptureProps = {
   activeView?: string | null;
+  activeBuildId?: string | null;
+  activeBuildLabel?: string | null;
+  activePartyMemberIndex?: number | null;
+  activePartyMemberLabel?: string | null;
+  activeFocusSource?: string | null;
+  activeVisualizationFocus?: unknown;
+  partySnapshotHash?: string | null;
   enabled?: boolean;
   sampleIntervalMs?: number;
   hoverDwellThresholdMs?: number;
+  scrollSampleIntervalMs?: number;
+  scrollDeltaThresholdPx?: number;
+};
+
+type HeatmapLoggingContext = {
+  activeView?: string | null;
+  activeBuildId?: string | null;
+  activeBuildLabel?: string | null;
+  activePartyMemberIndex?: number | null;
+  activePartyMemberLabel?: string | null;
+  activeFocusSource?: string | null;
+  activeVisualizationFocus?: unknown;
+  partySnapshotHash?: string | null;
 };
 
 type HoverState = {
   target: Element;
   startedAtMs: number;
   payload: HeatmapPointerPayload;
+};
+
+type ScrollState = {
+  lastLoggedAtMs: number;
+  lastScrollX: number;
+  lastScrollY: number;
 };
 
 function round(value: number): number {
@@ -53,6 +79,14 @@ function cleanText(text: string | null | undefined): string | null {
   return compact.length > 80 ? `${compact.slice(0, 77)}...` : compact;
 }
 
+function safeCssEscape(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+
+  return value.replace(/["\\]/g, "\\$&");
+}
+
 function getNearestLabelText(element: Element): string | null {
   const label = element.closest("label");
   return cleanText(label?.textContent ?? null);
@@ -60,18 +94,22 @@ function getNearestLabelText(element: Element): string | null {
 
 function getStableSelector(element: Element): string | null {
   const studyId = element.getAttribute("data-study-id");
-  if (studyId) return `[data-study-id="${CSS.escape(studyId)}"]`;
+  if (studyId) return `[data-study-id="${safeCssEscape(studyId)}"]`;
 
   const studyElement = element.getAttribute("data-study-element");
-  if (studyElement) return `[data-study-element="${CSS.escape(studyElement)}"]`;
+  if (studyElement) {
+    return `[data-study-element="${safeCssEscape(studyElement)}"]`;
+  }
 
   const studyRegion = element.getAttribute("data-study-region");
   if (studyRegion) {
-    return `[data-study-region="${CSS.escape(studyRegion)}"] ${element.tagName.toLowerCase()}`;
+    return `[data-study-region="${safeCssEscape(
+      studyRegion
+    )}"] ${element.tagName.toLowerCase()}`;
   }
 
   const id = element.id;
-  if (id) return `#${CSS.escape(id)}`;
+  if (id) return `#${safeCssEscape(id)}`;
 
   return element.tagName.toLowerCase();
 }
@@ -95,9 +133,13 @@ function getTargetForLogging(element: Element): HeatmapTargetForLogging {
     title: htmlElement.getAttribute("title"),
     text: cleanText(htmlElement.innerText || htmlElement.textContent),
     id: htmlElement.id || null,
-    className: typeof htmlElement.className === "string" ? htmlElement.className || null : null,
+    className:
+      typeof htmlElement.className === "string"
+        ? htmlElement.className || null
+        : null,
     studyRegion: closestStudyRegion?.getAttribute("data-study-region") ?? null,
-    studyElement: closestStudyElement?.getAttribute("data-study-element") ?? null,
+    studyElement:
+      closestStudyElement?.getAttribute("data-study-element") ?? null,
     studyId: closestStudyId?.getAttribute("data-study-id") ?? null,
     selector: getStableSelector(element),
     nearestLabelText: getNearestLabelText(element),
@@ -109,10 +151,31 @@ function getTargetForLogging(element: Element): HeatmapTargetForLogging {
   };
 }
 
+function getWindowTargetForLogging(): HeatmapTargetForLogging {
+  return {
+    tagName: "window",
+    elementType: null,
+    inputType: null,
+    role: null,
+    ariaLabel: null,
+    title: null,
+    text: null,
+    id: null,
+    className: null,
+    studyRegion: "window",
+    studyElement: "scroll",
+    studyId: null,
+    selector: "window",
+    nearestLabelText: null,
+    isInteractive: false,
+    disabled: null,
+  };
+}
+
 function buildPointerPayload(
   event: PointerEvent,
   sampleIntervalMs?: number,
-  hoverDurationMs?: number
+  dwellDurationMs?: number
 ): HeatmapPointerPayload {
   const targetElement =
     event.target instanceof Element ? event.target : document.documentElement;
@@ -143,26 +206,102 @@ function buildPointerPayload(
     documentXNorm: round(clamp01(pageX / documentWidth)),
     documentYNorm: round(clamp01(pageY / documentHeight)),
     sampleIntervalMs,
-    hoverDurationMs,
+    dwellDurationMs,
+  };
+}
+
+function buildScrollPayload(
+  previousScrollX: number,
+  previousScrollY: number,
+  sampleIntervalMs: number
+): HeatmapPointerPayload & {
+  scrollDeltaX: number;
+  scrollDeltaY: number;
+  previousScrollX: number;
+  previousScrollY: number;
+} {
+  const viewportWidth = window.innerWidth || 1;
+  const viewportHeight = window.innerHeight || 1;
+  const documentWidth = getDocumentWidth() || 1;
+  const documentHeight = getDocumentHeight() || 1;
+  const scrollX = Math.round(window.scrollX);
+  const scrollY = Math.round(window.scrollY);
+
+  return {
+    target: getWindowTargetForLogging(),
+    pointerType: "scroll",
+    button: -1,
+    viewportX: 0,
+    viewportY: 0,
+    pageX: scrollX,
+    pageY: scrollY,
+    viewportWidth,
+    viewportHeight,
+    documentWidth,
+    documentHeight,
+    scrollX,
+    scrollY,
+    viewportXNorm: 0,
+    viewportYNorm: 0,
+    documentXNorm: round(clamp01(scrollX / documentWidth)),
+    documentYNorm: round(clamp01(scrollY / documentHeight)),
+    sampleIntervalMs,
+    previousScrollX,
+    previousScrollY,
+    scrollDeltaX: scrollX - previousScrollX,
+    scrollDeltaY: scrollY - previousScrollY,
   };
 }
 
 export default function StudyHeatmapCapture({
   activeView = null,
+  activeBuildId = null,
+  activeBuildLabel = null,
+  activePartyMemberIndex = null,
+  activePartyMemberLabel = null,
+  activeFocusSource = null,
+  activeVisualizationFocus = null,
+  partySnapshotHash = null,
   enabled = true,
   sampleIntervalMs = 250,
   hoverDwellThresholdMs = 500,
+  scrollSampleIntervalMs = 250,
+  scrollDeltaThresholdPx = 8,
 }: StudyHeatmapCaptureProps) {
   const lastPointerMoveAtRef = useRef(0);
   const hoverStateRef = useRef<HoverState | null>(null);
+  const scrollStateRef = useRef<ScrollState>({
+    lastLoggedAtMs: 0,
+    lastScrollX: typeof window === "undefined" ? 0 : Math.round(window.scrollX),
+    lastScrollY: typeof window === "undefined" ? 0 : Math.round(window.scrollY),
+  });
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    function logPointer(eventType: HeatmapPointerEventType, event: PointerEvent, hoverDurationMs?: number) {
-      logHeatmapPointerEvent(eventType, buildPointerPayload(event, sampleIntervalMs, hoverDurationMs), {
+    function getHeatmapContext(): HeatmapLoggingContext {
+      return {
         activeView,
-      });
+        activeBuildId,
+        activeBuildLabel,
+        activePartyMemberIndex,
+        activePartyMemberLabel,
+        activeFocusSource,
+        activeVisualizationFocus,
+        partySnapshotHash,
+      };
+    }
+
+    function logPointer(
+      eventType: HeatmapPointerEventType,
+      event: PointerEvent,
+      dwellDurationMs?: number
+    ) {
+      logHeatmapPointerEvent(
+        eventType,
+        buildPointerPayload(event, sampleIntervalMs, dwellDurationMs),
+        getHeatmapContext()
+      );
     }
 
     function handlePointerMove(event: PointerEvent) {
@@ -180,9 +319,12 @@ export default function StudyHeatmapCapture({
 
     function handleClick(event: MouseEvent) {
       const pointerLikeEvent = event as unknown as PointerEvent;
-      logHeatmapPointerEvent("heatmap_click", buildPointerPayload(pointerLikeEvent), {
-        activeView,
-      });
+
+      logHeatmapPointerEvent(
+        "heatmap_click",
+        buildPointerPayload(pointerLikeEvent, sampleIntervalMs),
+        getHeatmapContext()
+      );
     }
 
     function endHover(event: PointerEvent) {
@@ -190,9 +332,17 @@ export default function StudyHeatmapCapture({
       if (!hoverState) return;
 
       const duration = Date.now() - hoverState.startedAtMs;
-      const endPayload = buildPointerPayload(event, sampleIntervalMs, duration);
+      const endPayload = buildPointerPayload(
+        event,
+        sampleIntervalMs,
+        duration
+      );
 
-      logHeatmapPointerEvent("heatmap_hover_end", endPayload, { activeView });
+      logHeatmapPointerEvent(
+        "heatmap_hover_end",
+        endPayload,
+        getHeatmapContext()
+      );
 
       if (duration >= hoverDwellThresholdMs) {
         logHeatmapPointerEvent(
@@ -200,9 +350,8 @@ export default function StudyHeatmapCapture({
           {
             ...endPayload,
             dwellDurationMs: duration,
-            hoverDurationMs: duration,
           },
-          { activeView }
+          getHeatmapContext()
         );
       }
 
@@ -219,20 +368,28 @@ export default function StudyHeatmapCapture({
       }
 
       const payload = buildPointerPayload(event, sampleIntervalMs);
+
       hoverStateRef.current = {
         target: event.target,
         startedAtMs: Date.now(),
         payload,
       };
 
-      logHeatmapPointerEvent("heatmap_hover_start", payload, { activeView });
+      logHeatmapPointerEvent(
+        "heatmap_hover_start",
+        payload,
+        getHeatmapContext()
+      );
     }
 
     function handlePointerOut(event: PointerEvent) {
       if (!hoverStateRef.current) return;
 
       const relatedTarget = event.relatedTarget;
-      if (relatedTarget instanceof Node && hoverStateRef.current.target.contains(relatedTarget)) {
+      if (
+        relatedTarget instanceof Node &&
+        hoverStateRef.current.target.contains(relatedTarget)
+      ) {
         return;
       }
 
@@ -240,69 +397,100 @@ export default function StudyHeatmapCapture({
     }
 
     function handleScroll() {
-      const viewportWidth = window.innerWidth || 1;
-      const viewportHeight = window.innerHeight || 1;
-      const documentWidth = getDocumentWidth() || 1;
-      const documentHeight = getDocumentHeight() || 1;
+      const now = Date.now();
+      const previousState = scrollStateRef.current;
+      const currentScrollX = Math.round(window.scrollX);
+      const currentScrollY = Math.round(window.scrollY);
+      const deltaX = Math.abs(currentScrollX - previousState.lastScrollX);
+      const deltaY = Math.abs(currentScrollY - previousState.lastScrollY);
+      const elapsedMs = now - previousState.lastLoggedAtMs;
+
+      if (
+        elapsedMs < scrollSampleIntervalMs ||
+        (deltaX < scrollDeltaThresholdPx && deltaY < scrollDeltaThresholdPx)
+      ) {
+        return;
+      }
+
+      const payload = buildScrollPayload(
+        previousState.lastScrollX,
+        previousState.lastScrollY,
+        scrollSampleIntervalMs
+      );
+
+      scrollStateRef.current = {
+        lastLoggedAtMs: now,
+        lastScrollX: currentScrollX,
+        lastScrollY: currentScrollY,
+      };
 
       logHeatmapPointerEvent(
         "heatmap_scroll",
-        {
-          target: {
-            tagName: "window",
-            elementType: null,
-            inputType: null,
-            role: null,
-            ariaLabel: null,
-            title: null,
-            text: null,
-            id: null,
-            className: null,
-            studyRegion: "window",
-            studyElement: "scroll",
-            studyId: null,
-            selector: "window",
-            nearestLabelText: null,
-            isInteractive: false,
-            disabled: null,
-          },
-          pointerType: "scroll",
-          button: -1,
-          viewportX: 0,
-          viewportY: 0,
-          pageX: Math.round(window.scrollX),
-          pageY: Math.round(window.scrollY),
-          viewportWidth,
-          viewportHeight,
-          documentWidth,
-          documentHeight,
-          scrollX: Math.round(window.scrollX),
-          scrollY: Math.round(window.scrollY),
-          viewportXNorm: 0,
-          viewportYNorm: 0,
-          documentXNorm: round(clamp01(window.scrollX / documentWidth)),
-          documentYNorm: round(clamp01(window.scrollY / documentHeight)),
-        },
-        { activeView }
+        payload,
+        getHeatmapContext()
       );
     }
 
-    window.addEventListener("pointermove", handlePointerMove, { passive: true, capture: true });
-    window.addEventListener("pointerdown", handlePointerDown, { passive: true, capture: true });
-    window.addEventListener("click", handleClick, { passive: true, capture: true });
-    window.addEventListener("pointerover", handlePointerOver, { passive: true, capture: true });
-    window.addEventListener("pointerout", handlePointerOut, { passive: true, capture: true });
-    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("pointerdown", handlePointerDown, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("click", handleClick, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("pointerover", handlePointerOver, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("pointerout", handlePointerOut, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+      capture: true,
+    });
 
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove, { capture: true });
-      window.removeEventListener("pointerdown", handlePointerDown, { capture: true });
-      window.removeEventListener("click", handleClick, { capture: true });
-      window.removeEventListener("pointerover", handlePointerOver, { capture: true });
-      window.removeEventListener("pointerout", handlePointerOut, { capture: true });
-      window.removeEventListener("scroll", handleScroll, { capture: true });
+      window.removeEventListener("pointermove", handlePointerMove, {
+        capture: true,
+      });
+      window.removeEventListener("pointerdown", handlePointerDown, {
+        capture: true,
+      });
+      window.removeEventListener("click", handleClick, {
+        capture: true,
+      });
+      window.removeEventListener("pointerover", handlePointerOver, {
+        capture: true,
+      });
+      window.removeEventListener("pointerout", handlePointerOut, {
+        capture: true,
+      });
+      window.removeEventListener("scroll", handleScroll, {
+        capture: true,
+      });
     };
-  }, [activeView, enabled, hoverDwellThresholdMs, sampleIntervalMs]);
+  }, [
+    activeView,
+    activeBuildId,
+    activeBuildLabel,
+    activePartyMemberIndex,
+    activePartyMemberLabel,
+    activeFocusSource,
+    activeVisualizationFocus,
+    partySnapshotHash,
+    enabled,
+    hoverDwellThresholdMs,
+    sampleIntervalMs,
+    scrollSampleIntervalMs,
+    scrollDeltaThresholdPx,
+  ]);
 
   return null;
 }

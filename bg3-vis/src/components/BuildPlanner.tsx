@@ -1,3 +1,4 @@
+import ToolTutorialOverlay from "./ToolTutorialOverlay";
 import StudyHeatmapCapture from "./StudyHeatmapCapture";
 import {
   useEffect,
@@ -79,6 +80,7 @@ import {
   createPartySnapshotSummary,
   createStableHash,
   createVisualProfileSummary,
+  logFrictionEvent,
   logStudyEvent,
 } from "../logic/studyLogger";
 import type { VisualizedItemForLogging } from "../types/loggingTypes";
@@ -781,7 +783,11 @@ function BuildPlanner() {
 
   const finalPartyReady =
     selectedClass !== "" && partySlots.every((slot) => Boolean(slot));
-
+const heatmapActiveView = isProcessSpiralExpanded
+  ? "process-spiral-expanded"
+  : isAggregateFocused
+    ? "aggregate-view"
+    : activeTab;
   function createFocusToActionContext(nowMs: number) {
     const context = latestVisualizationFocusRef.current;
 
@@ -1079,7 +1085,44 @@ function BuildPlanner() {
       setter(nextValue);
     };
   }
-
+function logBlockedUiAction(
+  targetType: string,
+  targetId: string,
+  reason: string,
+  extraPayload: Record<string, unknown> = {}
+) {
+  logFrictionEvent(
+    "invalid_selection_attempted",
+    {
+      sourceComponent: "BuildPlanner",
+      targetType,
+      targetId,
+      reason,
+      focusedLabel,
+      isAggregateFocused,
+      editingPartySlotIndex,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeTab,
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      partySnapshotSummary,
+      partyVisualProfile,
+      partyGaps: partyCoverageForLogging.partyGaps,
+      redundancyScore: partyCoverageForLogging.redundancyScore,
+      ...extraPayload,
+    },
+    {
+      activeView: activeTab,
+      activeBuildId: focusedSavedBuild?.id ?? null,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    }
+  );
+}
   function handleDataCircleFocusChange(
     nextValueOrUpdater: SetStateAction<DataCircleFocus>
   ) {
@@ -1207,25 +1250,26 @@ function BuildPlanner() {
     const partyGaps = partyCoverageForLogging.partyGaps;
 
     logStudyEvent({
-      eventCategory: "party",
-      eventType: "party_coverage_updated",
-      activeView: "party-aggregate",
-      activeBuildId: focusedSavedBuild?.id,
-      activeBuildLabel: focusedLabel,
-      activePartyMemberIndex: editingPartySlotIndex,
-      activePartyMemberLabel,
-      activeFocusSource: focusedDataCircle,
-      payload: {
-        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
-        partySnapshotSummary,
-        partyVisualProfile,
-        partyGaps,
-        partyGapCount: partyGaps.length,
-        redundancyScore: partyCoverageForLogging.redundancyScore,
-        filledPartySlotCount: partySnapshotSummary.filledPartySlotCount,
-        totalPartyMemberCount: partySnapshotSummary.totalPartyMemberCount,
-      },
-    });
+  eventCategory: "party",
+  eventType: "party_coverage_updated",
+  activeView: "party-aggregate",
+  activeBuildId: focusedSavedBuild?.id,
+  activeBuildLabel: focusedLabel,
+  activePartyMemberIndex: editingPartySlotIndex,
+  activePartyMemberLabel,
+  activeFocusSource: focusedDataCircle,
+  partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+  payload: {
+    partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    partySnapshotSummary,
+    partyVisualProfile,
+    partyGaps,
+    partyGapCount: partyGaps.length,
+    redundancyScore: partyCoverageForLogging.redundancyScore,
+    filledPartySlotCount: partySnapshotSummary.filledSlotCount,
+    totalPartyMemberCount: partySnapshotSummary.partySize,
+  },
+});
 
     if (partyGaps.length > 0) {
       latestPartyGapRef.current = {
@@ -1235,16 +1279,17 @@ function BuildPlanner() {
         detectedAtMs: nowMs,
       };
 
-      logStudyEvent({
-        eventCategory: "party",
-        eventType: "party_gap_detected",
-        activeView: "party-aggregate",
-        activeBuildId: focusedSavedBuild?.id,
-        activeBuildLabel: focusedLabel,
-        activePartyMemberIndex: editingPartySlotIndex,
-        activePartyMemberLabel,
-        activeFocusSource: focusedDataCircle,
-        payload: {
+    logStudyEvent({
+  eventCategory: "party",
+  eventType: "party_gap_detected",
+  activeView: "party-aggregate",
+  activeBuildId: focusedSavedBuild?.id,
+  activeBuildLabel: focusedLabel,
+  activePartyMemberIndex: editingPartySlotIndex,
+  activePartyMemberLabel,
+  activeFocusSource: focusedDataCircle,
+  partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+  payload: {
           partySnapshotHash: partySnapshotSummary.partySnapshotHash,
           partyGaps,
           partyGapCount: partyGaps.length,
@@ -1403,7 +1448,21 @@ function BuildPlanner() {
   }
 
   async function handleEvaluateBuild() {
-    if (isAggregateFocused || simulatorStatus === "loading") return;
+    if (isAggregateFocused || simulatorStatus === "loading") {
+  logBlockedUiAction(
+    "evaluate-build",
+    "evaluate-build-button",
+    isAggregateFocused
+      ? "aggregate_view_is_readonly"
+      : "simulator_already_running",
+    {
+      simulatorStatus,
+      hasEvaluatedBuild,
+    }
+  );
+
+  return;
+}
 
     const simulatorBuildName = getSimulatorBuildNameForSnapshot(
       currentEditorSnapshot
@@ -1666,6 +1725,9 @@ function BuildPlanner() {
     const savedBuild = createSavedBuild(currentEditorSnapshot);
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "build_lifecycle",
       eventType: "build_saved",
       activeBuildId: savedBuild.id,
@@ -1714,6 +1776,9 @@ function BuildPlanner() {
     );
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "build_lifecycle",
       eventType: "build_overwritten",
       activeBuildId: updatedBuild.id,
@@ -1758,6 +1823,9 @@ function BuildPlanner() {
       activeBuildId: savedBuild.id,
       activeBuildLabel: savedBuild.label,
       activeView: "saved-builds-panel",
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       payload: {
         savedBuildId: savedBuild.id,
         label: savedBuild.label,
@@ -1781,6 +1849,9 @@ function BuildPlanner() {
     if (!savedBuild) return;
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "party",
       eventType: "party_slot_assigned",
       activeBuildId: savedBuild.id,
@@ -1812,7 +1883,35 @@ function BuildPlanner() {
   function handleEditPartySlot(slotIndex: number) {
     const selectedSlotBuild = partySlots[slotIndex];
 
-    if (!selectedSlotBuild || isAggregateFocused) return;
+if (!selectedSlotBuild) {
+  logBlockedUiAction(
+    "party-slot-focus",
+    `party-slot-${slotIndex + 1}`,
+    "party_slot_empty",
+    {
+      slotIndex,
+      slotNumber: slotIndex + 1,
+    }
+  );
+
+  return;
+}
+
+if (isAggregateFocused) {
+  logBlockedUiAction(
+    "party-slot-focus",
+    `party-slot-${slotIndex + 1}`,
+    "aggregate_view_is_readonly",
+    {
+      slotIndex,
+      slotNumber: slotIndex + 1,
+      targetBuildId: selectedSlotBuild.id,
+      targetBuildLabel: selectedSlotBuild.label,
+    }
+  );
+
+  return;
+}
 
     const outgoingFocusedBuild = getCurrentEditorAsSavedBuild();
 
@@ -1861,8 +1960,10 @@ function BuildPlanner() {
     );
   }
 
-  function handleFocusAggregate() {
-    logStudyEvent({
+function handleFocusAggregate() {
+  if (isAggregateFocused) return;
+
+  logStudyEvent({
       eventCategory: "party",
       eventType: "party_focus_changed",
       activeView: "focus-selector",
@@ -1905,8 +2006,10 @@ function BuildPlanner() {
     latestVisualizationFocusRef.current = null;
   }
 
-  function handleFocusCurrentEditor() {
-    logStudyEvent({
+function handleFocusCurrentEditor() {
+  if (!isAggregateFocused && editingPartySlotIndex === null) return;
+
+  logStudyEvent({
       eventCategory: "party",
       eventType: "party_focus_changed",
       activeBuildId: focusedSavedBuild?.id,
@@ -1929,12 +2032,28 @@ function BuildPlanner() {
     latestVisualizationFocusRef.current = null;
   }
 
-  function handleClearPartySlot(slotIndex: number) {
-    const clearedSlot = partySlots[slotIndex];
+function handleClearPartySlot(slotIndex: number) {
+  const clearedSlot = partySlots[slotIndex];
 
-    logStudyEvent({
+  if (!clearedSlot) {
+    logBlockedUiAction(
+      "party-slot-clear",
+      `party-slot-${slotIndex + 1}`,
+      "party_slot_already_empty",
+      {
+        slotIndex,
+        slotNumber: slotIndex + 1,
+      }
+    );
+
+    return;
+  }
+
+  logStudyEvent({
       eventCategory: "party",
       eventType: "party_slot_cleared",
+      activeFocusSource: focusedDataCircle,
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       activeBuildId: clearedSlot?.id,
       activeBuildLabel: clearedSlot?.label,
       activePartyMemberIndex: slotIndex,
@@ -1964,6 +2083,9 @@ function BuildPlanner() {
       savedBuilds.find((savedBuild) => savedBuild.id === buildId) ?? null;
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "build_lifecycle",
       eventType: "build_deleted",
       activeBuildId: buildId,
@@ -2004,6 +2126,9 @@ function BuildPlanner() {
     if (!historyEntry) return;
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "build_lifecycle",
       eventType: "build_loaded",
       activeBuildId: historyEntry.savedBuildId,
@@ -2036,6 +2161,9 @@ function BuildPlanner() {
     );
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "build_lifecycle",
       eventType: "build_restored_from_history",
       activeBuildId: restoredBuild.id,
@@ -2075,6 +2203,9 @@ function BuildPlanner() {
     );
 
     logStudyEvent({
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       eventCategory: "party",
       eventType: "party_slot_assigned",
       activeBuildId: restoredBuild.id,
@@ -2116,6 +2247,8 @@ function BuildPlanner() {
       activePartyMemberIndex: editingPartySlotIndex,
       activePartyMemberLabel,
       activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       taskPhase: "submission",
       payload: {
         focusedBuild: currentEditorSnapshot,
@@ -2167,7 +2300,22 @@ function BuildPlanner() {
 
   return (
     <main className="workspace-page" data-study-region="workspace-page">
-      <StudyHeatmapCapture activeView={activeTab} />
+      <StudyHeatmapCapture
+  activeView={heatmapActiveView}
+  activeBuildId={focusedSavedBuild?.id ?? null}
+  activeBuildLabel={focusedLabel}
+  activePartyMemberIndex={editingPartySlotIndex}
+  activePartyMemberLabel={activePartyMemberLabel}
+  activeFocusSource={focusedDataCircle}
+  activeVisualizationFocus={getDataCircleFocusKey(dataCircleFocus)}
+  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+/>
+<ToolTutorialOverlay
+  activeView={heatmapActiveView}
+  activeBuildLabel={focusedLabel}
+  activeFocusSource={focusedDataCircle}
+  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+/>
       <section
         className={`workspace-half planner-half ${
           isAggregateFocused ? "planner-half--readonly-focus" : ""
@@ -2200,7 +2348,7 @@ function BuildPlanner() {
                 className="evaluate-button"
                 type="button"
                 onClick={handleEvaluateBuild}
-                disabled={isAggregateFocused}
+                aria-disabled={isAggregateFocused || simulatorStatus === "loading"}
                 data-study-id="evaluate-build-button"
                 title={
                   isAggregateFocused
@@ -2225,30 +2373,47 @@ function BuildPlanner() {
                 <button
                   key={tab.id}
                   className={activeTab === tab.id ? "tab active" : "tab"}
-                  onClick={() => {
-                    if (activeTab === tab.id) return;
+onClick={() => {
+  if (isAggregateFocused) {
+    logBlockedUiAction(
+      "planner-tab",
+      `planner-tab-${tab.id}`,
+      "aggregate_view_is_readonly",
+      {
+        attemptedTab: tab.id,
+        currentTab: activeTab,
+      }
+    );
 
-                    logStudyEvent({
-                      eventCategory: "navigation",
-                      eventType: "tab_changed",
-                      activeView: "build-planner",
-                      activeBuildId: focusedSavedBuild?.id,
-                      activeBuildLabel: focusedLabel,
-                      activePartyMemberIndex: editingPartySlotIndex,
-                      activePartyMemberLabel,
-                      payload: {
-                        previousTab: activeTab,
-                        nextTab: tab.id,
-                        activeFocusSource: focusedDataCircle,
-                        activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
-                        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
-                      },
-                    });
+    return;
+  }
 
-                    setActiveTab(tab.id);
-                  }}
+  if (activeTab === tab.id) return;
+
+  logStudyEvent({
+    eventCategory: "navigation",
+    eventType: "tab_changed",
+    activeView: "build-planner",
+    activeBuildId: focusedSavedBuild?.id,
+    activeBuildLabel: focusedLabel,
+    activePartyMemberIndex: editingPartySlotIndex,
+    activePartyMemberLabel,
+    activeFocusSource: focusedDataCircle,
+activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    payload: {
+      previousTab: activeTab,
+      nextTab: tab.id,
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    },
+  });
+
+  setActiveTab(tab.id);
+}}
                   type="button"
-                  disabled={isAggregateFocused}
+                  aria-disabled={isAggregateFocused}
                   data-study-id={`planner-tab-${tab.id}`}
                 >
                   {tab.label}
@@ -2347,7 +2512,7 @@ function BuildPlanner() {
                               : "focus-selector-button"
                           }
                           onClick={() => handleEditPartySlot(index)}
-                          disabled={!slot || isAggregateFocused}
+aria-disabled={!slot || isAggregateFocused}
                           data-study-id={`party-member-${index + 1}-focus`}
                           title={
                             slot
@@ -2391,16 +2556,23 @@ function BuildPlanner() {
                 />
 
                 <SavedBuildsPanel
-                  currentSnapshot={currentEditorSnapshot}
-                  savedBuilds={savedBuilds}
-                  partySlots={partySlots}
-                  onSaveNew={handleSaveNewBuild}
-                  onOverwrite={handleOverwriteSavedBuild}
-                  onLoad={handleLoadSavedBuild}
-                  onLoadIntoPartySlot={handleLoadSavedBuildIntoPartySlot}
-                  onClearPartySlot={handleClearPartySlot}
-                  onDelete={handleDeleteSavedBuild}
-                />
+  currentSnapshot={currentEditorSnapshot}
+  savedBuilds={savedBuilds}
+  partySlots={partySlots}
+  onSaveNew={handleSaveNewBuild}
+  onOverwrite={handleOverwriteSavedBuild}
+  onLoad={handleLoadSavedBuild}
+  onLoadIntoPartySlot={handleLoadSavedBuildIntoPartySlot}
+  onClearPartySlot={handleClearPartySlot}
+  onDelete={handleDeleteSavedBuild}
+  activeView="saved-builds-panel"
+  activeBuildId={focusedSavedBuild?.id ?? null}
+  activeBuildLabel={focusedLabel}
+  activePartyMemberIndex={editingPartySlotIndex}
+  activePartyMemberLabel={activePartyMemberLabel}
+  activeFocusSource={focusedDataCircle}
+  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+/>
 
                 <StudyLoggingPanel
                   isPartyComplete={finalPartyReady}
@@ -2590,35 +2762,42 @@ function BuildPlanner() {
                 )}
 
                 {activeTab === "spellsAbilities" && (
-                  <SpellsAbilitiesTab
-                    selectedClass={selectedClass}
-                    featSelections={featSelections}
-                    selectedSubclass={selectedSubclass}
-                    selectedLevel={selectedLevel}
-                    selectedWarlockInvocations={selectedWarlockInvocations}
-                    selectedSpellIds={selectedSpellIds}
-                    setSelectedSpellIds={createLoggedSetter(
-                      "selectedSpellIds",
-                      selectedSpellIds,
-                      setSelectedSpellIds
-                    )}
-                    availableClassFeatures={availableClassFeatures}
-                    selectedClassFeatureIds={selectedClassFeatureIds}
-                    fixedClassFeatureIds={fixedClassFeatureIds}
-                    setSelectedClassFeatureIds={createLoggedSetter(
-                      "selectedClassFeatureIds",
-                      selectedClassFeatureIds,
-                      setSelectedClassFeatureIds
-                    )}
-                    activeClassFeatureIds={activeClassFeatureIds}
-                    setActiveClassFeatureIds={createLoggedSetter(
-                      "activeClassFeatureIds",
-                      activeClassFeatureIds,
-                      setActiveClassFeatureIds
-                    )}
-                    spellChoiceMaxOverrides={spellChoiceMaxOverrides}
-                    dataCircleFocus={dataCircleFocus}
-                  />
+                 <SpellsAbilitiesTab
+  selectedClass={selectedClass}
+  featSelections={featSelections}
+  selectedSubclass={selectedSubclass}
+  selectedLevel={selectedLevel}
+  selectedWarlockInvocations={selectedWarlockInvocations}
+  selectedSpellIds={selectedSpellIds}
+  setSelectedSpellIds={createLoggedSetter(
+    "selectedSpellIds",
+    selectedSpellIds,
+    setSelectedSpellIds
+  )}
+  availableClassFeatures={availableClassFeatures}
+  selectedClassFeatureIds={selectedClassFeatureIds}
+  fixedClassFeatureIds={fixedClassFeatureIds}
+  setSelectedClassFeatureIds={createLoggedSetter(
+    "selectedClassFeatureIds",
+    selectedClassFeatureIds,
+    setSelectedClassFeatureIds
+  )}
+  activeClassFeatureIds={activeClassFeatureIds}
+  setActiveClassFeatureIds={createLoggedSetter(
+    "activeClassFeatureIds",
+    activeClassFeatureIds,
+    setActiveClassFeatureIds
+  )}
+  spellChoiceMaxOverrides={spellChoiceMaxOverrides}
+  dataCircleFocus={dataCircleFocus}
+  activeView="spells-abilities-tab"
+  activeBuildId={focusedSavedBuild?.id ?? null}
+  activeBuildLabel={focusedLabel}
+  activePartyMemberIndex={editingPartySlotIndex}
+  activePartyMemberLabel={activePartyMemberLabel}
+  activeFocusSource={focusedDataCircle}
+  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+/>
                 )}
               </section>
             </div>
@@ -2748,7 +2927,7 @@ function BuildPlanner() {
                         type="button"
                         className="party-node-side-label"
                         onClick={slot.onFocus}
-                        disabled={isDisabled}
+                        aria-disabled={isDisabled}
                         data-study-id={
                           index === 0
                             ? "party-aggregate-focus-dock"
@@ -2765,7 +2944,13 @@ function BuildPlanner() {
                         {slot.label}
                       </button>
 
-                      <div className="party-node-orb-shell">
+                      <div
+  className="party-node-orb-shell"
+  data-study-region="party-node-orb-shell"
+  data-study-id={
+    index === 0 ? "party-orb-aggregate" : `party-orb-member-${index}`
+  }
+>
   {index === 0 ? (
     <div className="party-node-circle">
       <DataCircle

@@ -10,6 +10,10 @@ import type {
   RangeBandKey,
   VisualizedBuildItem,
 } from "./dataCircleTypes";
+import type {
+  DataCircleFocusForLogging,
+  DataCircleFocusTrigger,
+} from "../../types/loggingTypes";
 
 export type RoleGroupKey = "damage" | "utility";
 
@@ -81,7 +85,48 @@ export type DataCircleFocusCollectionMetadata = {
   focuses: DataCircleFocusMetadata[];
 };
 
-const ALL_ROLE_KEYS = [...DAMAGE_ROLE_KEYS, ...UTILITY_ROLE_KEYS] as AbilityRole[];
+export type DataCircleFocusTransitionPayload = {
+  trigger: DataCircleFocusTrigger;
+  focusSource: string | null;
+  previousFocusKey: string;
+  nextFocusKey: string;
+  previousFocusCount: number;
+  nextFocusCount: number;
+  previousFocus: DataCircleFocusCollectionMetadata;
+  nextFocus: DataCircleFocusCollectionMetadata;
+  addedFocuses: DataCircleFocusMetadata[];
+  removedFocuses: DataCircleFocusMetadata[];
+  maintainedFocuses: DataCircleFocusMetadata[];
+  addedMatchingAbilityIds: string[];
+  removedMatchingAbilityIds: string[];
+  maintainedMatchingAbilityIds: string[];
+  matchingAbilityCountDelta: number;
+  changedFocusLayer: boolean;
+  changedMatchingAbilities: boolean;
+};
+
+export type DataCircleLinkedHighlightPayload = {
+  focusKey: string;
+  focusCount: number;
+  focusLabels: string[];
+  focusLayers: string[];
+  matchingAbilityIds: string[];
+  matchingAbilityNames: string[];
+  matchingAbilityCount: number;
+  highlightedItemCount: number;
+  highlightedVisibleCount: number;
+  highlightedSelectedCount: number;
+  highlightedItemIds: string[];
+  visibleAbilityIds: string[];
+  selectedAbilityIds: string[];
+  hiddenMatchingAbilityIds: string[];
+};
+
+const ALL_ROLE_KEYS = [
+  ...DAMAGE_ROLE_KEYS,
+  ...UTILITY_ROLE_KEYS,
+] as AbilityRole[];
+
 const ALL_DAMAGE_TYPE_KEYS = DAMAGE_TYPES.map((type) => type.key);
 const ALL_RANGE_KEYS = RANGE_BANDS.map((band) => band.key);
 
@@ -141,7 +186,9 @@ function isDamageRingKey(value: string): value is DamageRingKey {
 
 function getItemRoles(item: VisualizedBuildItem): AbilityRole[] {
   return unique(
-    item.roles.filter((role): role is AbilityRole => ALL_ROLE_KEYS.includes(role))
+    item.roles.filter((role): role is AbilityRole =>
+      ALL_ROLE_KEYS.includes(role)
+    )
   );
 }
 
@@ -359,8 +406,9 @@ function intersectAbilityIds(base: string[], filterValues: string[]) {
 function getAbilityFacetIds(focusItems: DataCircleFocusItem[]) {
   return unique(
     focusItems
-      .filter((item): item is Extract<DataCircleFocusItem, { type: "ability" }> =>
-        item.type === "ability"
+      .filter(
+        (item): item is Extract<DataCircleFocusItem, { type: "ability" }> =>
+          item.type === "ability"
       )
       .map((item) => item.abilityId)
   );
@@ -683,6 +731,199 @@ export function getDataCircleFocusCollectionMetadata(
     matchingAbilityNames,
     matchingAbilityCount: matchingAbilityIds.length,
     focuses,
+  };
+}
+
+function focusMetadataToLoggingFocus(
+  metadata: DataCircleFocusMetadata,
+  trigger: DataCircleFocusTrigger,
+  focusSource: string | null
+): DataCircleFocusForLogging {
+  return {
+    focusType: metadata.focusType,
+    focusKey: metadata.focusKey,
+    focusLabel: metadata.focusLabel,
+    focusLayer: metadata.focusLayer,
+    focusSource,
+    focusTrigger: trigger,
+    itemId: metadata.itemId,
+    itemName: metadata.itemName,
+    role: metadata.role,
+    roleGroup: metadata.roleGroup,
+    damageType: metadata.damageType,
+    rangeBand: metadata.rangeBand,
+    resource: null,
+    round: metadata.round,
+    matchingAbilityIds: metadata.matchingAbilityIds,
+    matchingAbilityNames: metadata.matchingAbilityNames,
+    matchingAbilityCount: metadata.matchingAbilityCount,
+  };
+}
+
+export function getDataCircleFocusesForLogging(
+  focus: DataCircleFocus,
+  index: LayerRelationshipIndex,
+  trigger: DataCircleFocusTrigger,
+  focusSource: string | null = null
+): DataCircleFocusForLogging[] {
+  return getDataCircleFocusCollectionMetadata(focus, index).focuses.map(
+    (metadata) => focusMetadataToLoggingFocus(metadata, trigger, focusSource)
+  );
+}
+
+export function getPrimaryDataCircleFocusForLogging(
+  focus: DataCircleFocus,
+  index: LayerRelationshipIndex,
+  trigger: DataCircleFocusTrigger,
+  focusSource: string | null = null
+): DataCircleFocusForLogging | null {
+  const focuses = getDataCircleFocusesForLogging(
+    focus,
+    index,
+    trigger,
+    focusSource
+  );
+
+  return focuses[0] ?? null;
+}
+
+function getFocusMetadataByKey(
+  collection: DataCircleFocusCollectionMetadata
+): Record<string, DataCircleFocusMetadata> {
+  return collection.focuses.reduce<Record<string, DataCircleFocusMetadata>>(
+    (result, focus) => {
+      result[focus.focusKey] = focus;
+      return result;
+    },
+    {}
+  );
+}
+
+function getMetadataDiff(
+  previous: DataCircleFocusCollectionMetadata,
+  next: DataCircleFocusCollectionMetadata
+) {
+  const previousByKey = getFocusMetadataByKey(previous);
+  const nextByKey = getFocusMetadataByKey(next);
+
+  const previousKeys = Object.keys(previousByKey);
+  const nextKeys = Object.keys(nextByKey);
+
+  const addedFocuses = nextKeys
+    .filter((key) => !previousByKey[key])
+    .map((key) => nextByKey[key]);
+
+  const removedFocuses = previousKeys
+    .filter((key) => !nextByKey[key])
+    .map((key) => previousByKey[key]);
+
+  const maintainedFocuses = nextKeys
+    .filter((key) => previousByKey[key])
+    .map((key) => nextByKey[key]);
+
+  return {
+    addedFocuses,
+    removedFocuses,
+    maintainedFocuses,
+  };
+}
+
+function getStringArrayDiff(previous: string[], next: string[]) {
+  const previousSet = new Set(previous);
+  const nextSet = new Set(next);
+
+  return {
+    added: next.filter((value) => !previousSet.has(value)),
+    removed: previous.filter((value) => !nextSet.has(value)),
+    maintained: next.filter((value) => previousSet.has(value)),
+  };
+}
+
+export function createDataCircleFocusTransitionPayload(args: {
+  previousFocus: DataCircleFocus;
+  nextFocus: DataCircleFocus;
+  index: LayerRelationshipIndex;
+  trigger: DataCircleFocusTrigger;
+  focusSource?: string | null;
+}): DataCircleFocusTransitionPayload {
+  const previousFocus = getDataCircleFocusCollectionMetadata(
+    args.previousFocus,
+    args.index
+  );
+
+  const nextFocus = getDataCircleFocusCollectionMetadata(
+    args.nextFocus,
+    args.index
+  );
+
+  const focusDiff = getMetadataDiff(previousFocus, nextFocus);
+  const abilityDiff = getStringArrayDiff(
+    previousFocus.matchingAbilityIds,
+    nextFocus.matchingAbilityIds
+  );
+
+  return {
+    trigger: args.trigger,
+    focusSource: args.focusSource ?? null,
+    previousFocusKey: previousFocus.focusKey,
+    nextFocusKey: nextFocus.focusKey,
+    previousFocusCount: previousFocus.focusCount,
+    nextFocusCount: nextFocus.focusCount,
+    previousFocus,
+    nextFocus,
+    addedFocuses: focusDiff.addedFocuses,
+    removedFocuses: focusDiff.removedFocuses,
+    maintainedFocuses: focusDiff.maintainedFocuses,
+    addedMatchingAbilityIds: abilityDiff.added,
+    removedMatchingAbilityIds: abilityDiff.removed,
+    maintainedMatchingAbilityIds: abilityDiff.maintained,
+    matchingAbilityCountDelta:
+      nextFocus.matchingAbilityCount - previousFocus.matchingAbilityCount,
+    changedFocusLayer:
+      previousFocus.focusLayers.join("|") !== nextFocus.focusLayers.join("|"),
+    changedMatchingAbilities:
+      previousFocus.matchingAbilityIds.join("|") !==
+      nextFocus.matchingAbilityIds.join("|"),
+  };
+}
+
+export function createLinkedHighlightPayload(args: {
+  focus: DataCircleFocus;
+  index: LayerRelationshipIndex;
+  visibleAbilityIds?: string[];
+  selectedAbilityIds?: string[];
+}): DataCircleLinkedHighlightPayload {
+  const metadata = getDataCircleFocusCollectionMetadata(args.focus, args.index);
+  const visibleAbilityIds = unique(args.visibleAbilityIds ?? args.index.allAbilityIds);
+  const selectedAbilityIds = unique(args.selectedAbilityIds ?? []);
+  const visibleSet = new Set(visibleAbilityIds);
+  const selectedSet = new Set(selectedAbilityIds);
+
+  const highlightedItemIds = metadata.matchingAbilityIds;
+  const highlightedVisibleIds = highlightedItemIds.filter((id) =>
+    visibleSet.has(id)
+  );
+  const highlightedSelectedIds = highlightedItemIds.filter((id) =>
+    selectedSet.has(id)
+  );
+
+  return {
+    focusKey: metadata.focusKey,
+    focusCount: metadata.focusCount,
+    focusLabels: metadata.focusLabels,
+    focusLayers: metadata.focusLayers,
+    matchingAbilityIds: metadata.matchingAbilityIds,
+    matchingAbilityNames: metadata.matchingAbilityNames,
+    matchingAbilityCount: metadata.matchingAbilityCount,
+    highlightedItemCount: highlightedItemIds.length,
+    highlightedVisibleCount: highlightedVisibleIds.length,
+    highlightedSelectedCount: highlightedSelectedIds.length,
+    highlightedItemIds,
+    visibleAbilityIds,
+    selectedAbilityIds,
+    hiddenMatchingAbilityIds: highlightedItemIds.filter(
+      (id) => !visibleSet.has(id)
+    ),
   };
 }
 

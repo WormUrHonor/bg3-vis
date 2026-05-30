@@ -1,5 +1,7 @@
 import {
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type Dispatch,
@@ -44,6 +46,11 @@ import {
   isFeatSpellChoiceRule,
 } from "../logic/featSpellChoiceLogic";
 import {
+  logFrictionEvent,
+  logLinkedHighlightExposed,
+  logStudyEvent,
+} from "../logic/studyLogger";
+import {
   getFocusItems,
   type DataCircleFocus,
   type DataCircleFocusItem,
@@ -71,6 +78,14 @@ type SpellsAbilitiesTabProps = {
   spellChoiceMaxOverrides?: Record<string, number>;
   featSelections: FeatSelection[];
   dataCircleFocus?: DataCircleFocus;
+
+  activeView?: string | null;
+  activeBuildId?: string | null;
+  activeBuildLabel?: string | null;
+  activePartyMemberIndex?: number | null;
+  activePartyMemberLabel?: string | null;
+  activeFocusSource?: string | null;
+  partySnapshotHash?: string | null;
 };
 
 type FeatureDisplayGroup = {
@@ -220,7 +235,7 @@ function getClassAbilityTabTitle(
     return "Spells, Metamagic & Sorcerer Features";
   }
 
-  if (selectedClass === "Wizard") return "Spells & Wizard Features";
+  if (selectedClass === "Wizard") return "Spells & Wizard";
 
   return `${selectedClass} Spells & Features`;
 }
@@ -419,7 +434,10 @@ function getFloatingTooltipPosition(rect: DOMRect): {
   const hasEnoughSpaceAbove = rect.top > 230;
   const y = hasEnoughSpaceAbove
     ? Math.max(TOOLTIP_MARGIN, rect.top - TOOLTIP_VERTICAL_GAP)
-    : Math.min(viewportHeight - TOOLTIP_MARGIN, rect.bottom + TOOLTIP_VERTICAL_GAP);
+    : Math.min(
+        viewportHeight - TOOLTIP_MARGIN,
+        rect.bottom + TOOLTIP_VERTICAL_GAP
+      );
 
   return {
     x: clampedX,
@@ -455,6 +473,8 @@ function FloatingSpellTooltip({
         width: TOOLTIP_WIDTH,
       }}
       role="tooltip"
+      data-study-region="spell-floating-tooltip"
+      data-study-id={`floating-tooltip-${tooltip.id}`}
     >
       {tooltip.content}
     </div>,
@@ -489,7 +509,9 @@ function abilityMatchesRoleFocus(
 
   if (roleItems.length === 0 && roleGroupItems.length === 0) return true;
 
-  const matchesRole = roleItems.some((item) => ability.roles.includes(item.role));
+  const matchesRole = roleItems.some((item) =>
+    ability.roles.includes(item.role)
+  );
 
   const matchesRoleGroup = roleGroupItems.some((item) => {
     if (item.roleGroup === "damage") {
@@ -677,6 +699,123 @@ function getDataCircleHighlightStyle(
   } as CSSProperties;
 }
 
+function getDataCircleFocusKeyForLogging(focus: DataCircleFocus | undefined) {
+  const focusItems = getFocusItems(focus ?? null);
+
+  if (focusItems.length === 0) return null;
+
+  return focusItems
+    .map((item) => {
+      const record = item as unknown as Record<string, unknown>;
+      const type = record.type;
+
+      if (type === "role") return `role:${String(record.role ?? "")}`;
+      if (type === "roleGroup") {
+        return `roleGroup:${String(record.roleGroup ?? "")}`;
+      }
+      if (type === "damageType") {
+        return `damageType:${String(record.damageType ?? "")}`;
+      }
+      if (type === "range") return `range:${String(record.range ?? "")}`;
+      if (type === "ability") return `ability:${String(record.abilityId ?? "")}`;
+      if (type === "round") return `round:${String(record.round ?? "")}`;
+
+      return String(type ?? "unknown-focus");
+    })
+    .join("|");
+}
+
+function getDataCircleFocusSummaryForLogging(focus: DataCircleFocus | undefined) {
+  const focusItems = getFocusItems(focus ?? null);
+
+  return {
+    focusKey: getDataCircleFocusKeyForLogging(focus),
+    focusItemCount: focusItems.length,
+    focusItems,
+  };
+}
+
+function createSpellSummaryForLogging(
+  spell: BG3Spell,
+  args: {
+    isSelected?: boolean;
+    isFixed?: boolean;
+    isDisabled?: boolean;
+    isRitual?: boolean;
+    groupFull?: boolean;
+    choiceRule?: ActiveSpellChoiceRule;
+    isDataCircleHighlighted?: boolean;
+  } = {}
+) {
+  return {
+    abilityType: "spell",
+    id: spell.id,
+    name: spell.name,
+    rank: spell.rank,
+    roles: spell.roles,
+    damageTypes: spell.damageTypes,
+    rangeCategory: spell.range?.category ?? null,
+    rangeLabel: spell.range?.label ?? null,
+    actionCosts: spell.costs.actions,
+    resourceCosts: spell.costs.resources,
+    requiresConcentration: spell.costs.requiresConcentration,
+    tags: spell.tags ?? [],
+    choiceRuleId: args.choiceRule?.id ?? null,
+    choiceRuleLabel: args.choiceRule?.displayGroupLabel ?? null,
+    choiceRuleMax: args.choiceRule?.max ?? null,
+    isSelected: args.isSelected ?? false,
+    isFixed: args.isFixed ?? false,
+    isDisabled: args.isDisabled ?? false,
+    isRitual: args.isRitual ?? false,
+    groupFull: args.groupFull ?? false,
+    isDataCircleHighlighted: args.isDataCircleHighlighted ?? false,
+  };
+}
+
+function createFeatureSummaryForLogging(
+  feature: BG3ClassFeature,
+  args: {
+    isSelected?: boolean;
+    isFixed?: boolean;
+    isActive?: boolean;
+    isInformational?: boolean;
+    isActiveToggle?: boolean;
+    isDisabled?: boolean;
+    groupFull?: boolean;
+    activeGroupFull?: boolean;
+    isDataCircleHighlighted?: boolean;
+  } = {}
+) {
+  return {
+    abilityType: "classFeature",
+    id: feature.id,
+    name: feature.name,
+    kind: feature.kind,
+    roles: feature.roles,
+    damageTypes: feature.damageTypes,
+    rangeCategory: feature.range?.category ?? null,
+    rangeLabel: feature.range?.label ?? null,
+    actionCosts: feature.costs.actions,
+    resourceCosts: feature.costs.resources,
+    requiresConcentration: feature.costs.requiresConcentration,
+    choiceGroupId: feature.choiceGroupId ?? null,
+    choiceGroupLabel: feature.choiceGroupLabel ?? null,
+    choiceGroupMax: feature.choiceGroupMax ?? null,
+    activeGroupId: feature.activeGroupId ?? null,
+    activeGroupLabel: feature.activeGroupLabel ?? null,
+    activeGroupMax: feature.activeGroupMax ?? null,
+    isSelected: args.isSelected ?? false,
+    isFixed: args.isFixed ?? false,
+    isActive: args.isActive ?? false,
+    isInformational: args.isInformational ?? false,
+    isActiveToggle: args.isActiveToggle ?? false,
+    isDisabled: args.isDisabled ?? false,
+    groupFull: args.groupFull ?? false,
+    activeGroupFull: args.activeGroupFull ?? false,
+    isDataCircleHighlighted: args.isDataCircleHighlighted ?? false,
+  };
+}
+
 function SpellsAbilitiesTab({
   selectedClass,
   selectedSubclass,
@@ -693,10 +832,22 @@ function SpellsAbilitiesTab({
   spellChoiceMaxOverrides = {},
   featSelections,
   dataCircleFocus = null,
+  activeView = "spells-abilities-tab",
+  activeBuildId = null,
+  activeBuildLabel = null,
+  activePartyMemberIndex = null,
+  activePartyMemberLabel = null,
+  activeFocusSource = null,
+  partySnapshotHash = null,
 }: SpellsAbilitiesTabProps) {
   const spellRanks = [0, 1, 2, 3, 4, 5, 6] as const;
   const [floatingTooltip, setFloatingTooltip] =
     useState<FloatingTooltipState | null>(null);
+
+  const tooltipOpenedAtRef = useRef<number | null>(null);
+  const tooltipIdRef = useRef<string | null>(null);
+  const tooltipPayloadRef = useRef<Record<string, unknown> | null>(null);
+  const lastLinkedHighlightKeyRef = useRef<string | null>(null);
 
   const baseAvailableSpells = getAvailableSpellsForBuild(
     bg3Spells,
@@ -776,13 +927,212 @@ function SpellsAbilitiesTab({
   const fixedFeatureCount = fixedClassFeatureIds.length;
   const activeFeatureCount = activeClassFeatureIds.length;
 
+  const focusSummaryForLogging = useMemo(
+    () => getDataCircleFocusSummaryForLogging(dataCircleFocus),
+    [dataCircleFocus]
+  );
+
+  const highlightedSpellsForLogging = useMemo(
+    () =>
+      availableSpells.filter((spell) =>
+        isAbilityHighlightedByDataCircleFocus(spell, dataCircleFocus)
+      ),
+    [availableSpells, dataCircleFocus]
+  );
+
+  const highlightedFeaturesForLogging = useMemo(
+    () =>
+      availableClassFeatures.filter((feature) =>
+        isAbilityHighlightedByDataCircleFocus(feature, dataCircleFocus)
+      ),
+    [availableClassFeatures, dataCircleFocus]
+  );
+
+  function getLoggingContext() {
+    return {
+      activeView,
+      activeBuildId,
+      activeBuildLabel:
+        activeBuildLabel || selectedSubclass || selectedClass || null,
+      activePartyMemberIndex,
+      activePartyMemberLabel,
+      activeFocusSource,
+      partySnapshotHash,
+    };
+  }
+
+  function createPanelStatePayload() {
+    return {
+      sourceComponent: "SpellsAbilitiesTab",
+      selectedClass,
+      selectedSubclass,
+      selectedLevel,
+      selectedSpellCount,
+      selectedFeatureCount,
+      fixedFeatureCount,
+      activeFeatureCount,
+      availableSpellCount: availableSpells.length,
+      availableClassFeatureCount: availableClassFeatures.length,
+      visibleSpellChoiceRuleCount: visibleSpellChoiceRules.length,
+      featSpellChoiceRuleCount: featSpellChoiceRules.length,
+      magicalSecretsRuleCount: magicalSecretsRules.length,
+      featureDisplayGroupCount: featureDisplayGroups.length,
+      dataCircleFocus: focusSummaryForLogging,
+      highlightedSpellCount: highlightedSpellsForLogging.length,
+      highlightedFeatureCount: highlightedFeaturesForLogging.length,
+      highlightedAbilityCount:
+        highlightedSpellsForLogging.length + highlightedFeaturesForLogging.length,
+      highlightedSpellIds: highlightedSpellsForLogging.map((spell) => spell.id),
+      highlightedFeatureIds: highlightedFeaturesForLogging.map(
+        (feature) => feature.id
+      ),
+      partySnapshotHash,
+    };
+  }
+
+  function logAbilityIntent(
+    eventType: string,
+    payload: Record<string, unknown>
+  ) {
+    logStudyEvent({
+      eventCategory: "build_edit",
+      eventType,
+      taskPhase: "exploration",
+      ...getLoggingContext(),
+      activeVisualizationFocus: focusSummaryForLogging.focusKey,
+      payload: {
+        ...createPanelStatePayload(),
+        ...payload,
+      },
+    });
+  }
+
+  function logBlockedAbilityAction(
+    targetType: string,
+    targetId: string,
+    reason: string,
+    payload: Record<string, unknown>
+  ) {
+    logFrictionEvent(
+      "invalid_selection_attempted",
+      {
+        ...createPanelStatePayload(),
+        targetType,
+        targetId,
+        reason,
+        ...payload,
+      },
+      getLoggingContext()
+    );
+  }
+
+  useEffect(() => {
+    const focusKey = focusSummaryForLogging.focusKey;
+
+    if (!focusKey) {
+      lastLinkedHighlightKeyRef.current = null;
+      return;
+    }
+
+    const highlightedSpellIds = highlightedSpellsForLogging.map(
+      (spell) => spell.id
+    );
+
+    const highlightedFeatureIds = highlightedFeaturesForLogging.map(
+      (feature) => feature.id
+    );
+
+    const highlightKey = JSON.stringify({
+      focusKey,
+      highlightedSpellIds,
+      highlightedFeatureIds,
+      selectedSpellIds,
+      selectedClassFeatureIds,
+      activeClassFeatureIds,
+    });
+
+    if (lastLinkedHighlightKeyRef.current === highlightKey) return;
+    lastLinkedHighlightKeyRef.current = highlightKey;
+
+    const highlightedItemIds = [
+      ...highlightedSpellIds,
+      ...highlightedFeatureIds,
+    ];
+
+    if (highlightedItemIds.length === 0) return;
+
+    logLinkedHighlightExposed(
+      {
+        focusKey,
+        highlightedItemCount: highlightedItemIds.length,
+        highlightedVisibleCount: highlightedItemIds.length,
+        highlightedSelectedCount:
+          highlightedSpellsForLogging.filter((spell) =>
+            selectedSpellIds.includes(spell.id)
+          ).length +
+          highlightedFeaturesForLogging.filter(
+            (feature) =>
+              selectedClassFeatureIds.includes(feature.id) ||
+              activeClassFeatureIds.includes(feature.id)
+          ).length,
+        highlightedItemIds,
+        highlightedSpellIds,
+        highlightedFeatureIds,
+        selectedHighlightedSpellIds: highlightedSpellIds.filter((id) =>
+          selectedSpellIds.includes(id)
+        ),
+        selectedHighlightedFeatureIds: highlightedFeatureIds.filter((id) =>
+          selectedClassFeatureIds.includes(id)
+        ),
+        activeHighlightedFeatureIds: highlightedFeatureIds.filter((id) =>
+          activeClassFeatureIds.includes(id)
+        ),
+        dataCircleFocus: focusSummaryForLogging,
+      },
+      getLoggingContext()
+    );
+  }, [
+    focusSummaryForLogging,
+    highlightedSpellsForLogging,
+    highlightedFeaturesForLogging,
+    selectedSpellIds,
+    selectedClassFeatureIds,
+    activeClassFeatureIds,
+  ]);
+
   function showFloatingTooltip(
     event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>,
     id: string,
-    content: ReactNode
+    content: ReactNode,
+    payload: Record<string, unknown>
   ) {
     const rect = event.currentTarget.getBoundingClientRect();
     const position = getFloatingTooltipPosition(rect);
+    const nowMs = Date.now();
+
+    tooltipOpenedAtRef.current = nowMs;
+    tooltipIdRef.current = id;
+    tooltipPayloadRef.current = payload;
+
+    logStudyEvent({
+      eventCategory: "visualization",
+      eventType: "highlighted_item_tooltip_opened",
+      taskPhase: "exploration",
+      ...getLoggingContext(),
+      activeVisualizationFocus: focusSummaryForLogging.focusKey,
+      payload: {
+        ...createPanelStatePayload(),
+        tooltipId: id,
+        openedAtMs: nowMs,
+        openedBy: event.type,
+        tooltipPlacement: position.placement,
+        tooltipPosition: {
+          x: position.x,
+          y: position.y,
+        },
+        ...payload,
+      },
+    });
 
     setFloatingTooltip({
       id,
@@ -792,6 +1142,35 @@ function SpellsAbilitiesTab({
   }
 
   function hideFloatingTooltip(id?: string) {
+    const nowMs = Date.now();
+    const openedAtMs = tooltipOpenedAtRef.current;
+    const activeTooltipId = tooltipIdRef.current;
+    const activePayload = tooltipPayloadRef.current;
+
+    if (activeTooltipId && (!id || activeTooltipId === id)) {
+      const tooltipDurationMs = openedAtMs ? nowMs - openedAtMs : null;
+
+      logStudyEvent({
+        eventCategory: "visualization",
+        eventType: "highlighted_item_tooltip_closed",
+        taskPhase: "exploration",
+        ...getLoggingContext(),
+        activeVisualizationFocus: focusSummaryForLogging.focusKey,
+        payload: {
+          ...createPanelStatePayload(),
+          tooltipId: activeTooltipId,
+          tooltipDurationMs,
+          producedTooltipDwell:
+            tooltipDurationMs !== null ? tooltipDurationMs >= 600 : false,
+          ...(activePayload ?? {}),
+        },
+      });
+
+      tooltipOpenedAtRef.current = null;
+      tooltipIdRef.current = null;
+      tooltipPayloadRef.current = null;
+    }
+
     setFloatingTooltip((current) => {
       if (!current) return null;
       if (id && current.id !== id) return current;
@@ -970,8 +1349,67 @@ function SpellsAbilitiesTab({
       isDataCircleHighlighted,
     });
 
+    function createFeaturePayload() {
+      return {
+        tooltipTargetType: "class-feature",
+        feature: createFeatureSummaryForLogging(feature, {
+          isSelected,
+          isFixed,
+          isActive,
+          isInformational,
+          isActiveToggle,
+          isDisabled,
+          groupFull,
+          activeGroupFull,
+          isDataCircleHighlighted,
+        }),
+        isLinkedHighlightTooltip: isDataCircleHighlighted,
+      };
+    }
+
     function handleClick() {
-      if (isDisabled) return;
+      const featureSummary = createFeatureSummaryForLogging(feature, {
+        isSelected,
+        isFixed,
+        isActive,
+        isInformational,
+        isActiveToggle,
+        isDisabled,
+        groupFull,
+        activeGroupFull,
+        isDataCircleHighlighted,
+      });
+
+      if (isDisabled) {
+        const reason = isInformational
+          ? "feature_is_informational"
+          : isFixed && !isActiveToggle
+            ? "feature_is_fixed"
+            : groupFull
+              ? "choice_group_full"
+              : "feature_disabled";
+
+        logBlockedAbilityAction("class-feature", feature.id, reason, {
+          action: "class_feature_click_blocked",
+          feature: featureSummary,
+        });
+
+        return;
+      }
+
+      logAbilityIntent("class_feature_toggle_attempted", {
+        action: isActiveToggle
+          ? isActive
+            ? "deactivate_feature"
+            : "activate_feature"
+          : isSelected
+            ? "remove_feature"
+            : "select_feature",
+        feature: featureSummary,
+        isLinkedHighlightSelection: isDataCircleHighlighted,
+        selectedClassFeatureCountBefore: selectedClassFeatureIds.length,
+        activeClassFeatureCountBefore: activeClassFeatureIds.length,
+      });
 
       if (isActiveToggle) {
         setActiveClassFeatureIds((current) =>
@@ -1010,11 +1448,20 @@ function SpellsAbilitiesTab({
         type="button"
         aria-disabled={isDisabled}
         onClick={handleClick}
+        data-study-region="class-feature-button"
+        data-study-id={`class-feature-${feature.id}`}
+        data-study-element={
+          isDataCircleHighlighted
+            ? "linked-highlight-class-feature"
+            : "class-feature"
+        }
         onMouseEnter={(event) =>
-          showFloatingTooltip(event, tooltipId, tooltipContent)
+          showFloatingTooltip(event, tooltipId, tooltipContent, createFeaturePayload())
         }
         onMouseLeave={() => hideFloatingTooltip(tooltipId)}
-        onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
+        onFocus={(event) =>
+          showFloatingTooltip(event, tooltipId, tooltipContent, createFeaturePayload())
+        }
         onBlur={() => hideFloatingTooltip(tooltipId)}
       >
         <img
@@ -1065,8 +1512,58 @@ function SpellsAbilitiesTab({
       isDataCircleHighlighted,
     });
 
+    function createSpellPayload() {
+      return {
+        tooltipTargetType: "spell",
+        spell: createSpellSummaryForLogging(spell, {
+          choiceRule,
+          isSelected,
+          isFixed,
+          isDisabled,
+          isRitual,
+          groupFull,
+          isDataCircleHighlighted,
+        }),
+        isLinkedHighlightTooltip: isDataCircleHighlighted,
+      };
+    }
+
     function handleClick() {
-      if (isDisabled) return;
+      const spellSummary = createSpellSummaryForLogging(spell, {
+        choiceRule,
+        isSelected,
+        isFixed,
+        isDisabled,
+        isRitual,
+        groupFull,
+        isDataCircleHighlighted,
+      });
+
+      if (isDisabled) {
+        const reason = isFixed
+          ? "spell_is_fixed"
+          : groupFull
+            ? "spell_choice_group_full"
+            : "spell_disabled";
+
+        logBlockedAbilityAction("spell", spell.id, reason, {
+          action: "spell_click_blocked",
+          spell: spellSummary,
+          selectedInRuleCount: selectedInRule.length,
+          selectedInRuleIds: selectedInRule,
+        });
+
+        return;
+      }
+
+      logAbilityIntent("spell_toggle_attempted", {
+        action: isSelected ? "remove_spell" : "select_spell",
+        spell: spellSummary,
+        selectedSpellCountBefore: selectedSpellIds.length,
+        selectedInRuleCountBefore: selectedInRule.length,
+        selectedInRuleIdsBefore: selectedInRule,
+        isLinkedHighlightSelection: isDataCircleHighlighted,
+      });
 
       setSelectedSpellIds((current) =>
         toggleSpellSelection(
@@ -1095,11 +1592,18 @@ function SpellsAbilitiesTab({
         type="button"
         aria-disabled={isDisabled}
         onClick={handleClick}
+        data-study-region="spell-button"
+        data-study-id={`spell-${spell.id}`}
+        data-study-element={
+          isDataCircleHighlighted ? "linked-highlight-spell" : "spell"
+        }
         onMouseEnter={(event) =>
-          showFloatingTooltip(event, tooltipId, tooltipContent)
+          showFloatingTooltip(event, tooltipId, tooltipContent, createSpellPayload())
         }
         onMouseLeave={() => hideFloatingTooltip(tooltipId)}
-        onFocus={(event) => showFloatingTooltip(event, tooltipId, tooltipContent)}
+        onFocus={(event) =>
+          showFloatingTooltip(event, tooltipId, tooltipContent, createSpellPayload())
+        }
         onBlur={() => hideFloatingTooltip(tooltipId)}
       >
         <img
@@ -1131,13 +1635,25 @@ function SpellsAbilitiesTab({
   }
 
   return (
-    <div className="tab-content">
+    <div
+      className="tab-content"
+      data-study-region="spells-abilities-tab"
+      data-study-id="spells-abilities-tab"
+    >
       <FloatingSpellTooltip tooltip={floatingTooltip} />
 
-      <div className="section-heading-row">
+      <div
+        className="section-heading-row"
+        data-study-region="spells-abilities-heading"
+      >
         <div>
-          <h2>{getClassAbilityTabTitle(selectedClass, selectedSubclass)}</h2>
-          <p className="panel-intro compact-intro">
+          <h2 data-study-id="spells-abilities-title">
+            {getClassAbilityTabTitle(selectedClass, selectedSubclass)}
+          </h2>
+          <p
+            className="panel-intro compact-intro"
+            data-study-id="spells-abilities-intro"
+          >
             Select available spells, cantrips, class actions, passives, and
             subclass-specific choices. Fixed features are shown as already
             granted, while toggles can be set active for the visualisation.
@@ -1145,7 +1661,10 @@ function SpellsAbilitiesTab({
         </div>
 
         {selectedClass && (
-          <span className="section-count-pill">
+          <span
+            className="section-count-pill"
+            data-study-id="spells-abilities-selected-count"
+          >
             {selectedSpellCount +
               selectedFeatureCount +
               fixedFeatureCount +
@@ -1155,7 +1674,11 @@ function SpellsAbilitiesTab({
       </div>
 
       {!selectedClass && (
-        <div className="placeholder-box">
+        <div
+          className="placeholder-box"
+          data-study-region="spells-abilities-empty-class-placeholder"
+          data-study-id="spells-abilities-empty-class-placeholder"
+        >
           Select a class first to see available spells and class features.
         </div>
       )}
@@ -1163,7 +1686,11 @@ function SpellsAbilitiesTab({
       {selectedClass &&
         availableSpells.length === 0 &&
         availableClassFeatures.length === 0 && (
-          <div className="placeholder-box">
+          <div
+            className="placeholder-box"
+            data-study-region="spells-abilities-empty-availability-placeholder"
+            data-study-id="spells-abilities-empty-availability-placeholder"
+          >
             No spells or class features are currently available for this class,
             subclass, and level combination.
           </div>
@@ -1194,13 +1721,22 @@ function SpellsAbilitiesTab({
           <div
             key={displayGroup.id}
             className="section-block feature-group-block"
+            data-study-region="feature-display-group"
+            data-study-id={`feature-display-group-${displayGroup.id}`}
           >
-            <div className="ability-section-heading feature-display-heading">
+            <div
+              className="ability-section-heading feature-display-heading"
+              data-study-region="feature-display-heading"
+            >
               <h3>{displayGroup.label}</h3>
             </div>
 
             {nonGroupedFeatures.length > 0 && (
-              <div className="ability-icon-grid">
+              <div
+                className="ability-icon-grid"
+                data-study-region="feature-icon-grid"
+                data-study-id={`feature-icon-grid-${displayGroup.id}`}
+              >
                 {nonGroupedFeatures.map((feature) =>
                   renderFeatureButton(feature)
                 )}
@@ -1216,6 +1752,8 @@ function SpellsAbilitiesTab({
                 <div
                   key={activeGroup.id}
                   className="choice-subgroup active-subgroup"
+                  data-study-region="active-feature-choice-subgroup"
+                  data-study-id={`active-feature-choice-subgroup-${activeGroup.id}`}
                 >
                   <div className="choice-subgroup-header">
                     <strong>{activeGroup.label}</strong>
@@ -1224,7 +1762,11 @@ function SpellsAbilitiesTab({
                     </span>
                   </div>
 
-                  <div className="ability-icon-grid">
+                  <div
+                    className="ability-icon-grid"
+                    data-study-region="active-feature-icon-grid"
+                    data-study-id={`active-feature-icon-grid-${activeGroup.id}`}
+                  >
                     {activeGroup.features.map((feature) => {
                       const isActive = activeClassFeatureIds.includes(
                         feature.id
@@ -1256,7 +1798,12 @@ function SpellsAbilitiesTab({
                 );
 
               return (
-                <div key={choiceGroup.id} className="choice-subgroup">
+                <div
+                  key={choiceGroup.id}
+                  className="choice-subgroup"
+                  data-study-region="feature-choice-subgroup"
+                  data-study-id={`feature-choice-subgroup-${choiceGroup.id}`}
+                >
                   <div className="choice-subgroup-header">
                     <strong>{choiceGroup.label}</strong>
                     <span>
@@ -1264,7 +1811,11 @@ function SpellsAbilitiesTab({
                     </span>
                   </div>
 
-                  <div className="ability-icon-grid">
+                  <div
+                    className="ability-icon-grid"
+                    data-study-region="feature-choice-icon-grid"
+                    data-study-id={`feature-choice-icon-grid-${choiceGroup.id}`}
+                  >
                     {choiceGroup.features.map((feature) => {
                       const isSelected = selectedClassFeatureIds.includes(
                         feature.id
@@ -1285,16 +1836,25 @@ function SpellsAbilitiesTab({
       })}
 
       {availableSpells.length > 0 && (
-        <div className="section-block">
-          <div className="ability-section-heading spell-section-heading-inline">
+        <div
+          className="section-block"
+          data-study-region="spell-book-section"
+          data-study-id="spell-book-section"
+        >
+          <div
+            className="ability-section-heading spell-section-heading-inline"
+            data-study-region="spell-section-heading"
+          >
             <div className="spell-section-title-row">
               <h3>Spells and cantrips</h3>
             </div>
 
-            <span>{selectedSpellIds.length}</span>
+            <span data-study-id="selected-spell-count">
+              {selectedSpellIds.length}
+            </span>
           </div>
 
-          <div className="spell-book">
+          <div className="spell-book" data-study-region="spell-book">
             {featSpellChoiceRules.map((rule) => {
               const spellsForRule = getSpellsForChoiceRule(
                 availableSpells,
@@ -1307,6 +1867,8 @@ function SpellsAbilitiesTab({
                 <section
                   key={rule.id}
                   className="spell-rank-section feat-spell-choice-section"
+                  data-study-region="feat-spell-choice-section"
+                  data-study-id={`feat-spell-choice-section-${rule.id}`}
                 >
                   <div className="spell-rank-title-row spell-choice-section-header">
                     <h4>{rule.displayGroupLabel}</h4>
@@ -1316,7 +1878,11 @@ function SpellsAbilitiesTab({
                     </div>
                   </div>
 
-                  <div className="spell-icon-grid">
+                  <div
+                    className="spell-icon-grid"
+                    data-study-region="feat-spell-choice-grid"
+                    data-study-id={`feat-spell-choice-grid-${rule.id}`}
+                  >
                     {spellsForRule.map((spell) =>
                       renderSpellButton(spell, rule)
                     )}
@@ -1334,7 +1900,12 @@ function SpellsAbilitiesTab({
               if (spellsForRule.length === 0) return null;
 
               return (
-                <section key={rule.id} className="spell-rank-section">
+                <section
+                  key={rule.id}
+                  className="spell-rank-section"
+                  data-study-region="magical-secrets-section"
+                  data-study-id={`magical-secrets-section-${rule.id}`}
+                >
                   <div className="spell-rank-title-row spell-choice-section-header">
                     <h4>{rule.displayGroupLabel}</h4>
 
@@ -1343,7 +1914,11 @@ function SpellsAbilitiesTab({
                     </div>
                   </div>
 
-                  <div className="spell-icon-grid">
+                  <div
+                    className="spell-icon-grid"
+                    data-study-region="magical-secrets-grid"
+                    data-study-id={`magical-secrets-grid-${rule.id}`}
+                  >
                     {spellsForRule.map((spell) =>
                       renderSpellButton(spell, rule)
                     )}
@@ -1370,7 +1945,12 @@ function SpellsAbilitiesTab({
               );
 
               return (
-                <section key={rank} className="spell-rank-section">
+                <section
+                  key={rank}
+                  className="spell-rank-section"
+                  data-study-region="spell-rank-section"
+                  data-study-id={`spell-rank-${rank}`}
+                >
                   <div className="spell-rank-title-row">
                     <h4>
                       {rank === 0 ? "Cantrips" : `Level ${toRoman(rank)}`}
@@ -1385,7 +1965,11 @@ function SpellsAbilitiesTab({
                     )}
                   </div>
 
-                  <div className="spell-icon-grid">
+                  <div
+                    className="spell-icon-grid"
+                    data-study-region="spell-icon-grid"
+                    data-study-id={`spell-icon-grid-rank-${rank}`}
+                  >
                     {spellsForRank.map((spell) => renderSpellButton(spell))}
                   </div>
                 </section>

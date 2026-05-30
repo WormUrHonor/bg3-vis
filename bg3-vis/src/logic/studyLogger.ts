@@ -564,6 +564,13 @@ export function logHeatmapPointerEvent(
   payload: HeatmapPointerPayload,
   context: {
     activeView?: string | null;
+    activeBuildId?: string | null;
+    activeBuildLabel?: string | null;
+    activePartyMemberIndex?: number | null;
+    activePartyMemberLabel?: string | null;
+    activeFocusSource?: string | null;
+    activeVisualizationFocus?: unknown;
+    partySnapshotHash?: string | null;
     taskPhase?: StudyTaskPhase;
   } = {}
 ): void {
@@ -572,6 +579,13 @@ export function logHeatmapPointerEvent(
     eventType,
     taskPhase: context.taskPhase ?? "exploration",
     activeView: context.activeView ?? payload.target.studyRegion ?? null,
+    activeBuildId: context.activeBuildId ?? null,
+    activeBuildLabel: context.activeBuildLabel ?? null,
+    activePartyMemberIndex: context.activePartyMemberIndex ?? null,
+    activePartyMemberLabel: context.activePartyMemberLabel ?? null,
+    activeFocusSource: context.activeFocusSource ?? null,
+    activeVisualizationFocus: context.activeVisualizationFocus ?? null,
+    partySnapshotHash: context.partySnapshotHash ?? null,
     payload,
     skipContextEnrichment: true,
   });
