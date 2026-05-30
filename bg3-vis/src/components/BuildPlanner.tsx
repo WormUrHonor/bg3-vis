@@ -2385,6 +2385,21 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
   activeBuildLabel={focusedLabel}
   activeFocusSource={focusedDataCircle}
   partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+  onRequestTab={(tabId) => {
+    if (!isAggregateFocused) {
+      setActiveTab(tabId);
+    }
+  }}
+  onRequestEditableFocus={() => {
+    if (isAggregateFocused) {
+      handleFocusCurrentEditor();
+    }
+  }}
+  onRequestAggregateFocus={() => {
+    if (!isAggregateFocused) {
+      handleFocusAggregate();
+    }
+  }}
 />
       <section
         className={`workspace-half planner-half ${
@@ -2549,7 +2564,7 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
                   data-study-region="focus-selector"
                 >
                   <div className="focus-selector-header">
-                    <span>Big circle focus</span>
+                    <span>Focus Selector</span>
                     <strong>{focusedLabel}</strong>
                   </div>
 
@@ -2976,7 +2991,7 @@ aria-disabled={!slot || isAggregateFocused}
           {showPartyPlanner && (
             <section
               className="party-dock"
-              aria-label="Party planner preview"
+              aria-label="Party planner"
               data-study-region="party-dock"
             >
               <div className="party-dock-track">
@@ -3015,13 +3030,13 @@ aria-disabled={!slot || isAggregateFocused}
                             ? "party-aggregate-focus-dock"
                             : `party-member-${index}-focus-dock`
                         }
-                        title={
-                          isDisabled
-                            ? "Assign a saved build to this slot first."
-                            : index === 0
-                              ? "Focus aggregate preview"
-                              : `Swap focused build with ${slot.fallbackLabel}`
-                        }
+title={
+  isDisabled
+    ? "Assign a saved build to this slot first."
+    : index === 0
+      ? "Focus combined party view"
+      : `Swap focused build with ${slot.fallbackLabel}`
+}
                       >
                         {slot.label}
                       </button>

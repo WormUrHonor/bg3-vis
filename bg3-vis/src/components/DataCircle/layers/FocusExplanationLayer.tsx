@@ -51,6 +51,12 @@ type AbilityTextDetails = {
   description: string;
 };
 
+type WrappedText = {
+  lines: string[];
+  fontSize: number;
+  lineHeight: number;
+};
+
 const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Acid: acidIcon,
   Bludgeoning: bludgeoningIcon,
@@ -87,41 +93,6 @@ const DAMAGE_TYPE_SHORT_LABELS: Record<DamageRingKey, string> = {
   Variable: "VA",
 };
 
-function truncateLabel(label: string, maxLength: number) {
-  return label.length > maxLength ? `${label.slice(0, maxLength)}…` : label;
-}
-
-function splitText(text: string, maxLength: number, maxLines = 3) {
-  if (text.length <= maxLength) return [text];
-
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let currentLine = "";
-
-  words.forEach((word) => {
-    const nextLine = currentLine ? `${currentLine} ${word}` : word;
-
-    if (nextLine.length > maxLength) {
-      if (currentLine) lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = nextLine;
-    }
-  });
-
-  if (currentLine) lines.push(currentLine);
-
-  if (lines.length <= maxLines) return lines;
-
-  const visibleLines = lines.slice(0, maxLines);
-  visibleLines[maxLines - 1] = `${visibleLines[maxLines - 1].replace(
-    /…$/,
-    ""
-  )}…`;
-
-  return visibleLines;
-}
-
 function cleanDescription(description?: string) {
   if (!description) return "";
 
@@ -129,6 +100,173 @@ function cleanDescription(description?: string) {
     .replace(/<[^>]*>/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function truncateLabel(label: string, maxLength: number) {
+  return label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
+}
+
+function wrapText(
+  rawText: string,
+  options: {
+    maxLines: number;
+    maxCharsPerLine: number;
+    fontSize: number;
+    lineHeight: number;
+  }
+): WrappedText {
+  const text = cleanDescription(rawText);
+
+  if (!text) {
+    return {
+      lines: [],
+      fontSize: options.fontSize,
+      lineHeight: options.lineHeight,
+    };
+  }
+
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+
+    if (nextLine.length > options.maxCharsPerLine) {
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        lines.push(truncateLabel(word, options.maxCharsPerLine));
+        currentLine = "";
+      }
+    } else {
+      currentLine = nextLine;
+    }
+
+    if (lines.length >= options.maxLines) break;
+  }
+
+  if (currentLine && lines.length < options.maxLines) {
+    lines.push(currentLine);
+  }
+
+  if (lines.length > 0) {
+    const consumedText = lines.join(" ");
+    if (consumedText.length < text.length) {
+      lines[lines.length - 1] = `${lines[lines.length - 1]
+        .replace(/…$/, "")
+        .slice(0, options.maxCharsPerLine - 1)
+        .trim()}…`;
+    }
+  }
+
+  return {
+    lines,
+    fontSize: options.fontSize,
+    lineHeight: options.lineHeight,
+  };
+}
+
+function getTitleLines(rawTitle: string): WrappedText {
+  const title = cleanDescription(rawTitle).toUpperCase();
+
+  if (title.length <= 13) {
+    return {
+      lines: [title],
+      fontSize: 13.6,
+      lineHeight: 13.8,
+    };
+  }
+
+  if (title.length <= 22) {
+    return wrapText(title, {
+      maxLines: 2,
+      maxCharsPerLine: 13,
+      fontSize: 11.8,
+      lineHeight: 12.4,
+    });
+  }
+
+  return wrapText(truncateLabel(title, 31), {
+    maxLines: 2,
+    maxCharsPerLine: 15,
+    fontSize: 10.6,
+    lineHeight: 11.5,
+  });
+}
+
+function getBodyLines(rawBody: string): WrappedText {
+  const body = cleanDescription(rawBody);
+
+  if (body.length <= 58) {
+    return wrapText(body, {
+      maxLines: 3,
+      maxCharsPerLine: 23,
+      fontSize: 10.4,
+      lineHeight: 11.8,
+    });
+  }
+
+  if (body.length <= 115) {
+    return wrapText(body, {
+      maxLines: 4,
+      maxCharsPerLine: 25,
+      fontSize: 9.7,
+      lineHeight: 10.9,
+    });
+  }
+
+  return wrapText(body, {
+    maxLines: 5,
+    maxCharsPerLine: 27,
+    fontSize: 8.9,
+    lineHeight: 9.9,
+  });
+}
+
+function renderCenteredLines(args: {
+  lines: string[];
+  startY: number;
+  fontSize: number;
+  lineHeight: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: string;
+  fontWeight: string;
+  letterSpacing?: string;
+}) {
+  const {
+    lines,
+    startY,
+    fontSize,
+    lineHeight,
+    fill,
+    stroke,
+    strokeWidth,
+    fontWeight,
+    letterSpacing = "0.01em",
+  } = args;
+
+  return lines.map((line, index) => (
+    <text
+      key={`${line}-${index}`}
+      x={CX}
+      y={startY + index * lineHeight}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize={fontSize}
+      fontWeight={fontWeight}
+      letterSpacing={letterSpacing}
+      fill={fill}
+      paintOrder="stroke"
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      filter="url(#fineInkShadow)"
+    >
+      {line}
+    </text>
+  ));
 }
 
 function getDamageTypeVisual(damageType: DamageRingKey) {
@@ -312,8 +450,8 @@ function FocusIconRow({
     return (
       <IconBadge
         x={CX}
-        y={CY - 33}
-        size={27}
+        y={CY - 37}
+        size={31}
         href={iconHref}
         label={!iconHref ? "?" : undefined}
         stroke="rgba(230,188,112,0.72)"
@@ -328,8 +466,8 @@ function FocusIconRow({
     return (
       <IconBadge
         x={CX}
-        y={CY - 33}
-        size={27}
+        y={CY - 37}
+        size={31}
         href={visual.href}
         label={!visual.href ? visual.label : undefined}
         fill={visual.fill}
@@ -346,8 +484,8 @@ function FocusIconRow({
 
   if (linkedAbilityIds.length <= 0) return null;
 
-  const iconSize = linkedAbilityIds.length > 4 ? 15 : 17;
-  const spacing = linkedAbilityIds.length > 4 ? 16.5 : 19;
+  const iconSize = linkedAbilityIds.length > 4 ? 16.5 : 18.5;
+  const spacing = linkedAbilityIds.length > 4 ? 18 : 20.5;
   const startX = CX - ((linkedAbilityIds.length - 1) * spacing) / 2;
 
   return (
@@ -359,7 +497,7 @@ function FocusIconRow({
           <IconBadge
             key={abilityId}
             x={startX + index * spacing}
-            y={CY - 35}
+            y={CY - 38}
             size={iconSize}
             href={iconHref}
             label={!iconHref ? "?" : undefined}
@@ -387,8 +525,17 @@ export function FocusExplanationLayer({
   const title = abilityText?.title || summary.title;
   const body = abilityText?.description || summary.body;
 
-  const bodyLines = splitText(body, 24, 4);
+  const titleText = getTitleLines(title);
+  const bodyText = getBodyLines(body);
   const kindLabel = getFocusKindLabel(focus);
+
+  const titleStartY =
+    titleText.lines.length > 1 ? CY - 7 : CY - 4;
+
+  const bodyStartY =
+    titleText.lines.length > 1
+      ? CY + 19
+      : CY + 16;
 
   return (
     <g className="data-circle-focus-explanation" pointerEvents="none">
@@ -425,8 +572,8 @@ export function FocusExplanationLayer({
       <circle
         cx={CX}
         cy={CY}
-        r="56"
-        fill="rgba(5,4,6,0.44)"
+        r="62"
+        fill="rgba(5,4,6,0.42)"
         stroke="rgba(255,226,164,0.16)"
         strokeWidth="1"
       />
@@ -452,7 +599,7 @@ export function FocusExplanationLayer({
 
       {Array.from({ length: 8 }, (_, index) => {
         const angle = index * 45;
-        const inner = polarToCartesian(CX, CY, 58, angle);
+        const inner = polarToCartesian(CX, CY, 61, angle);
         const outer = polarToCartesian(CX, CY, 70, angle);
 
         return (
@@ -471,10 +618,10 @@ export function FocusExplanationLayer({
 
       <text
         x={CX}
-        y={CY - 64}
+        y={CY - 67}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="8.4"
+        fontSize="9"
         fontWeight="950"
         letterSpacing="0.16em"
         fill="rgba(229,202,152,0.82)"
@@ -487,41 +634,33 @@ export function FocusExplanationLayer({
 
       <FocusIconRow focus={focus} relationshipIndex={relationshipIndex} />
 
-      <text
-        x={CX}
-        y={CY - 2}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="10.4"
-        fontWeight="950"
-        letterSpacing="0.045em"
-        fill="rgba(255,244,218,0.98)"
-        paintOrder="stroke"
-        stroke="rgba(3,2,4,0.94)"
-        strokeWidth="2.8"
-        filter="url(#fineInkShadow)"
-      >
-        {truncateLabel(title.toUpperCase(), 23)}
-      </text>
+      {renderCenteredLines({
+        lines: titleText.lines,
+        startY: titleStartY,
+        fontSize: titleText.fontSize,
+        lineHeight: titleText.lineHeight,
+        fill: "rgba(255,244,218,0.98)",
+        stroke: "rgba(3,2,4,0.94)",
+        strokeWidth: "2.8",
+        fontWeight: "950",
+        letterSpacing: "0.035em",
+      })}
 
-      {bodyLines.map((line, index) => (
-        <text
-          key={`${line}-${index}`}
-          x={CX}
-          y={CY + 18 + index * 10.8}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize="8.9"
-          fontWeight="800"
-          letterSpacing="0.01em"
-          fill="rgba(255,236,200,0.82)"
-          paintOrder="stroke"
-          stroke="rgba(3,2,4,0.9)"
-          strokeWidth="1.45"
-        >
-          {line}
-        </text>
-      ))}
+      {bodyText.lines.length > 0 ? (
+        <g>
+          {renderCenteredLines({
+            lines: bodyText.lines,
+            startY: bodyStartY,
+            fontSize: bodyText.fontSize,
+            lineHeight: bodyText.lineHeight,
+            fill: "rgba(255,236,200,0.88)",
+            stroke: "rgba(3,2,4,0.9)",
+            strokeWidth: "1.45",
+            fontWeight: "820",
+            letterSpacing: "0em",
+          })}
+        </g>
+      ) : null}
     </g>
   );
 }

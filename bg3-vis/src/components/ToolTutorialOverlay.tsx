@@ -1,206 +1,488 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { logStudyEvent } from "../logic/studyLogger";
 import "./ToolTutorialOverlay.css";
+
+type TutorialRequestedTab = "character" | "classScores" | "spellsAbilities";
 
 type ToolTutorialOverlayProps = {
   activeView?: string | null;
   activeBuildLabel?: string | null;
   activeFocusSource?: string | null;
   partySnapshotHash?: string | null;
+  onRequestTab?: (tabId: TutorialRequestedTab) => void;
+  onRequestEditableFocus?: () => void;
+  onRequestAggregateFocus?: () => void;
+};
+
+type HighlightRect = {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 };
 
 type TutorialStep = {
   title: string;
   targetSelector: string;
-  placementHint: "left" | "right" | "top" | "bottom" | "center";
-  body: string;
-  instruction: string;
-  whyItMatters: string;
+  secondaryTargetSelector?: string;
+  placementHint:
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "center"
+    | "safeTopRight";
+  requestedTab?: TutorialRequestedTab;
+  requestAggregateFocus?: boolean;
+  requestEditableFocus?: boolean;
+  scrollTarget?: boolean;
+  does: string;
+  action: string;
+  note?: string;
+  layerLegend?: Array<{
+    label: string;
+    description: string;
+  }>;
 };
 
 const tutorialSteps: TutorialStep[] = [
   {
-    title: "Start here: create a party of four",
+    title: "Build a party of four",
     targetSelector: '[data-study-region="workspace-page"]',
     placementHint: "center",
-    body:
-      "The study task is to create a full party of four characters. The tool is split into a build editor on the left and visual summaries on the right.",
-    instruction:
-      "You will create, save, and assign builds until the party feels complete.",
-    whyItMatters:
-      "The study is about how people use the visual summaries while exploring and revising a party composition.",
+    does:
+      "The party has four characters: the current editable build plus three saved builds assigned to slots.",
+    action:
+      "Create a build, save it, assign it to a slot, then start another build.",
+    note: "The editable build is always included as one party member.",
   },
   {
-    title: "Use these tabs to edit the current build",
+    title: "Start logging",
+    targetSelector: '[data-study-region="study-logging-panel"]',
+    placementHint: "safeTopRight",
+    scrollTarget: true,
+    does:
+      "Study logging records the session and exports one JSONL file.",
+    action:
+      "Enter the participant ID, click Start, use the tool, then click End & export.",
+    note: "The exported file downloads locally and must be sent manually.",
+  },
+  {
+    title: "Use the editor tabs",
     targetSelector: '[data-study-region="planner-tabs"]',
+    secondaryTargetSelector: '[data-study-id="planner-tab-character"]',
     placementHint: "bottom",
-    body:
-      "The tabs divide the build editor into character setup, class and ability scores, and spells or class abilities.",
-    instruction:
-      "Move through the tabs when creating a character. You do not need to follow a strict order, but Character and Class & Scores usually come first.",
-    whyItMatters:
-      "These choices determine which abilities appear in the visualisation.",
+    requestedTab: "character",
+    requestEditableFocus: true,
+    does:
+      "The tabs split character creation into three parts.",
+    action:
+      "Use Character first, then Class & Scores, then Spells & Abilities.",
+    note: "You can return to any tab later.",
   },
   {
-    title: "This is the currently edited build",
-    targetSelector: '[data-study-region="current-build-summary"]',
+    title: "Character tab",
+    targetSelector: '[data-study-region="build-editor-panel"]',
+    secondaryTargetSelector: '[data-study-id="planner-tab-character"]',
     placementHint: "right",
-    body:
-      "The Current Build panel shows the build that is currently active in the editor. This build also counts as one of the four party members.",
-    instruction:
-      "Check this panel when you are unsure which character you are editing.",
-    whyItMatters:
-      "A common mistake is to edit the wrong party member after switching between saved builds, slots, and aggregate view.",
+    requestedTab: "character",
+    requestEditableFocus: true,
+    does:
+      "This tab sets build name, race, background, class, and skills.",
+    action: "Choose a class and give the build a clear name.",
+    note: "The class controls which later options appear.",
   },
   {
-    title: "Use New blank build when starting another character",
-    targetSelector: '[data-study-id="new-blank-build-button"]',
-    placementHint: "bottom",
-    body:
-      "This button clears the editor and lets you start from an empty build. It does not delete saved builds or assigned party slots.",
-    instruction:
-      "Use it after saving a character when you want to create a different party member from scratch.",
-    whyItMatters:
-      "Without this, users have to manually remove old choices, rename the build, and replace many fields.",
-  },
-  {
-    title: "Save builds before assigning them",
-    targetSelector: '[data-study-region="saved-builds-panel"]',
+    title: "Class & Scores tab",
+    targetSelector: '[data-study-region="build-editor-panel"]',
+    secondaryTargetSelector: '[data-study-id="planner-tab-classScores"]',
     placementHint: "right",
-    body:
-      "Saved Builds stores versions of characters you have created. Saved builds can be loaded, updated, deleted, or sent to a party slot.",
-    instruction:
-      "When a build seems useful, save it. Then send it to Slot 1, Slot 2, or Slot 3.",
-    whyItMatters:
-      "The party is made from the current editable build plus the three assigned slots.",
+    requestedTab: "classScores",
+    requestEditableFocus: true,
+    does:
+      "This tab sets level, subclass, ability scores, feats, and class-specific choices.",
+    action:
+      "Use it to shape the character before selecting spells or abilities.",
+    note: "Level 12 exposes the largest option set.",
   },
   {
-    title: "Use the build process view to revisit earlier versions",
-    targetSelector: '[data-study-region="process-spiral-panel"]',
-    placementHint: "right",
-    body:
-      "The Build Process panel shows saved or updated build versions as a visual history.",
-    instruction:
-      "Use it if you want to return to an earlier version, restore it, or assign it to a party slot.",
-    whyItMatters:
-      "This helps with exploratory work where you may try several directions before choosing one.",
-  },
-  {
-    title: "The big circle summarises the focused build",
-    targetSelector: '[data-study-region="main-data-circle-frame"]',
-    placementHint: "left",
-    body:
-      "The large Data Circle summarises the build currently in focus. It shows combat range, ability roles, damage types, resources, and later damage per round if evaluation is used.",
-    instruction:
-      "Hover or click parts of the circle to inspect what each segment represents.",
-    whyItMatters:
-      "This is the main visual decision-support view. It helps you see what the build can do rather than reading every ability one by one.",
-  },
-  {
-    title: "Highlights connect the circle to the ability list",
+    title: "Spells & Abilities tab",
     targetSelector: '[data-study-region="spells-abilities-tab"]',
-    placementHint: "right",
-    body:
-      "When a Data Circle segment is focused, matching spells and abilities in the editor can be highlighted.",
-    instruction:
-      "Use this to find which choices contribute to a role, damage type, range band, or other visual pattern.",
-    whyItMatters:
-      "This helps you move from noticing a pattern in the visualisation to changing the build.",
+    secondaryTargetSelector: '[data-study-id="planner-tab-spellsAbilities"]',
+    placementHint: "left",
+    requestedTab: "spellsAbilities",
+    requestEditableFocus: true,
+    does:
+      "This tab contains selectable spells, actions, toggles, and features.",
+    action:
+      "Click icons to select or activate them. Hover icons to read details.",
+    note: "Selected and active abilities are used in the Data Circle.",
   },
   {
-    title: "Switch between editable build and aggregate party view",
-    targetSelector: '[data-study-region="focus-selector"]',
-    placementHint: "right",
-    body:
-      "The focus selector controls what the big Data Circle shows. Editable shows the build you can currently modify. Aggregate shows the whole party together.",
-    instruction:
-      "Use Aggregate when you want to inspect the party as a whole. Switch back to Editable or a slot when you want to change a build.",
-    whyItMatters:
-      "Aggregate view is for review. Editing still happens through the normal build editor.",
-  },
-  {
-    title: "The bottom row shows the party composition",
-    targetSelector: '[data-study-region="party-dock"]',
-    placementHint: "top",
-    body:
-      "The bottom row shows the aggregate party and the individual party members. Empty slots need saved builds assigned to them.",
-    instruction:
-      "Use the small circles to compare members and check whether the party is becoming balanced.",
-    whyItMatters:
-      "Your final result should be a party, not just one optimized character.",
-  },
-  {
-    title: "Evaluate Build is optional unless instructed",
+    title: "Evaluate Build",
     targetSelector: '[data-study-id="evaluate-build-button"]',
     placementHint: "bottom",
-    body:
-      "Evaluate Build runs the simulator for the currently editable build. It can add damage-per-round information to the visualisation.",
-    instruction:
-      "Use it if you want performance feedback. Do not use it while viewing Aggregate, because Aggregate is a party preview.",
-    whyItMatters:
-      "Damage output is only one part of the build. The rest of the circle still matters for roles, range, resources, and utility.",
+    requestEditableFocus: true,
+    does:
+      "Evaluate Build runs the simulator for the current editable build.",
+    action:
+      "Use it when you want estimated damage-per-round information.",
+    note: "This is optional. The tool still works without evaluation.",
   },
   {
-    title: "End and export when finished",
-    targetSelector: '[data-study-region="study-logging-panel"]',
+    title: "Read the Data Circle",
+    targetSelector: '[data-study-region="main-data-circle-frame"]',
+    secondaryTargetSelector: '[data-study-id="planner-tab-spellsAbilities"]',
+    placementHint: "left",
+    requestedTab: "spellsAbilities",
+    requestEditableFocus: true,
+    does: "The large Data Circle summarises the focused build.",
+    action:
+      "Use the rings to inspect range, roles, damage types, resources, and evaluated DPR.",
+    layerLegend: [
+      {
+        label: "Range",
+        description: "Self, melee, mid-range, long-range.",
+      },
+      {
+        label: "Roles",
+        description:
+          "Damage, control, support, defence, healing, mobility.",
+      },
+      {
+        label: "Damage",
+        description: "Available damage type coverage.",
+      },
+      {
+        label: "Resources",
+        description:
+          "Actions, slots, concentration, rests, class resources.",
+      },
+      {
+        label: "DPR",
+        description: "Damage per round after evaluation.",
+      },
+    ],
+  },
+  {
+    title: "Inspect circle segments",
+    targetSelector: '[data-study-region="main-data-circle-frame"]',
+    secondaryTargetSelector: '[data-study-id="planner-tab-spellsAbilities"]',
+    placementHint: "left",
+    requestedTab: "spellsAbilities",
+    requestEditableFocus: true,
+    does:
+      "Hovering previews a segment. Clicking keeps it selected.",
+    action:
+      "Click a role, range band, damage type, or ability to keep it highlighted.",
+    note: "Related abilities in the editor can become highlighted.",
+  },
+  {
+    title: "Start a new build",
+    targetSelector: '[data-study-id="new-blank-build-button"]',
+    placementHint: "bottom",
+    requestEditableFocus: true,
+    does: "New blank build clears only the current editor.",
+    action:
+      "Use it after saving a character when you want to create another one.",
+    note: "Saved builds, assigned slots, and logs are kept.",
+  },
+  {
+    title: "Save builds",
+    targetSelector: '[data-study-region="saved-builds-panel"]',
     placementHint: "right",
-    body:
-      "At the bottom of the left panel, the Study logging section lets you start and end the session. When you end, one JSONL file is downloaded.",
-    instruction:
-      "Enter your participant ID, click Start, use the tool, then click End & export when finished.",
-    whyItMatters:
-      "The exported file is what the researcher needs. Survey answers are collected separately.",
+    scrollTarget: true,
+    does:
+      "Saved Builds stores characters after you click Save current build.",
+    action:
+      "Create a character, save it, and it will appear as a saved-build card.",
+    note:
+      "Saving stores the build, but does not automatically assign it to the party.",
+  },
+  {
+    title: "Assign saved builds to slots",
+    targetSelector:
+      '[data-study-region="saved-build-send-to-party"], [data-study-region="saved-builds-panel"]',
+    placementHint: "right",
+    scrollTarget: true,
+    does:
+      "Each saved-build card has Send to Party buttons labelled 1, 2, and 3.",
+    action:
+      "Click 1, 2, or 3 to send that saved build to party Slot 1, Slot 2, or Slot 3.",
+    note:
+      "If you do not see these buttons yet, save a build first. The numbered buttons are how the three party slots are filled.",
+  },
+  {
+    title: "Use build history",
+    targetSelector: '[data-study-region="process-spiral-panel"]',
+    placementHint: "right",
+    scrollTarget: true,
+    does: "Build Process shows saved and updated versions.",
+    action:
+      "Load, restore, or assign earlier versions if you want to return to them.",
+    note: "This is useful when trying several build directions.",
+  },
+  {
+    title: "Switch focus",
+    targetSelector: '[data-study-region="focus-selector"]',
+    placementHint: "right",
+    scrollTarget: true,
+    does:
+      "The focus selector changes what the large Data Circle displays.",
+    action:
+      "Use Editable for the current build, Aggregate for the combined party, or Slot buttons for assigned members.",
+    note: "Aggregate is the overall combined party view.",
+  },
+  {
+    title: "Review the party",
+    targetSelector: '[data-study-region="party-dock"]',
+    placementHint: "safeTopRight",
+    requestAggregateFocus: true,
+    scrollTarget: false,
+    does:
+      "The party dock shows the aggregate party and each party member.",
+    action:
+      "Use it to compare members and inspect the full party composition.",
+    note: "Empty slots need saved builds assigned to them.",
+  },
+  {
+    title: "Export the result",
+    targetSelector: '[data-study-region="study-logging-panel"]',
+    placementHint: "safeTopRight",
+    scrollTarget: true,
+    does:
+      "End & export closes the session and downloads the study log.",
+    action: "Click it when the party-building task is finished.",
+    note:
+      "The export still works if the party is incomplete, but records that it was incomplete.",
   },
 ];
+
+const STEP_CHANGE_DELAY_MS = 90;
+const POST_SCROLL_MEASURE_DELAY_MS = 520;
+const NO_SCROLL_MEASURE_DELAY_MS = 120;
+const TRANSITION_END_DELAY_MS = 220;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function getStepTarget(selector: string): HTMLElement | null {
+function getElement(selector?: string): HTMLElement | null {
+  if (!selector) return null;
   return document.querySelector(selector) as HTMLElement | null;
 }
 
-function getTutorialCardStyle(
-  target: HTMLElement | null,
-  placementHint: TutorialStep["placementHint"]
-): React.CSSProperties {
-  if (!target || placementHint === "center") {
-    return {};
+function isScrollable(element: HTMLElement) {
+  const style = window.getComputedStyle(element);
+  const overflowY = style.overflowY;
+
+  return (
+    (overflowY === "auto" || overflowY === "scroll") &&
+    element.scrollHeight > element.clientHeight
+  );
+}
+
+function getScrollableParents(element: HTMLElement): HTMLElement[] {
+  const parents: HTMLElement[] = [];
+  let parent = element.parentElement;
+
+  while (parent) {
+    if (isScrollable(parent)) {
+      parents.push(parent);
+    }
+
+    parent = parent.parentElement;
   }
 
-  const rect = target.getBoundingClientRect();
-  const cardWidth = Math.min(420, window.innerWidth - 32);
-  const cardHeightEstimate = 380;
-  const gap = 18;
+  return parents;
+}
 
-  if (placementHint === "right") {
+function scrollTargetIntoView(element: HTMLElement) {
+  const scrollableParents = getScrollableParents(element);
+
+  for (const parent of scrollableParents) {
+    const parentRect = parent.getBoundingClientRect();
+    const targetRect = element.getBoundingClientRect();
+
+    const offset =
+      targetRect.top -
+      parentRect.top -
+      parent.clientHeight / 2 +
+      targetRect.height / 2;
+
+    parent.scrollTo({
+      top: parent.scrollTop + offset,
+      behavior: "smooth",
+    });
+  }
+
+  element.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+    inline: "center",
+  });
+}
+
+function getHighlightRect(element: HTMLElement, id: string): HighlightRect {
+  const rect = element.getBoundingClientRect();
+
+  return {
+    id,
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function rectsOverlap(
+  a: { left: number; top: number; right: number; bottom: number },
+  b: { left: number; top: number; right: number; bottom: number }
+) {
+  return !(
+    a.right < b.left ||
+    a.left > b.right ||
+    a.bottom < b.top ||
+    a.top > b.bottom
+  );
+}
+
+function estimateCardHeight(step: TutorialStep) {
+  let height = 214;
+
+  if (step.note) height += 34;
+  if (step.layerLegend) height += 126;
+
+  return Math.min(height, window.innerHeight - 32);
+}
+
+function getCandidatePosition(
+  rect: DOMRect,
+  placement: TutorialStep["placementHint"],
+  cardWidth: number,
+  cardHeight: number,
+  gap: number
+) {
+  if (placement === "safeTopRight") {
     return {
-      left: clamp(rect.right + gap, 16, window.innerWidth - cardWidth - 16),
-      top: clamp(rect.top, 16, window.innerHeight - cardHeightEstimate),
-      transform: "none",
+      left: window.innerWidth - cardWidth - 18,
+      top: 18,
     };
   }
 
-  if (placementHint === "left") {
+  if (placement === "right") {
     return {
-      left: clamp(rect.left - cardWidth - gap, 16, window.innerWidth - cardWidth - 16),
-      top: clamp(rect.top, 16, window.innerHeight - cardHeightEstimate),
-      transform: "none",
+      left: rect.right + gap,
+      top: rect.top + rect.height / 2 - cardHeight / 2,
     };
   }
 
-  if (placementHint === "bottom") {
+  if (placement === "left") {
     return {
-      left: clamp(rect.left + rect.width / 2 - cardWidth / 2, 16, window.innerWidth - cardWidth - 16),
-      top: clamp(rect.bottom + gap, 16, window.innerHeight - cardHeightEstimate),
-      transform: "none",
+      left: rect.left - cardWidth - gap,
+      top: rect.top + rect.height / 2 - cardHeight / 2,
+    };
+  }
+
+  if (placement === "top") {
+    return {
+      left: rect.left + rect.width / 2 - cardWidth / 2,
+      top: rect.top - cardHeight - gap,
     };
   }
 
   return {
-    left: clamp(rect.left + rect.width / 2 - cardWidth / 2, 16, window.innerWidth - cardWidth - 16),
-    top: clamp(rect.top - cardHeightEstimate - gap, 16, window.innerHeight - cardHeightEstimate),
+    left: rect.left + rect.width / 2 - cardWidth / 2,
+    top: rect.bottom + gap,
+  };
+}
+
+function getCardStyle(
+  target: HTMLElement | null,
+  step: TutorialStep
+): CSSProperties {
+  const viewportPadding = 16;
+  const cardWidth = Math.min(
+    step.layerLegend ? 430 : 370,
+    window.innerWidth - viewportPadding * 2
+  );
+  const cardHeight = estimateCardHeight(step);
+  const gap = 18;
+
+  if (!target || step.placementHint === "center") {
+    return {
+      left: "50%",
+      top: "50%",
+      width: cardWidth,
+      transform: "translate(-50%, -50%)",
+    };
+  }
+
+  const rect = target.getBoundingClientRect();
+  const preferredPlacements: TutorialStep["placementHint"][] =
+    step.placementHint === "safeTopRight"
+      ? ["safeTopRight"]
+      : [
+          step.placementHint,
+          "right",
+          "left",
+          "bottom",
+          "top",
+          "safeTopRight",
+        ];
+
+  const targetBox = {
+    left: rect.left - 8,
+    top: rect.top - 8,
+    right: rect.right + 8,
+    bottom: rect.bottom + 8,
+  };
+
+  for (const placement of preferredPlacements) {
+    if (placement === "center") continue;
+
+    const candidate = getCandidatePosition(
+      rect,
+      placement,
+      cardWidth,
+      cardHeight,
+      gap
+    );
+
+    const left = clamp(
+      candidate.left,
+      viewportPadding,
+      window.innerWidth - cardWidth - viewportPadding
+    );
+
+    const top = clamp(
+      candidate.top,
+      viewportPadding,
+      window.innerHeight - cardHeight - viewportPadding
+    );
+
+    const cardBox = {
+      left,
+      top,
+      right: left + cardWidth,
+      bottom: top + cardHeight,
+    };
+
+    if (placement === "safeTopRight" || !rectsOverlap(cardBox, targetBox)) {
+      return {
+        left,
+        top,
+        width: cardWidth,
+        transform: "none",
+      };
+    }
+  }
+
+  return {
+    right: viewportPadding,
+    top: viewportPadding,
+    width: cardWidth,
     transform: "none",
   };
 }
@@ -210,6 +492,9 @@ export default function ToolTutorialOverlay({
   activeBuildLabel = null,
   activeFocusSource = null,
   partySnapshotHash = null,
+  onRequestTab,
+  onRequestEditableFocus,
+  onRequestAggregateFocus,
 }: ToolTutorialOverlayProps) {
   const [isOpen, setIsOpen] = useState(() => {
     return window.localStorage.getItem("bg3-tool-tutorial-seen") !== "true";
@@ -217,14 +502,17 @@ export default function ToolTutorialOverlay({
 
   const [stepIndex, setStepIndex] = useState(0);
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
+  const [highlightRects, setHighlightRects] = useState<HighlightRect[]>([]);
+  const [positionRevision, setPositionRevision] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const currentStep = tutorialSteps[stepIndex];
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === tutorialSteps.length - 1;
 
   const cardStyle = useMemo(
-    () => getTutorialCardStyle(targetElement, currentStep.placementHint),
-    [targetElement, currentStep.placementHint, stepIndex]
+    () => getCardStyle(targetElement, currentStep),
+    [targetElement, currentStep, positionRevision]
   );
 
   function logTutorialEvent(eventType: string, payload: Record<string, unknown>) {
@@ -243,48 +531,119 @@ export default function ToolTutorialOverlay({
         totalSteps: tutorialSteps.length,
         stepTitle: currentStep.title,
         targetSelector: currentStep.targetSelector,
+        secondaryTargetSelector: currentStep.secondaryTargetSelector ?? null,
         ...payload,
       },
     });
   }
 
+  function updateHighlights() {
+    const primary = getElement(currentStep.targetSelector);
+    const secondary = getElement(currentStep.secondaryTargetSelector);
+
+    const nextRects: HighlightRect[] = [];
+
+    if (primary) {
+      nextRects.push(getHighlightRect(primary, "primary"));
+    }
+
+    if (secondary && secondary !== primary) {
+      nextRects.push(getHighlightRect(secondary, "secondary"));
+    }
+
+    setTargetElement(primary);
+
+    if (nextRects.length > 0) {
+      setHighlightRects(nextRects);
+    } else {
+      setHighlightRects([]);
+    }
+
+    setPositionRevision((value) => value + 1);
+  }
+
+  function changeStep(
+    nextStepIndex: number,
+    direction: "next" | "back" | "direct"
+  ) {
+    if (nextStepIndex === stepIndex) return;
+
+    logTutorialEvent("tutorial_step_changed", {
+      direction,
+      previousStepIndex: stepIndex,
+      nextStepIndex,
+      previousStepTitle: currentStep.title,
+      nextStepTitle: tutorialSteps[nextStepIndex].title,
+    });
+
+    setIsTransitioning(true);
+
+    window.setTimeout(() => {
+      setStepIndex(nextStepIndex);
+
+      window.setTimeout(() => {
+        setIsTransitioning(false);
+      }, TRANSITION_END_DELAY_MS);
+    }, STEP_CHANGE_DELAY_MS);
+  }
+
   useEffect(() => {
     if (!isOpen) return;
 
-    const target = getStepTarget(currentStep.targetSelector);
-    setTargetElement(target);
-
-    document
-      .querySelectorAll(".tool-tutorial-highlight-target")
-      .forEach((element) =>
-        element.classList.remove("tool-tutorial-highlight-target")
-      );
-
-    if (target) {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "center",
-      });
-
-      window.setTimeout(() => {
-        target.classList.add("tool-tutorial-highlight-target");
-        setTargetElement(target);
-      }, 260);
+    if (currentStep.requestedTab) {
+      onRequestTab?.(currentStep.requestedTab);
     }
 
-    logTutorialEvent("tutorial_step_viewed", {
-      targetFound: Boolean(target),
-    });
+    if (currentStep.requestAggregateFocus) {
+      onRequestAggregateFocus?.();
+    }
+
+    if (currentStep.requestEditableFocus) {
+      onRequestEditableFocus?.();
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const target = getElement(currentStep.targetSelector);
+
+      if (target && currentStep.scrollTarget !== false) {
+        scrollTargetIntoView(target);
+      }
+
+      window.setTimeout(
+        updateHighlights,
+        currentStep.scrollTarget === false
+          ? NO_SCROLL_MEASURE_DELAY_MS
+          : POST_SCROLL_MEASURE_DELAY_MS
+      );
+
+      logTutorialEvent("tutorial_step_viewed", {
+        targetFound: Boolean(target),
+      });
+    }, 140);
 
     return () => {
-      target?.classList.remove("tool-tutorial-highlight-target");
+      window.clearTimeout(timeoutId);
+    };
+  }, [isOpen, stepIndex]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleUpdate = () => updateHighlights();
+
+    window.addEventListener("resize", handleUpdate);
+    window.addEventListener("scroll", handleUpdate, true);
+
+    return () => {
+      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener("scroll", handleUpdate, true);
     };
   }, [isOpen, stepIndex]);
 
   function openTutorial() {
     setIsOpen(true);
     setStepIndex(0);
+    setIsTransitioning(false);
 
     logTutorialEvent("tutorial_opened", {
       openedFrom: "help_button",
@@ -294,12 +653,8 @@ export default function ToolTutorialOverlay({
   function closeTutorial(reason: "finished" | "dismissed") {
     window.localStorage.setItem("bg3-tool-tutorial-seen", "true");
     setIsOpen(false);
-
-    document
-      .querySelectorAll(".tool-tutorial-highlight-target")
-      .forEach((element) =>
-        element.classList.remove("tool-tutorial-highlight-target")
-      );
+    setHighlightRects([]);
+    setIsTransitioning(false);
 
     logTutorialEvent("tutorial_closed", {
       closeReason: reason,
@@ -313,29 +668,13 @@ export default function ToolTutorialOverlay({
       return;
     }
 
-    logTutorialEvent("tutorial_step_changed", {
-      direction: "next",
-      previousStepIndex: stepIndex,
-      nextStepIndex: stepIndex + 1,
-      previousStepTitle: currentStep.title,
-      nextStepTitle: tutorialSteps[stepIndex + 1].title,
-    });
-
-    setStepIndex((current) => current + 1);
+    changeStep(stepIndex + 1, "next");
   }
 
   function goBack() {
     if (isFirstStep) return;
 
-    logTutorialEvent("tutorial_step_changed", {
-      direction: "back",
-      previousStepIndex: stepIndex,
-      nextStepIndex: stepIndex - 1,
-      previousStepTitle: currentStep.title,
-      nextStepTitle: tutorialSteps[stepIndex - 1].title,
-    });
-
-    setStepIndex((current) => current - 1);
+    changeStep(stepIndex - 1, "back");
   }
 
   return (
@@ -356,10 +695,25 @@ export default function ToolTutorialOverlay({
           data-study-region="tool-tutorial-overlay"
           data-study-id="tool-tutorial-overlay"
         >
+          {highlightRects.map((rect) => (
+            <div
+              key={rect.id}
+              className={`tool-tutorial-spotlight tool-tutorial-spotlight--${rect.id} ${
+                isTransitioning ? "tool-tutorial-spotlight--transitioning" : ""
+              }`}
+              style={{
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+              }}
+            />
+          ))}
+
           <section
             className={
-              currentStep.placementHint === "center"
-                ? "tool-tutorial-card tool-tutorial-card--center"
+              isTransitioning
+                ? "tool-tutorial-card tool-tutorial-card--transitioning"
                 : "tool-tutorial-card"
             }
             style={cardStyle}
@@ -395,17 +749,7 @@ export default function ToolTutorialOverlay({
                         ? "tool-tutorial-dot tool-tutorial-dot--seen"
                         : "tool-tutorial-dot"
                   }
-                  onClick={() => {
-                    logTutorialEvent("tutorial_step_changed", {
-                      direction: "direct",
-                      previousStepIndex: stepIndex,
-                      nextStepIndex: index,
-                      previousStepTitle: currentStep.title,
-                      nextStepTitle: step.title,
-                    });
-
-                    setStepIndex(index);
-                  }}
+                  onClick={() => changeStep(index, "direct")}
                   aria-label={`Go to tutorial step ${index + 1}`}
                   data-study-id={`tutorial-step-dot-${index + 1}`}
                 />
@@ -417,17 +761,33 @@ export default function ToolTutorialOverlay({
                 Step {stepIndex + 1} of {tutorialSteps.length}
               </span>
 
-              <p>{currentStep.body}</p>
-
-              <div className="tool-tutorial-instruction">
-                <strong>What to do</strong>
-                <span>{currentStep.instruction}</span>
+              <div className="tool-tutorial-text-block">
+                <strong>What it does</strong>
+                <p>{currentStep.does}</p>
               </div>
 
-              <div className="tool-tutorial-hint">
-                <strong>Why this matters</strong>
-                <span>{currentStep.whyItMatters}</span>
+              <div className="tool-tutorial-text-block">
+                <strong>How to use it</strong>
+                <p>{currentStep.action}</p>
               </div>
+
+              {currentStep.note ? (
+                <div className="tool-tutorial-note">
+                  <strong>Note</strong>
+                  <p>{currentStep.note}</p>
+                </div>
+              ) : null}
+
+              {currentStep.layerLegend ? (
+                <div className="tool-tutorial-layer-list">
+                  {currentStep.layerLegend.map((layer) => (
+                    <div key={layer.label}>
+                      <strong>{layer.label}</strong>
+                      <span>{layer.description}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </main>
 
             <footer className="tool-tutorial-footer">
