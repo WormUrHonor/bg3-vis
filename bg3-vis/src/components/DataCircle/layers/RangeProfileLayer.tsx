@@ -730,15 +730,23 @@ export function RangeProfileLayer({
 
         return (
           <g
-            key={band.key}
-            opacity={groupOpacity}
-            style={{ cursor: "pointer" }}
-            onMouseEnter={() => setFocus({ type: "range", range: band.key })}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleSelection?.({ type: "range", range: band.key });
-            }}
-          >
+  key={band.key}
+  opacity={groupOpacity}
+  style={{ cursor: "pointer" }}
+  data-study-region="data-circle-range-layer"
+  data-study-element="range-band"
+  data-study-id={`data-circle-range-${band.key}`}
+  data-range-band={band.key}
+  data-range-label={band.label}
+  data-range-count={value}
+  data-selected={rangeIsSelected ? "true" : "false"}
+  data-related={isRelated ? "true" : "false"}
+  onMouseEnter={() => setFocus({ type: "range", range: band.key })}
+  onClick={(event) => {
+    event.stopPropagation();
+    onToggleSelection?.({ type: "range", range: band.key });
+  }}
+>
             {rangeIsSelected && showSelectionMarks ? (
               <circle
                 cx={CX}
@@ -866,28 +874,40 @@ export function RangeProfileLayer({
 
               return (
                 <g
-                  key={`${svgInstanceId}-${mote.key}`}
-                  opacity={moteOpacity}
-                  style={{ cursor: mote.abilityId ? "pointer" : "default" }}
-                  onMouseEnter={(event) => {
-                    if (!mote.abilityId) return;
+  key={`${svgInstanceId}-${mote.key}`}
+  opacity={moteOpacity}
+  style={{ cursor: mote.abilityId ? "pointer" : "default" }}
+  data-study-region="data-circle-range-layer"
+  data-study-element="range-ability-mote"
+  data-study-id={
+    mote.abilityId
+      ? `data-circle-range-ability-${mote.abilityId}`
+      : `data-circle-range-mote-${mote.key}`
+  }
+  data-range-band={band.key}
+  data-ability-id={mote.abilityId ?? ""}
+  data-ability-label={mote.label}
+  data-selected={moteIsSelected ? "true" : "false"}
+  data-related={moteIsRelated ? "true" : "false"}
+  onMouseEnter={(event) => {
+    if (!mote.abilityId) return;
 
-                    event.stopPropagation();
-                    setFocus({
-                      type: "ability",
-                      abilityId: mote.abilityId,
-                    });
-                  }}
-                  onClick={(event) => {
-                    if (!mote.abilityId) return;
+    event.stopPropagation();
+    setFocus({
+      type: "ability",
+      abilityId: mote.abilityId,
+    });
+  }}
+  onClick={(event) => {
+    if (!mote.abilityId) return;
 
-                    event.stopPropagation();
-                    onToggleSelection?.({
-                      type: "ability",
-                      abilityId: mote.abilityId,
-                    });
-                  }}
-                >
+    event.stopPropagation();
+    onToggleSelection?.({
+      type: "ability",
+      abilityId: mote.abilityId,
+    });
+  }}
+>
                   <title>{mote.label}</title>
 
                   {moteIsSelected && showSelectionMarks ? (

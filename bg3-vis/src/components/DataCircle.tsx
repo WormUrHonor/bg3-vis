@@ -168,7 +168,32 @@ function getAverageFromRounds(rounds: DprRound[]): number {
   if (rounds.length <= 0) return 0;
   return rounds.reduce((sum, round) => sum + round.damage, 0) / rounds.length;
 }
+function isPassiveVisualizedItem(item: VisualizedBuildItem): boolean {
+  const record = item as unknown as Record<string, unknown>;
 
+  const kindLikeValues = [
+    record.kind,
+    record.itemKind,
+    record.featureKind,
+    record.sourceKind,
+    record.actionKind,
+    record.activationType,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.toLowerCase());
+
+  const tags = Array.isArray(record.tags)
+    ? record.tags
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.toLowerCase())
+    : [];
+
+  return (
+    kindLikeValues.includes("passive") ||
+    kindLikeValues.includes("passive-feature") ||
+    tags.includes("passive")
+  );
+}
 export default function DataCircle({
   buildName,
   characterName,
@@ -212,7 +237,10 @@ export default function DataCircle({
 
   const hoverFocusRef = useRef<DataCircleFocus>(null);
   const selectedFocusesRef = useRef<DataCircleFocusItem[]>([]);
-
+  const setLinkedFocusRef = useRef(setLinkedFocus);
+  useEffect(() => {
+    setLinkedFocusRef.current = setLinkedFocus;
+  }, [setLinkedFocus]);
   const isCompact = variant !== "main";
 
   const resolvedVisualizedItems = useMemo(
@@ -232,7 +260,9 @@ export default function DataCircle({
   );
 
   const visualizedItems: VisualizedBuildItem[] = useMemo(() => {
-    return visualizedItemsOverride ?? resolvedVisualizedItems;
+    const sourceItems = visualizedItemsOverride ?? resolvedVisualizedItems;
+
+    return sourceItems.filter((item) => !isPassiveVisualizedItem(item));
   }, [resolvedVisualizedItems, visualizedItemsOverride]);
 
   const resolvedDprRounds = useMemo(() => dprRounds ?? [], [dprRounds]);
@@ -257,8 +287,8 @@ export default function DataCircle({
 
   useEffect(() => {
     if (variant !== "main") return;
-    setLinkedFocus?.(activeFocus);
-  }, [activeFocus, setLinkedFocus, variant]);
+    setLinkedFocusRef.current?.(activeFocus);
+  }, [activeFocus, variant]);
 
   const visualizedItemsKey = useMemo(
     () =>
@@ -278,9 +308,9 @@ export default function DataCircle({
     setIsSelectionReviewActive(false);
 
     if (variant === "main") {
-      setLinkedFocus?.(null);
+      setLinkedFocusRef.current?.(null);
     }
-  }, [visualizedItemsKey, showDprLayer, variant, setLinkedFocus]);
+  }, [visualizedItemsKey, showDprLayer, variant]);
 
   const buildLabel = buildName.trim() || "Untitled Build";
   const characterLabel = characterName.trim();
@@ -430,7 +460,7 @@ export default function DataCircle({
 
     selectedFocusesRef.current = nextSelectedFocuses;
     setSelectedFocuses(nextSelectedFocuses);
-
+    setIsSelectionReviewActive(nextSelectedFocuses.length > 0);
     logVisualizationFocusSelected(
       {
         ...makeFocusForLogging(nextFocus, "click"),
@@ -562,7 +592,7 @@ export default function DataCircle({
         >
           <DataCircleDefs />
 
-          <BackgroundLayer />
+          <BackgroundLayer svgInstanceId={svgInstanceId} />
 
           {shouldShowFullDprLayer ? (
             <DprByRoundLayer
@@ -573,7 +603,7 @@ export default function DataCircle({
               relationshipIndex={relationshipIndex}
               onToggleSelection={toggleSelectedFocus}
               selectedFocuses={selectedFocuses}
-              showSelectionMarks={isSelectionReviewActive}
+              showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
               barMode={dprBarMode}
             />
           ) : null}
@@ -587,7 +617,7 @@ export default function DataCircle({
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
-            showSelectionMarks={isSelectionReviewActive}
+            showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
           />
 
           <RoleDistributionLayer
@@ -598,7 +628,7 @@ export default function DataCircle({
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
-            showSelectionMarks={isSelectionReviewActive}
+            showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
           />
 
           <RangeProfileLayer
@@ -611,15 +641,16 @@ export default function DataCircle({
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
-            showSelectionMarks={isSelectionReviewActive}
+            showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
           />
 
           {!isCompact ? (
-            <SectionTitleLayer
-              outerTitle={
-                shouldShowFullDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"
-              }
-            />
+<SectionTitleLayer
+  svgInstanceId={svgInstanceId}
+  outerTitle={
+    shouldShowFullDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"
+  }
+/>
           ) : null}
 
           {!isCompact && hoverFocus ? (

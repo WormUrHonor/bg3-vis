@@ -666,20 +666,30 @@ export function DamageTypesLayer({
 
             return (
               <g
-                key={type.key}
-                opacity={groupOpacity}
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() =>
-                  setFocus({ type: "damageType", damageType: type.key })
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleSelection?.({
-                    type: "damageType",
-                    damageType: type.key,
-                  });
-                }}
-              >
+  key={type.key}
+  opacity={groupOpacity}
+  style={{ cursor: "pointer" }}
+  data-study-region="data-circle-damage-type-layer"
+  data-study-element="damage-type-segment"
+  data-study-id={`data-circle-damage-type-${type.key}`}
+  data-damage-type={type.key}
+  data-damage-label={type.label}
+  data-damage-count={value}
+  data-damage-sweep={sweep}
+  data-label-mode={displayPlan.labelMode}
+  data-selected={isSelected ? "true" : "false"}
+  data-related={isRelated ? "true" : "false"}
+  onMouseEnter={() =>
+    setFocus({ type: "damageType", damageType: type.key })
+  }
+  onClick={(event) => {
+    event.stopPropagation();
+    onToggleSelection?.({
+      type: "damageType",
+      damageType: type.key,
+    });
+  }}
+>
                 <defs>
                   <clipPath id={clipPathId}>
                     <path

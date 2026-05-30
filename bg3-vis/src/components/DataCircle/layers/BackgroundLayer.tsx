@@ -1,8 +1,20 @@
 import { CX, CY, polarToCartesian } from "../dataCircleGeometry";
 
-export function BackgroundLayer() {
+type BackgroundLayerProps = {
+  svgInstanceId?: string;
+};
+
+export function BackgroundLayer({
+  svgInstanceId = "data-circle",
+}: BackgroundLayerProps) {
   return (
-    <>
+    <g
+      className="data-circle-background-layer"
+      data-study-region="data-circle-background-layer"
+      data-study-element="data-circle-background"
+      data-study-id={`${svgInstanceId}-background-layer`}
+      pointerEvents="none"
+    >
       <circle cx={CX} cy={CY} r={480} fill="url(#arcaneBackground)" />
 
       <circle
@@ -26,7 +38,12 @@ export function BackgroundLayer() {
       {Array.from({ length: 56 }, (_, index) => {
         const angle = index * (360 / 56);
         const outer = polarToCartesian(CX, CY, 468, angle);
-        const inner = polarToCartesian(CX, CY, index % 4 === 0 ? 458 : 462, angle);
+        const inner = polarToCartesian(
+          CX,
+          CY,
+          index % 4 === 0 ? 458 : 462,
+          angle
+        );
 
         return (
           <line
@@ -40,6 +57,6 @@ export function BackgroundLayer() {
           />
         );
       })}
-    </>
+    </g>
   );
 }
