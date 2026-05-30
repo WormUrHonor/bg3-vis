@@ -1123,6 +1123,76 @@ function logBlockedUiAction(
     }
   );
 }
+function handleCreateNewBlankBuild() {
+  const previousSnapshotHash = createStableHash(currentEditorSnapshot, "build");
+
+  logStudyEvent({
+    eventCategory: "build_lifecycle",
+    eventType: "new_blank_build_started",
+    activeView: "workspace-header",
+    activeBuildId: focusedSavedBuild?.id ?? null,
+    activeBuildLabel: focusedLabel,
+    activePartyMemberIndex: editingPartySlotIndex,
+    activePartyMemberLabel,
+    activeFocusSource: focusedDataCircle,
+    activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+    partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    payload: {
+      sourceComponent: "BuildPlanner",
+      action: "create_new_blank_build",
+      previousFocusedLabel: focusedLabel,
+      previousFocusedBuildId: focusedSavedBuild?.id ?? null,
+      previousEditingPartySlotIndex: editingPartySlotIndex,
+      previousSnapshotHash,
+      previousSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      note: "Clears the editor only. Saved builds and assigned party slots are preserved.",
+    },
+  });
+
+  setBuildName("");
+  setCharacterName("");
+
+  setSelectedRace("");
+  setSelectedSubrace("");
+  setSelectedBackground("");
+
+  setSelectedClass("");
+  setSelectedSubclass("");
+  setSelectedLevel(12);
+
+  setBaseAbilityScores(defaultAbilityScores);
+  setBonusPlusTwo("");
+  setBonusPlusOne("");
+  setFeatSelections([]);
+
+  setSelectedClassSkills([]);
+  setBardExpertise([]);
+  setRogueExpertise([]);
+  setLoreBardSkills([]);
+  setKnowledgeClericExpertise([]);
+
+  setRangerFavouredEnemy("");
+  setRangerNaturalExplorer("");
+  setSelectedWarlockInvocations([]);
+
+  setSelectedSpellIds([]);
+  setSelectedClassFeatureIds([]);
+  setActiveClassFeatureIds([]);
+
+  setFocusedSavedBuild(null);
+  setEditingPartySlotIndex(null);
+  setFocusedDataCircle("editor");
+  setDataCircleFocus(null);
+  latestVisualizationFocusRef.current = null;
+
+  setHasEvaluatedBuild(false);
+  setSimulatorStatus("idle");
+  setSimulatorError(null);
+  setSimulatorDprRounds([]);
+
+  setActiveTab("character");
+}
   function handleDataCircleFocusChange(
     nextValueOrUpdater: SetStateAction<DataCircleFocus>
   ) {
@@ -2344,24 +2414,36 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
                 <h1>Build Creation</h1>
               </div>
 
-              <button
-                className="evaluate-button"
-                type="button"
-                onClick={handleEvaluateBuild}
-                aria-disabled={isAggregateFocused || simulatorStatus === "loading"}
-                data-study-id="evaluate-build-button"
-                title={
-                  isAggregateFocused
-                    ? "Aggregate is a read-only calculated preview."
-                    : "Evaluate the current editable build."
-                }
-              >
-                {simulatorStatus === "loading"
-                  ? "Running Simulator..."
-                  : hasEvaluatedBuild
-                    ? "Re-evaluate Build"
-                    : "Evaluate Build"}
-              </button>
+              <div className="workspace-header-actions" data-study-region="workspace-header-actions">
+  <button
+    className="new-blank-build-button"
+    type="button"
+    onClick={handleCreateNewBlankBuild}
+    data-study-id="new-blank-build-button"
+    title="Clear the editor and start a new build. Saved builds and party slots are preserved."
+  >
+    New blank build
+  </button>
+
+  <button
+    className="evaluate-button"
+    type="button"
+    onClick={handleEvaluateBuild}
+    aria-disabled={isAggregateFocused || simulatorStatus === "loading"}
+    data-study-id="evaluate-build-button"
+    title={
+      isAggregateFocused
+        ? "Aggregate is a read-only calculated preview."
+        : "Evaluate the current editable build."
+    }
+  >
+    {simulatorStatus === "loading"
+      ? "Running Simulator..."
+      : hasEvaluatedBuild
+        ? "Re-evaluate Build"
+        : "Evaluate Build"}
+  </button>
+</div>
             </header>
 
             <nav

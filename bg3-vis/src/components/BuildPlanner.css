@@ -3515,3 +3515,38 @@ select {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.workspace-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.new-blank-build-button {
+  min-height: 38px;
+  border: 1px solid rgba(122, 184, 215, 0.34);
+  border-radius: 11px;
+  padding: 0 16px;
+  background: rgba(33, 58, 73, 0.24);
+  color: rgba(211, 239, 255, 0.92);
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.035em;
+  cursor: pointer;
+}
+
+.new-blank-build-button:hover {
+  border-color: rgba(161, 219, 255, 0.58);
+  background: rgba(45, 88, 111, 0.32);
+}
+
+@media (max-width: 900px) {
+  .workspace-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .new-blank-build-button,
+  .evaluate-button {
+    flex: 1 1 160px;
+  }
+}

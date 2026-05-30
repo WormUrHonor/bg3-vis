@@ -1,47 +1,50 @@
 .tool-tutorial-help-button {
-  position: absolute;
-  top: 72px;
-  left: 28px;
-  z-index: 20;
-  min-height: 25px;
-  border: 1px solid rgba(122, 184, 215, 0.34);
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  z-index: 7000;
+  min-height: 30px;
+  border: 1px solid rgba(122, 184, 215, 0.36);
   border-radius: 999px;
-  padding: 0 12px;
-  background: rgba(33, 58, 73, 0.24);
-  color: rgba(201, 234, 255, 0.92);
-  font-size: 0.62rem;
+  padding: 0 14px;
+  background:
+    linear-gradient(180deg, rgba(34, 64, 81, 0.72), rgba(20, 35, 45, 0.84));
+  color: rgba(211, 239, 255, 0.94);
+  font-size: 0.64rem;
   font-weight: 850;
-  letter-spacing: 0.055em;
+  letter-spacing: 0.065em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 0 16px rgba(82, 158, 207, 0.08);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.28),
+    0 0 18px rgba(82, 158, 207, 0.1);
 }
 
 .tool-tutorial-help-button:hover {
-  border-color: rgba(161, 219, 255, 0.56);
-  background: rgba(45, 88, 111, 0.32);
+  border-color: rgba(161, 219, 255, 0.62);
+  background:
+    linear-gradient(180deg, rgba(45, 88, 111, 0.82), rgba(23, 42, 54, 0.92));
 }
 
 .tool-tutorial-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  z-index: 6500;
+  pointer-events: auto;
   background:
-    radial-gradient(circle at 50% 35%, rgba(216, 178, 104, 0.12), transparent 34%),
-    rgba(3, 2, 3, 0.78);
-  backdrop-filter: blur(8px);
+    radial-gradient(circle at 50% 35%, rgba(216, 178, 104, 0.08), transparent 34%),
+    rgba(3, 2, 3, 0.42);
+  backdrop-filter: blur(2px);
 }
 
 .tool-tutorial-card {
-  width: min(620px, calc(100vw - 48px));
-  border: 1px solid rgba(216, 178, 104, 0.28);
-  border-radius: 24px;
+  position: fixed;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid rgba(216, 178, 104, 0.34);
+  border-radius: 22px;
   background:
-    radial-gradient(circle at top left, rgba(216, 178, 104, 0.11), transparent 36%),
-    linear-gradient(145deg, rgba(30, 23, 18, 0.98), rgba(9, 7, 8, 0.98));
+    radial-gradient(circle at top left, rgba(216, 178, 104, 0.12), transparent 36%),
+    linear-gradient(145deg, rgba(31, 24, 18, 0.985), rgba(9, 7, 8, 0.985));
   box-shadow:
     0 24px 90px rgba(0, 0, 0, 0.56),
     inset 0 0 42px rgba(0, 0, 0, 0.48);
@@ -49,18 +52,24 @@
   overflow: hidden;
 }
 
+.tool-tutorial-card--center {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .tool-tutorial-header {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
-  padding: 22px 24px 14px;
+  gap: 16px;
+  padding: 18px 20px 12px;
   border-bottom: 1px solid rgba(216, 178, 104, 0.13);
 }
 
 .tool-tutorial-header p {
   margin: 0 0 6px;
   color: rgba(216, 178, 104, 0.88);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 850;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -68,36 +77,32 @@
 
 .tool-tutorial-header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.08rem;
   line-height: 1.2;
 }
 
 .tool-tutorial-close {
-  width: 32px;
-  height: 32px;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
   border: 1px solid rgba(216, 178, 104, 0.18);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: rgba(255, 244, 218, 0.82);
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
 }
 
-.tool-tutorial-close:hover {
-  border-color: rgba(216, 178, 104, 0.42);
-  background: rgba(216, 178, 104, 0.1);
-}
-
 .tool-tutorial-progress {
   display: flex;
-  gap: 7px;
-  padding: 14px 24px 0;
+  gap: 5px;
+  padding: 12px 20px 0;
 }
 
 .tool-tutorial-dot {
-  width: 28px;
   height: 6px;
+  flex: 1;
   border: 0;
   border-radius: 999px;
   background: rgba(216, 178, 104, 0.16);
@@ -109,12 +114,12 @@
 }
 
 .tool-tutorial-dot--active {
-  background: rgba(216, 178, 104, 0.9);
+  background: rgba(216, 178, 104, 0.92);
   box-shadow: 0 0 16px rgba(216, 178, 104, 0.24);
 }
 
 .tool-tutorial-body {
-  padding: 26px 24px 22px;
+  padding: 20px;
 }
 
 .tool-tutorial-step-label {
@@ -125,66 +130,78 @@
   padding: 4px 9px;
   color: rgba(216, 178, 104, 0.86);
   background: rgba(216, 178, 104, 0.07);
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 850;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.tool-tutorial-body h3 {
-  margin: 0 0 10px;
-  font-size: 1.45rem;
-  line-height: 1.14;
-}
-
 .tool-tutorial-body p {
   margin: 0;
-  max-width: 56ch;
-  color: rgba(255, 244, 218, 0.78);
-  font-size: 0.95rem;
-  line-height: 1.55;
+  color: rgba(255, 244, 218, 0.8);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
+.tool-tutorial-instruction,
 .tool-tutorial-hint {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   align-items: start;
-  margin-top: 20px;
+  margin-top: 14px;
+  border-radius: 15px;
+  padding: 11px 12px;
+}
+
+.tool-tutorial-instruction {
+  border: 1px solid rgba(216, 178, 104, 0.19);
+  background: rgba(216, 178, 104, 0.07);
+}
+
+.tool-tutorial-hint {
   border: 1px solid rgba(122, 184, 215, 0.18);
-  border-radius: 16px;
-  padding: 12px 13px;
   background: rgba(37, 70, 86, 0.18);
+}
+
+.tool-tutorial-instruction strong,
+.tool-tutorial-hint strong {
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tool-tutorial-instruction strong {
+  color: rgba(255, 221, 151, 0.95);
 }
 
 .tool-tutorial-hint strong {
   color: rgba(201, 234, 255, 0.95);
-  font-size: 0.64rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
+.tool-tutorial-instruction span,
 .tool-tutorial-hint span {
-  color: rgba(210, 232, 245, 0.78);
-  font-size: 0.78rem;
-  line-height: 1.4;
+  color: rgba(230, 226, 211, 0.78);
+  font-size: 0.74rem;
+  line-height: 1.38;
 }
 
 .tool-tutorial-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px 22px;
+  gap: 9px;
+  padding: 14px 20px 18px;
   border-top: 1px solid rgba(216, 178, 104, 0.11);
 }
 
 .tool-tutorial-primary,
 .tool-tutorial-secondary {
-  min-height: 36px;
+  min-height: 34px;
   border-radius: 999px;
-  padding: 0 16px;
-  font-size: 0.68rem;
+  padding: 0 15px;
+  font-size: 0.64rem;
   font-weight: 850;
   letter-spacing: 0.055em;
   text-transform: uppercase;
@@ -212,30 +229,36 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 700px) {
+.tool-tutorial-highlight-target {
+  position: relative;
+  z-index: 6600 !important;
+  outline: 2px solid rgba(255, 216, 128, 0.96) !important;
+  outline-offset: 5px;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.34),
+    0 0 0 7px rgba(255, 216, 128, 0.13),
+    0 0 26px rgba(255, 216, 128, 0.34) !important;
+}
+
+@media (max-width: 760px) {
   .tool-tutorial-help-button {
-    top: 18px;
-    right: 18px;
-    left: auto;
+    top: 12px;
+    right: 12px;
   }
 
-  .tool-tutorial-card {
-    width: min(100%, 560px);
+  .tool-tutorial-card,
+  .tool-tutorial-card--center {
+    left: 16px !important;
+    right: 16px;
+    top: auto !important;
+    bottom: 16px;
+    width: auto;
+    transform: none;
   }
 
-  .tool-tutorial-header,
-  .tool-tutorial-body,
-  .tool-tutorial-footer {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-
-  .tool-tutorial-footer {
-    flex-direction: column-reverse;
-  }
-
-  .tool-tutorial-primary,
-  .tool-tutorial-secondary {
-    width: 100%;
+  .tool-tutorial-instruction,
+  .tool-tutorial-hint {
+    grid-template-columns: 1fr;
   }
 }
