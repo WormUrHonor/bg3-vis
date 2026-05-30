@@ -8,12 +8,6 @@ import {
   type SetStateAction,
 } from "react";
 import type { ClassName } from "../types/buildPlannerTypes";
-import {
-  mockAverageDpr,
-  mockDataCircleBuild,
-  mockDprByRound,
-  mockSelectedSpellIds,
-} from "../data/mockDataCircle";
 import { DataCircleDefs } from "./DataCircle/DataCircleDefs";
 import {
   getDamageTypeCounts,
@@ -23,6 +17,8 @@ import {
 import { getVisualizedBuildItems } from "./DataCircle/dataCircleBuildItems";
 import {
   buildLayerRelationshipIndex,
+  getFocusedAbilityIds,
+  getFocusItems,
   isSameFocusItem,
   type DataCircleFocus,
   type DataCircleFocusItem,
@@ -37,7 +33,17 @@ import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer
 import { RangeProfileLayer } from "./DataCircle/layers/RangeProfileLayer";
 import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer";
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
-import { logStudyEvent } from "../logic/studyLogger";
+import {
+  logStudyEvent,
+  logVisualizationFocusCleared,
+  logVisualizationFocusEnded,
+  logVisualizationFocusSelected,
+  logVisualizationFocusStarted,
+} from "../logic/studyLogger";
+import type {
+  DataCircleFocusForLogging,
+  DataCircleFocusTrigger,
+} from "../types/loggingTypes";
 import "./DataCircle.css";
 
 export type DprBarMode = "stacked" | "grouped";
@@ -49,10 +55,12 @@ type DataCircleProps = {
   selectedClass: ClassName | "";
   selectedSubclass: string;
   selectedLevel: number;
+
   selectedSpellIds?: string[];
   fixedClassFeatureIds?: string[];
   selectedClassFeatureIds?: string[];
   activeClassFeatureIds?: string[];
+
   showDprLayer?: boolean;
   variant?: DataCircleVariant;
   visualizedItemsOverride?: VisualizedBuildItem[];
@@ -62,20 +70,39 @@ type DataCircleProps = {
   dprStatus?: "idle" | "loading" | "success" | "error";
   dprError?: string | null;
 
+  activePartyMemberIndex?: number | null;
+  activePartyMemberLabel?: string | null;
+  partySnapshotHash?: string | null;
+
   setLinkedFocus?: Dispatch<SetStateAction<DataCircleFocus>>;
 };
+
+function stableSort(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableSort);
+
+  if (value && typeof value === "object") {
+    return Object.keys(value as Record<string, unknown>)
+      .sort()
+      .reduce<Record<string, unknown>>((result, key) => {
+        result[key] = stableSort((value as Record<string, unknown>)[key]);
+        return result;
+      }, {});
+  }
+
+  return value;
+}
 
 function stableStringify(value: unknown): string {
   if (value === null || value === undefined) return "none";
 
   try {
-    return JSON.stringify(value, Object.keys(value as object).sort());
+    return JSON.stringify(stableSort(value));
   } catch {
     return String(value);
   }
 }
 
-function getFocusLogKey(focus: DataCircleFocus) {
+function getFocusLogKey(focus: DataCircleFocus): string {
   if (!focus) return "none";
 
   if (Array.isArray(focus)) {
@@ -85,16 +112,75 @@ function getFocusLogKey(focus: DataCircleFocus) {
   return stableStringify(focus);
 }
 
+function humanizeKey(value: string): string {
+  return value
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getFocusLabel(
+  focus: DataCircleFocusItem,
+  abilityNames: Record<string, string>
+): string {
+  switch (focus.type) {
+    case "ability":
+      return abilityNames[focus.abilityId] ?? focus.abilityId;
+
+    case "role":
+      return humanizeKey(focus.role);
+
+    case "roleGroup":
+      return humanizeKey(focus.roleGroup);
+
+    case "damageType":
+      return focus.damageType;
+
+    case "range":
+      return humanizeKey(focus.range);
+
+    case "round":
+      return `Round ${focus.round}`;
+
+    default:
+      return stableStringify(focus);
+  }
+}
+
+function getFocusLayer(focus: DataCircleFocusItem): string {
+  switch (focus.type) {
+    case "ability":
+      return "ability";
+    case "role":
+    case "roleGroup":
+      return "roles-utility";
+    case "damageType":
+      return "damage-types";
+    case "range":
+      return "range";
+    case "round":
+      return "dpr";
+    default:
+      return "unknown";
+  }
+}
+
+function getAverageFromRounds(rounds: DprRound[]): number {
+  if (rounds.length <= 0) return 0;
+  return rounds.reduce((sum, round) => sum + round.damage, 0) / rounds.length;
+}
+
 export default function DataCircle({
   buildName,
   characterName,
   selectedClass,
   selectedSubclass,
   selectedLevel,
+
   selectedSpellIds = [],
   fixedClassFeatureIds = [],
   selectedClassFeatureIds = [],
   activeClassFeatureIds = [],
+
   showDprLayer = false,
   variant = "main",
   visualizedItemsOverride,
@@ -104,10 +190,13 @@ export default function DataCircle({
   dprStatus = "idle",
   dprError = null,
 
+  activePartyMemberIndex = null,
+  activePartyMemberLabel = null,
+  partySnapshotHash = null,
+
   setLinkedFocus,
 }: DataCircleProps) {
   const rawInstanceId = useId();
-  const lastLoggedHoverKeyRef = useRef<string>("none");
 
   const svgInstanceId = useMemo(
     () => rawInstanceId.replace(/[^a-zA-Z0-9_-]/g, ""),
@@ -121,16 +210,10 @@ export default function DataCircle({
   const [isSelectionReviewActive, setIsSelectionReviewActive] = useState(false);
   const [dprBarMode, setDprBarMode] = useState<DprBarMode>("stacked");
 
+  const hoverFocusRef = useRef<DataCircleFocus>(null);
+  const selectedFocusesRef = useRef<DataCircleFocusItem[]>([]);
+
   const isCompact = variant !== "main";
-
-  const activeFocus: DataCircleFocus =
-    hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
-
-  useEffect(() => {
-    if (variant !== "main") return;
-
-    setLinkedFocus?.(activeFocus);
-  }, [activeFocus, setLinkedFocus, variant]);
 
   const resolvedVisualizedItems = useMemo(
     () =>
@@ -148,38 +231,34 @@ export default function DataCircle({
     ]
   );
 
-  const hasOverride = visualizedItemsOverride !== undefined;
-
-  const isUsingMockData =
-    !hasOverride &&
-    selectedSpellIds.length === 0 &&
-    resolvedVisualizedItems.length === 0;
-
   const visualizedItems: VisualizedBuildItem[] = useMemo(() => {
-    if (hasOverride) return visualizedItemsOverride;
+    return visualizedItemsOverride ?? resolvedVisualizedItems;
+  }, [resolvedVisualizedItems, visualizedItemsOverride]);
 
-    if (isUsingMockData) {
-      return getVisualizedBuildItems({
-        selectedSpellIds: mockSelectedSpellIds,
-        fixedClassFeatureIds: [],
-        selectedClassFeatureIds: [],
-        activeClassFeatureIds: [],
-      });
-    }
-
-    return resolvedVisualizedItems;
-  }, [
-    hasOverride,
-    visualizedItemsOverride,
-    isUsingMockData,
-    resolvedVisualizedItems,
-  ]);
-
-  const resolvedDprRounds =
-    dprRounds && dprRounds.length > 0 ? dprRounds : mockDprByRound;
+  const resolvedDprRounds = useMemo(() => dprRounds ?? [], [dprRounds]);
 
   const resolvedAverageDpr =
-    typeof averageDpr === "number" ? averageDpr : mockAverageDpr;
+    typeof averageDpr === "number"
+      ? averageDpr
+      : getAverageFromRounds(resolvedDprRounds);
+
+  const hasDprData = resolvedDprRounds.length > 0;
+
+  const activeFocus: DataCircleFocus =
+    hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
+
+  useEffect(() => {
+    hoverFocusRef.current = hoverFocus;
+  }, [hoverFocus]);
+
+  useEffect(() => {
+    selectedFocusesRef.current = selectedFocuses;
+  }, [selectedFocuses]);
+
+  useEffect(() => {
+    if (variant !== "main") return;
+    setLinkedFocus?.(activeFocus);
+  }, [activeFocus, setLinkedFocus, variant]);
 
   const visualizedItemsKey = useMemo(
     () =>
@@ -191,43 +270,26 @@ export default function DataCircle({
   );
 
   useEffect(() => {
+    hoverFocusRef.current = null;
+    selectedFocusesRef.current = [];
+
     setHoverFocus(null);
     setSelectedFocuses([]);
     setIsSelectionReviewActive(false);
-    lastLoggedHoverKeyRef.current = "none";
 
     if (variant === "main") {
       setLinkedFocus?.(null);
     }
   }, [visualizedItemsKey, showDprLayer, variant, setLinkedFocus]);
 
-  const displayBuildName = isUsingMockData
-    ? mockDataCircleBuild.buildName
-    : buildName;
-
-  const displayCharacterName = isUsingMockData
-    ? mockDataCircleBuild.characterName
-    : characterName;
-
-  const displayClass = isUsingMockData
-    ? mockDataCircleBuild.selectedClass
-    : selectedClass;
-
-  const displaySubclass = isUsingMockData
-    ? mockDataCircleBuild.selectedSubclass
-    : selectedSubclass;
-
-  const displayLevel = isUsingMockData
-    ? mockDataCircleBuild.selectedLevel
-    : selectedLevel;
-
-  const buildLabel = displayBuildName.trim() || "Untitled Build";
-  const characterLabel = displayCharacterName.trim();
-  const archetypeLabel = displaySubclass || displayClass || "Unassigned";
+  const buildLabel = buildName.trim() || "Untitled Build";
+  const characterLabel = characterName.trim();
+  const archetypeLabel = selectedSubclass || selectedClass || "Unassigned";
   const abilityCount = visualizedItems.length;
 
-  const shouldShowFullDprLayer = !isCompact && showDprLayer;
-  const shouldShowCompactDprNumber = isCompact;
+  const shouldShowDprControls = !isCompact && showDprLayer;
+  const shouldShowFullDprLayer = !isCompact && showDprLayer && hasDprData;
+  const shouldShowCompactDprNumber = isCompact && hasDprData;
 
   const rangeCounts = useMemo(
     () => getRangeCounts(visualizedItems),
@@ -258,45 +320,75 @@ export default function DataCircle({
     0
   );
 
+  function makeFocusForLogging(
+    focus: DataCircleFocusItem,
+    trigger: DataCircleFocusTrigger
+  ): DataCircleFocusForLogging {
+    const matchingAbilityIds = getFocusedAbilityIds(focus, relationshipIndex);
+
+    return {
+      focusType: focus.type,
+      focusKey: stableStringify(focus),
+      focusLabel: getFocusLabel(focus, relationshipIndex.abilityNames),
+      focusLayer: getFocusLayer(focus),
+      focusSource: `data-circle-${variant}`,
+      focusTrigger: trigger,
+      rawFocus: focus,
+      matchingAbilityCount: matchingAbilityIds.length,
+      matchingAbilityIds,
+      selectedFocusCount: selectedFocusesRef.current.length,
+      selectedFocuses: selectedFocusesRef.current,
+    };
+  }
+
+  function getLoggingContext() {
+    return {
+      activeView: `data-circle-${variant}`,
+      activeBuildLabel: buildLabel,
+      activePartyMemberIndex,
+      activePartyMemberLabel,
+      partySnapshotHash,
+    };
+  }
+
   const setHoverFocusWithLogging: Dispatch<SetStateAction<DataCircleFocus>> = (
     nextFocusOrUpdater
   ) => {
-    setHoverFocus((previousFocus) => {
-      const nextFocus =
-        typeof nextFocusOrUpdater === "function"
-          ? (nextFocusOrUpdater as (
-              previous: DataCircleFocus
-            ) => DataCircleFocus)(previousFocus)
-          : nextFocusOrUpdater;
+    const previousFocus = hoverFocusRef.current;
+    const nextFocus =
+      typeof nextFocusOrUpdater === "function"
+        ? (nextFocusOrUpdater as (previous: DataCircleFocus) => DataCircleFocus)(
+            previousFocus
+          )
+        : nextFocusOrUpdater;
 
-      if (!isCompact && nextFocus && !Array.isArray(nextFocus)) {
-        const nextKey = getFocusLogKey(nextFocus);
+    const previousKey = getFocusLogKey(previousFocus);
+    const nextKey = getFocusLogKey(nextFocus);
 
-        if (nextKey !== lastLoggedHoverKeyRef.current) {
-          lastLoggedHoverKeyRef.current = nextKey;
+    if (previousKey === nextKey) {
+      hoverFocusRef.current = nextFocus;
+      setHoverFocus(nextFocus);
+      return;
+    }
 
-          logStudyEvent({
-            eventCategory: "visualization",
-            eventType: "data_circle_focus_hovered",
-            activeBuildLabel: buildLabel,
-            activeView: `data-circle-${variant}`,
-            payload: {
-              focus: nextFocus,
-              focusKey: nextKey,
-              buildLabel,
-              characterLabel,
-              variant,
-            },
-          });
-        }
-      }
+    const previousItems = getFocusItems(previousFocus);
+    if (previousItems.length === 1) {
+      logVisualizationFocusEnded(
+        makeFocusForLogging(previousItems[0], "hover"),
+        getLoggingContext()
+      );
+    }
 
-      if (!nextFocus) {
-        lastLoggedHoverKeyRef.current = "none";
-      }
+    const nextItems = getFocusItems(nextFocus);
+    if (nextItems.length === 1) {
+      logVisualizationFocusStarted(
+        makeFocusForLogging(nextItems[0], "hover"),
+        getLoggingContext()
+      );
+    }
 
-      return nextFocus;
-    });
+    hoverFocusRef.current = nextFocus;
+    setHoverFocus(nextFocus);
   };
 
   function setDprBarModeWithLogging(nextMode: DprBarMode) {
@@ -305,12 +397,19 @@ export default function DataCircle({
     logStudyEvent({
       eventCategory: "visualization",
       eventType: "data_circle_dpr_layout_changed",
-      activeBuildLabel: buildLabel,
       activeView: `data-circle-${variant}`,
+      activeBuildLabel: buildLabel,
+      activePartyMemberIndex,
+      activePartyMemberLabel,
+      partySnapshotHash,
       payload: {
         previousMode: dprBarMode,
         nextMode,
         buildLabel,
+        characterLabel,
+        variant,
+        hasDprData,
+        roundCount: resolvedDprRounds.length,
       },
     });
 
@@ -320,51 +419,49 @@ export default function DataCircle({
   function toggleSelectedFocus(nextFocus: DataCircleFocusItem) {
     if (isCompact) return;
 
-    setSelectedFocuses((current) => {
-      const alreadySelected = current.some((item) =>
-        isSameFocusItem(item, nextFocus)
-      );
+    const current = selectedFocusesRef.current;
+    const alreadySelected = current.some((item) =>
+      isSameFocusItem(item, nextFocus)
+    );
 
-      const nextSelectedFocuses = alreadySelected
-        ? current.filter((item) => !isSameFocusItem(item, nextFocus))
-        : [...current, nextFocus];
+    const nextSelectedFocuses = alreadySelected
+      ? current.filter((item) => !isSameFocusItem(item, nextFocus))
+      : [...current, nextFocus];
 
-      logStudyEvent({
-        eventCategory: "visualization",
-        eventType: "data_circle_focus_selected",
-        activeBuildLabel: buildLabel,
-        activeView: `data-circle-${variant}`,
-        payload: {
-          action: alreadySelected ? "removed" : "added",
-          focus: nextFocus,
-          focusKey: stableStringify(nextFocus),
-          selectedFocusCount: nextSelectedFocuses.length,
-          selectedFocuses: nextSelectedFocuses,
-          buildLabel,
-        },
-      });
+    selectedFocusesRef.current = nextSelectedFocuses;
+    setSelectedFocuses(nextSelectedFocuses);
 
-      return nextSelectedFocuses;
-    });
+    logVisualizationFocusSelected(
+      {
+        ...makeFocusForLogging(nextFocus, "click"),
+        selectedFocusCount: nextSelectedFocuses.length,
+        selectedFocuses: nextSelectedFocuses,
+      },
+      {
+        ...getLoggingContext(),
+        action: alreadySelected ? "removed" : "added",
+      }
+    );
   }
 
   function clearSelectedFocuses() {
-    logStudyEvent({
-      eventCategory: "visualization",
-      eventType: "data_circle_focus_cleared",
-      activeBuildLabel: buildLabel,
-      activeView: `data-circle-${variant}`,
-      payload: {
-        clearedFocusCount: selectedFocuses.length,
-        clearedFocuses: selectedFocuses,
-        buildLabel,
-      },
-    });
+    const currentSelectedFocuses = selectedFocusesRef.current;
 
+    logVisualizationFocusCleared(
+      {
+        clearedFocusCount: currentSelectedFocuses.length,
+        clearedFocuses: currentSelectedFocuses,
+        previousFocusKey: getFocusLogKey(currentSelectedFocuses),
+        reason: "manual_clear",
+      },
+      getLoggingContext()
+    );
+
+    selectedFocusesRef.current = [];
     setSelectedFocuses([]);
-    setHoverFocus(null);
+
+    setHoverFocusWithLogging(null);
     setIsSelectionReviewActive(false);
-    lastLoggedHoverKeyRef.current = "none";
     setLinkedFocus?.(null);
   }
 
@@ -372,16 +469,24 @@ export default function DataCircle({
     <div
       className={`data-circle-panel data-circle-panel--${variant}`}
       data-circle-variant={variant}
+      data-study-region={`data-circle-${variant}`}
+      data-study-id={`data-circle-panel-${variant}-${svgInstanceId}`}
     >
-      {shouldShowFullDprLayer ? (
-        <div className="data-circle-controls">
+      {shouldShowDprControls ? (
+        <div
+          className="data-circle-controls"
+          data-study-region="data-circle-dpr-controls"
+          data-study-id={`data-circle-dpr-controls-${svgInstanceId}`}
+        >
           <div className="data-circle-dpr-toggle" aria-label="DPR bar layout">
             <span className="data-circle-dpr-toggle-label">
               {dprStatus === "loading"
                 ? "Running simulator"
                 : dprStatus === "error"
                   ? "Simulator unavailable"
-                  : "DPR layout"}
+                  : hasDprData
+                    ? "DPR layout"
+                    : "No DPR data yet"}
             </span>
 
             <button
@@ -392,6 +497,9 @@ export default function DataCircle({
                   : ""
               }`}
               onClick={() => setDprBarModeWithLogging("stacked")}
+              disabled={!hasDprData}
+              data-study-element="data-circle-dpr-toggle-stacked"
+              data-study-id={`data-circle-dpr-toggle-stacked-${svgInstanceId}`}
             >
               Stacked
             </button>
@@ -404,6 +512,9 @@ export default function DataCircle({
                   : ""
               }`}
               onClick={() => setDprBarModeWithLogging("grouped")}
+              disabled={!hasDprData}
+              data-study-element="data-circle-dpr-toggle-grouped"
+              data-study-id={`data-circle-dpr-toggle-grouped-${svgInstanceId}`}
             >
               Side-by-side
             </button>
@@ -428,18 +539,26 @@ export default function DataCircle({
           onMouseLeave={() => setIsSelectionReviewActive(false)}
           onFocus={() => setIsSelectionReviewActive(true)}
           onBlur={() => setIsSelectionReviewActive(false)}
+          data-study-element="data-circle-clear-selection"
+          data-study-id={`data-circle-clear-selection-${svgInstanceId}`}
         >
           Clear selection · {selectedFocuses.length}
         </button>
       ) : null}
 
-      <div className="data-circle-stage">
+      <div
+        className="data-circle-stage"
+        data-study-region={`data-circle-stage-${variant}`}
+        data-study-id={`data-circle-stage-${variant}-${svgInstanceId}`}
+      >
         <svg
           viewBox="0 0 1000 1000"
           className="data-circle-svg"
           role="img"
           aria-label={`${buildLabel} Data Circle visualization`}
           onMouseLeave={() => setHoverFocusWithLogging(null)}
+          data-study-element="data-circle-svg"
+          data-study-id={`data-circle-svg-${variant}-${svgInstanceId}`}
         >
           <DataCircleDefs />
 
@@ -472,6 +591,7 @@ export default function DataCircle({
           />
 
           <RoleDistributionLayer
+            svgInstanceId={svgInstanceId}
             roleData={roleData}
             focus={activeFocus}
             setFocus={setHoverFocusWithLogging}
@@ -512,7 +632,7 @@ export default function DataCircle({
               buildLabel={buildLabel}
               characterLabel={characterLabel}
               archetypeLabel={archetypeLabel}
-              displayLevel={displayLevel}
+              displayLevel={selectedLevel}
               spellCount={abilityCount}
               averageDpr={
                 shouldShowFullDprLayer || shouldShowCompactDprNumber

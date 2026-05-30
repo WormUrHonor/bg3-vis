@@ -1,11 +1,14 @@
+import StudyHeatmapCapture from "./StudyHeatmapCapture";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
 import "./BuildPlanner.css";
+
 import {
   getAverageDpr,
   getSimulatorBuildNameForSnapshot,
@@ -19,6 +22,7 @@ import type {
   DataCircleFocus,
   DprRound,
 } from "./DataCircle/dataCircleInteraction";
+
 import { getFeatAvailableSpellIds } from "../logic/featSpellChoiceLogic";
 import { getAvailableRaceFeaturesForBuild } from "../data/raceFeatures";
 import CharacterTab from "./CharacterTab";
@@ -68,7 +72,16 @@ import {
   saveSavedBuildsToStorage,
 } from "../logic/savedBuildStorage";
 
-import { logStudyEvent } from "../logic/studyLogger";
+import {
+  createBuildEditLoggingPayload,
+  createBuildSnapshotSummary,
+  createPartyCoverageForLogging,
+  createPartySnapshotSummary,
+  createStableHash,
+  createVisualProfileSummary,
+  logStudyEvent,
+} from "../logic/studyLogger";
+import type { VisualizedItemForLogging } from "../types/loggingTypes";
 
 import {
   backgroundSkills,
@@ -111,6 +124,48 @@ type PartyDockItem = {
   onFocus: () => void;
 };
 
+type RecentVisualizationFocusContext = {
+  focus: DataCircleFocus;
+  focusKey: string | null;
+  focusSource: DataCircleFocusSource;
+  activeView: string;
+  focusedLabel: string;
+  partySnapshotHash: string;
+  startedAtMs: number;
+};
+
+type RecentPartyGapContext = {
+  partySnapshotHash: string;
+  partyGaps: unknown[];
+  redundancyScore: number;
+  detectedAtMs: number;
+};
+
+type RecentEvaluationContext = {
+  status: "started" | "completed" | "failed";
+  requestedAtMs: number;
+  completedAtMs?: number;
+  simulatorBuildName: string;
+  buildSnapshotHash: string;
+  partySnapshotHash: string;
+  averageDpr?: number;
+  totalDamage?: number;
+  roundCount?: number;
+  errorMessage?: string;
+};
+
+type RecentAggregateFocusContext = {
+  focusedAtMs: number;
+  partySnapshotHash: string;
+  partyGaps: unknown[];
+  redundancyScore: number;
+};
+
+const FOCUS_TO_ACTION_WINDOW_MS = 30_000;
+const PARTY_GAP_RESPONSE_WINDOW_MS = 90_000;
+const EVALUATION_RESPONSE_WINDOW_MS = 120_000;
+const AGGREGATE_TO_MEMBER_REVISION_WINDOW_MS = 120_000;
+
 function getAbilityModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
@@ -120,21 +175,34 @@ function areLogValuesEqual(first: unknown, second: unknown) {
 }
 
 function getSnapshotSummary(snapshot: BuildEditorSnapshot) {
-  return {
-    buildName: snapshot.buildName,
-    characterName: snapshot.characterName,
-    selectedRace: snapshot.selectedRace,
-    selectedSubrace: snapshot.selectedSubrace,
-    selectedBackground: snapshot.selectedBackground,
-    selectedClass: snapshot.selectedClass,
-    selectedSubclass: snapshot.selectedSubclass,
-    selectedLevel: snapshot.selectedLevel,
-    selectedSpellCount: snapshot.selectedSpellIds.length,
-    selectedClassFeatureCount: snapshot.selectedClassFeatureIds.length,
-    activeClassFeatureCount: snapshot.activeClassFeatureIds.length,
-    selectedSkillCount: snapshot.selectedClassSkills.length,
-    featCount: snapshot.featSelections.length,
-  };
+  return createBuildSnapshotSummary(
+    snapshot as unknown as Record<string, unknown>
+  );
+}
+
+function getPartyMemberLabel(index: number | null) {
+  return index === null ? null : `Member ${index + 1}`;
+}
+
+function getDataCircleFocusKey(focus: DataCircleFocus) {
+  if (!focus) return null;
+
+  if (typeof focus === "string") return focus;
+
+  if (typeof focus === "object") {
+    const focusRecord = focus as Record<string, unknown>;
+    const readableParts = [
+      focusRecord.type,
+      focusRecord.itemId,
+      focusRecord.itemName,
+      focusRecord.label,
+      focusRecord.key,
+    ].filter((part): part is string => typeof part === "string" && part.length > 0);
+
+    if (readableParts.length > 0) return readableParts.join(":");
+  }
+
+  return "data-circle-focus";
 }
 
 function getClassSkillOptionsForBuild(
@@ -168,7 +236,10 @@ function cleanClassSkillSelectionsForBuild(args: {
   if (!selectedClass) return [];
 
   const classRule = classSkillRules[selectedClass];
-  const allowedOptions = getClassSkillOptionsForBuild(selectedClass, selectedRace);
+  const allowedOptions = getClassSkillOptionsForBuild(
+    selectedClass,
+    selectedRace
+  );
   const unavailable = new Set(unavailableClassSkillProficiencies);
 
   const maxClassSkills = classRule.choose + (selectedRace === "Human" ? 1 : 0);
@@ -304,40 +375,36 @@ function createUpdatedSavedBuild(
 
 function BuildPlanner() {
   const [simulatorStatus, setSimulatorStatus] =
-  useState<Bg3SimulatorStatus>("idle");
+    useState<Bg3SimulatorStatus>("idle");
+  const [simulatorError, setSimulatorError] = useState<string | null>(null);
+  const [simulatorDprRounds, setSimulatorDprRounds] = useState<DprRound[]>([]);
 
-const [simulatorError, setSimulatorError] = useState<string | null>(null);
+  const simulatorAverageDpr = useMemo(
+    () => getAverageDpr(simulatorDprRounds),
+    [simulatorDprRounds]
+  );
 
-const [simulatorDprRounds, setSimulatorDprRounds] = useState<DprRound[]>([]);
-
-const simulatorAverageDpr = useMemo(
-  () => getAverageDpr(simulatorDprRounds),
-  [simulatorDprRounds]
-);
   const [showPartyPlanner, setShowPartyPlanner] = useState(true);
   const [focusedDataCircle, setFocusedDataCircle] =
     useState<DataCircleFocusSource>("editor");
-const [dataCircleFocus, setDataCircleFocus] =
-  useState<DataCircleFocus>(null);
+  const [dataCircleFocus, setDataCircleFocus] =
+    useState<DataCircleFocus>(null);
   const [isProcessSpiralExpanded, setIsProcessSpiralExpanded] =
     useState(false);
-
   const [focusedSavedBuild, setFocusedSavedBuild] =
     useState<SavedBuild | null>(null);
-
   const [editingPartySlotIndex, setEditingPartySlotIndex] = useState<
     number | null
   >(null);
-
   const [activeTab, setActiveTab] = useState<TabId>("character");
 
   const [buildName, setBuildName] = useState("");
   const [characterName, setCharacterName] = useState("");
   const [selectedRace, setSelectedRace] = useState<RaceName | "">("");
   const [selectedSubrace, setSelectedSubrace] = useState("");
-  const [selectedBackground, setSelectedBackground] = useState<Background | "">(
-    ""
-  );
+  const [selectedBackground, setSelectedBackground] = useState<
+    Background | ""
+  >("");
   const [selectedClass, setSelectedClass] = useState<ClassName | "">("");
   const [selectedSubclass, setSelectedSubclass] = useState("");
   const [selectedLevel, setSelectedLevel] = useState(12);
@@ -389,8 +456,17 @@ const [dataCircleFocus, setDataCircleFocus] =
 
   const [hasEvaluatedBuild, setHasEvaluatedBuild] = useState(false);
 
+  const latestVisualizationFocusRef =
+    useRef<RecentVisualizationFocusContext | null>(null);
+  const latestPartyGapRef = useRef<RecentPartyGapContext | null>(null);
+  const latestEvaluationRef = useRef<RecentEvaluationContext | null>(null);
+  const latestAggregateFocusRef = useRef<RecentAggregateFocusContext | null>(null);
+  const firstPostEvaluationEditLoggedRef = useRef(false);
+  const lastLoggedPartySnapshotHashRef = useRef<string | null>(null);
+
   const isAggregateFocused = focusedDataCircle === "aggregate";
   const isEditingPartySlot = editingPartySlotIndex !== null;
+  const activePartyMemberLabel = getPartyMemberLabel(editingPartySlotIndex);
 
   const focusedLabel = isAggregateFocused
     ? "Aggregate"
@@ -640,15 +716,165 @@ const [dataCircleFocus, setDataCircleFocus] =
     ]
   );
 
+  const currentEditorVisualItems = useMemo(
+    () => getVisualizedItemsForSnapshot(currentEditorSnapshot),
+    [currentEditorSnapshot]
+  );
+
   const partyAggregateItems = useMemo(
     () => [
-      ...getVisualizedItemsForSnapshot(currentEditorSnapshot),
+      ...currentEditorVisualItems,
       ...partySlots.flatMap((slot) =>
         slot ? getVisualizedItemsForSnapshot(slot.snapshot) : []
       ),
     ],
-    [currentEditorSnapshot, partySlots]
+    [currentEditorVisualItems, partySlots]
   );
+
+  const partySlotsForLogging = useMemo(
+    () =>
+      partySlots.map((slot) =>
+        slot
+          ? {
+              id: slot.id,
+              label: slot.label,
+              snapshot: slot.snapshot as unknown as Record<string, unknown>,
+            }
+          : null
+      ),
+    [partySlots]
+  );
+
+  const partySnapshotSummary = useMemo(
+    () =>
+      createPartySnapshotSummary({
+        focusedBuild:
+          currentEditorSnapshot as unknown as Record<string, unknown>,
+        focusedBuildId: focusedSavedBuild?.id ?? null,
+        focusedBuildLabel: focusedLabel,
+        partySlots: partySlotsForLogging,
+      }),
+    [
+      currentEditorSnapshot,
+      focusedSavedBuild?.id,
+      focusedLabel,
+      partySlotsForLogging,
+    ]
+  );
+
+  const partyVisualProfile = useMemo(
+    () =>
+      createVisualProfileSummary(
+        partyAggregateItems as unknown as VisualizedItemForLogging[]
+      ),
+    [partyAggregateItems]
+  );
+
+  const partyCoverageForLogging = useMemo(
+    () =>
+      createPartyCoverageForLogging({
+        partySnapshotSummary,
+        partyVisualProfile,
+      }),
+    [partySnapshotSummary, partyVisualProfile]
+  );
+
+  const finalPartyReady =
+    selectedClass !== "" && partySlots.every((slot) => Boolean(slot));
+
+  function createFocusToActionContext(nowMs: number) {
+    const context = latestVisualizationFocusRef.current;
+
+    if (!context) return null;
+
+    const latencyMs = nowMs - context.startedAtMs;
+
+    if (latencyMs < 0 || latencyMs > FOCUS_TO_ACTION_WINDOW_MS) {
+      return null;
+    }
+
+    return {
+      focus: context.focus,
+      focusKey: context.focusKey,
+      focusSource: context.focusSource,
+      focusActiveView: context.activeView,
+      focusStartedAtMs: context.startedAtMs,
+      focusToActionLatencyMs: latencyMs,
+      focusPartySnapshotHash: context.partySnapshotHash,
+    };
+  }
+
+  function createPartyGapResponseContext(nowMs: number) {
+    const context = latestPartyGapRef.current;
+
+    if (!context || context.partyGaps.length === 0) return null;
+
+    const latencyMs = nowMs - context.detectedAtMs;
+
+    if (latencyMs < 0 || latencyMs > PARTY_GAP_RESPONSE_WINDOW_MS) {
+      return null;
+    }
+
+    return {
+      partyGapSnapshotHash: context.partySnapshotHash,
+      partyGapsAtLastDetection: context.partyGaps,
+      partyGapCountAtLastDetection: context.partyGaps.length,
+      partyGapDetectedAtMs: context.detectedAtMs,
+      gapToEditLatencyMs: latencyMs,
+      redundancyScoreAtLastDetection: context.redundancyScore,
+    };
+  }
+
+  function createEvaluationResponseContext(nowMs: number) {
+    const context = latestEvaluationRef.current;
+
+    if (!context || context.status !== "completed" || !context.completedAtMs) {
+      return null;
+    }
+
+    const latencyMs = nowMs - context.completedAtMs;
+
+    if (latencyMs < 0 || latencyMs > EVALUATION_RESPONSE_WINDOW_MS) {
+      return null;
+    }
+
+    return {
+      simulatorBuildName: context.simulatorBuildName,
+      evaluatedBuildSnapshotHash: context.buildSnapshotHash,
+      evaluatedPartySnapshotHash: context.partySnapshotHash,
+      evaluationRequestedAtMs: context.requestedAtMs,
+      evaluationCompletedAtMs: context.completedAtMs,
+      evaluationToEditLatencyMs: latencyMs,
+      averageDpr: context.averageDpr ?? null,
+      totalDamage: context.totalDamage ?? null,
+      roundCount: context.roundCount ?? null,
+      isFirstPostEvaluationEdit: !firstPostEvaluationEditLoggedRef.current,
+    };
+  }
+
+  function createAggregateToMemberRevisionContext(nowMs: number) {
+    const context = latestAggregateFocusRef.current;
+
+    if (!context || isAggregateFocused) return null;
+
+    const latencyMs = nowMs - context.focusedAtMs;
+
+    if (
+      latencyMs < 0 ||
+      latencyMs > AGGREGATE_TO_MEMBER_REVISION_WINDOW_MS
+    ) {
+      return null;
+    }
+
+    return {
+      aggregateFocusedAtMs: context.focusedAtMs,
+      aggregateToMemberRevisionLatencyMs: latencyMs,
+      aggregatePartySnapshotHash: context.partySnapshotHash,
+      aggregatePartyGaps: context.partyGaps,
+      aggregatePartyGapCount: context.partyGaps.length,
+      aggregateRedundancyScore: context.redundancyScore,
+    };
+  }
 
   function logCurrentBuildEdit(
     field: string,
@@ -658,23 +884,183 @@ const [dataCircleFocus, setDataCircleFocus] =
   ) {
     if (areLogValuesEqual(oldValue, newValue)) return;
 
+    const nextSnapshotPatch =
+      extraPayload.nextSnapshotPatch &&
+      typeof extraPayload.nextSnapshotPatch === "object"
+        ? (extraPayload.nextSnapshotPatch as Partial<BuildEditorSnapshot>)
+        : {};
+
+    const nextSnapshot = {
+      ...currentEditorSnapshot,
+      [field]: newValue,
+      ...nextSnapshotPatch,
+    } as BuildEditorSnapshot;
+
+    const nextItems = getVisualizedItemsForSnapshot(nextSnapshot);
+    const nowMs = Date.now();
+    const focusToActionContext = createFocusToActionContext(nowMs);
+    const partyGapResponseContext = createPartyGapResponseContext(nowMs);
+    const evaluationResponseContext = createEvaluationResponseContext(nowMs);
+    const aggregateToMemberRevisionContext =
+      createAggregateToMemberRevisionContext(nowMs);
+    const { nextSnapshotPatch: _discardedPatch, ...loggingExtraPayload } =
+      extraPayload;
+
+    const detailedPayload = createBuildEditLoggingPayload({
+      field,
+      oldValue,
+      newValue,
+      previousSnapshot:
+        currentEditorSnapshot as unknown as Record<string, unknown>,
+      nextSnapshot: nextSnapshot as unknown as Record<string, unknown>,
+      previousItems:
+        currentEditorVisualItems as unknown as VisualizedItemForLogging[],
+      nextItems: nextItems as unknown as VisualizedItemForLogging[],
+      extraPayload: {
+        focusedLabel,
+        isAggregateFocused,
+        editingPartySlotIndex,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        activeDataCircleFocus: dataCircleFocus,
+        activeDataCircleFocusKey: getDataCircleFocusKey(dataCircleFocus),
+        focusToActionContext,
+        partyGapResponseContext,
+        evaluationResponseContext,
+        aggregateToMemberRevisionContext,
+        ...loggingExtraPayload,
+      },
+    });
+
     logStudyEvent({
       eventCategory: "build_edit",
       eventType: "build_edit",
       activeBuildId: focusedSavedBuild?.id,
       activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
       activeView: activeTab,
-      payload: {
-        field,
-        oldValue,
-        newValue,
-        focusedLabel,
-        isAggregateFocused,
-        editingPartySlotIndex,
-        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-        ...extraPayload,
-      },
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+      payload: detailedPayload,
     });
+
+    if (detailedPayload.visualProfileDelta) {
+      logStudyEvent({
+        eventCategory: "build_edit",
+        eventType: "build_semantic_delta",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: activeTab,
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+        payload: {
+          field,
+          previousSnapshotHash: detailedPayload.previousSnapshotHash,
+          nextSnapshotHash: detailedPayload.nextSnapshotHash,
+          snapshotDiff: detailedPayload.snapshotDiff,
+          visualProfileDelta: detailedPayload.visualProfileDelta,
+          focusToActionContext,
+          partyGapResponseContext,
+          evaluationResponseContext,
+          aggregateToMemberRevisionContext,
+          partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        },
+      });
+    }
+
+    if (focusToActionContext) {
+      logStudyEvent({
+        eventCategory: "visualization",
+        eventType: "data_circle_focus_to_action",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: activeTab,
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: focusToActionContext.focusKey,
+        payload: {
+          actionType: "build_edit",
+          field,
+          previousSnapshotHash: detailedPayload.previousSnapshotHash,
+          nextSnapshotHash: detailedPayload.nextSnapshotHash,
+          visualProfileDelta: detailedPayload.visualProfileDelta,
+          ...focusToActionContext,
+        },
+      });
+    }
+
+    if (partyGapResponseContext) {
+      logStudyEvent({
+        eventCategory: "party",
+        eventType: "party_gap_response_edit",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: activeTab,
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+        payload: {
+          actionType: "build_edit",
+          field,
+          previousSnapshotHash: detailedPayload.previousSnapshotHash,
+          nextSnapshotHash: detailedPayload.nextSnapshotHash,
+          visualProfileDelta: detailedPayload.visualProfileDelta,
+          ...partyGapResponseContext,
+        },
+      });
+    }
+
+    if (aggregateToMemberRevisionContext) {
+      logStudyEvent({
+        eventCategory: "party",
+        eventType: "aggregate_to_member_revision",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: activeTab,
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+        payload: {
+          actionType: "build_edit",
+          field,
+          previousSnapshotHash: detailedPayload.previousSnapshotHash,
+          nextSnapshotHash: detailedPayload.nextSnapshotHash,
+          visualProfileDelta: detailedPayload.visualProfileDelta,
+          ...aggregateToMemberRevisionContext,
+        },
+      });
+    }
+
+    if (evaluationResponseContext) {
+      logStudyEvent({
+        eventCategory: "evaluation",
+        eventType: "post_evaluation_edit",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: activeTab,
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+        payload: {
+          actionType: "build_edit",
+          field,
+          previousSnapshotHash: detailedPayload.previousSnapshotHash,
+          nextSnapshotHash: detailedPayload.nextSnapshotHash,
+          visualProfileDelta: detailedPayload.visualProfileDelta,
+          ...evaluationResponseContext,
+        },
+      });
+
+      firstPostEvaluationEditLoggedRef.current = true;
+    }
   }
 
   function createLoggedSetter<T>(
@@ -692,6 +1078,65 @@ const [dataCircleFocus, setDataCircleFocus] =
       logCurrentBuildEdit(field, currentValue, nextValue, extraPayload);
       setter(nextValue);
     };
+  }
+
+  function handleDataCircleFocusChange(
+    nextValueOrUpdater: SetStateAction<DataCircleFocus>
+  ) {
+    const nextFocus =
+      typeof nextValueOrUpdater === "function"
+        ? (nextValueOrUpdater as (previousValue: DataCircleFocus) => DataCircleFocus)(
+            dataCircleFocus
+          )
+        : nextValueOrUpdater;
+
+    if (areLogValuesEqual(dataCircleFocus, nextFocus)) {
+      setDataCircleFocus(nextFocus);
+      return;
+    }
+
+    const nextFocusKey = getDataCircleFocusKey(nextFocus);
+
+    const activeCircleView = isAggregateFocused
+      ? "aggregate-data-circle"
+      : "main-data-circle";
+
+    logStudyEvent({
+      eventCategory: "visualization",
+      eventType: nextFocus ? "data_circle_focus_selected" : "data_circle_focus_cleared",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeView: activeCircleView,
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: nextFocusKey,
+      payload: {
+        previousFocus: dataCircleFocus,
+        previousFocusKey: getDataCircleFocusKey(dataCircleFocus),
+        nextFocus,
+        nextFocusKey,
+        focusedLabel,
+        focusSource: focusedDataCircle,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      },
+    });
+
+    if (nextFocus) {
+      latestVisualizationFocusRef.current = {
+        focus: nextFocus,
+        focusKey: nextFocusKey,
+        focusSource: focusedDataCircle,
+        activeView: activeCircleView,
+        focusedLabel,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        startedAtMs: Date.now(),
+      };
+    } else {
+      latestVisualizationFocusRef.current = null;
+    }
+
+    setDataCircleFocus(nextFocus);
   }
 
   useEffect(() => {
@@ -739,36 +1184,87 @@ const [dataCircleFocus, setDataCircleFocus] =
     const featLevels = getFeatLevelsForClass(selectedClass, selectedLevel);
     setFeatSelections((current) => cleanFeatSelections(current, featLevels));
   }, [selectedClass, selectedLevel]);
-useEffect(() => {
-  setHasEvaluatedBuild(false);
-  setSimulatorStatus("idle");
-  setSimulatorError(null);
-  setSimulatorDprRounds([]);
-}, [
-  buildName,
-  characterName,
-  selectedRace,
-  selectedSubrace,
-  selectedBackground,
-  selectedClass,
-  selectedSubclass,
-  selectedLevel,
-  selectedClassSkills,
-  bardExpertise,
-  rogueExpertise,
-  loreBardSkills,
-  knowledgeClericExpertise,
-  rangerFavouredEnemy,
-  rangerNaturalExplorer,
-  selectedWarlockInvocations,
-  selectedSpellIds,
-  selectedClassFeatureIds,
-  activeClassFeatureIds,
-  baseAbilityScores,
-  bonusPlusTwo,
-  bonusPlusOne,
-  featSelections,
-]);
+
+  useEffect(() => {
+    setHasEvaluatedBuild(false);
+    setSimulatorStatus("idle");
+    setSimulatorError(null);
+    setSimulatorDprRounds([]);
+  }, [currentEditorSnapshot]);
+
+  useEffect(() => {
+    if (
+      lastLoggedPartySnapshotHashRef.current ===
+      partySnapshotSummary.partySnapshotHash
+    ) {
+      return;
+    }
+
+    lastLoggedPartySnapshotHashRef.current =
+      partySnapshotSummary.partySnapshotHash;
+
+    const nowMs = Date.now();
+    const partyGaps = partyCoverageForLogging.partyGaps;
+
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "party_coverage_updated",
+      activeView: "party-aggregate",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeFocusSource: focusedDataCircle,
+      payload: {
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partySnapshotSummary,
+        partyVisualProfile,
+        partyGaps,
+        partyGapCount: partyGaps.length,
+        redundancyScore: partyCoverageForLogging.redundancyScore,
+        filledPartySlotCount: partySnapshotSummary.filledPartySlotCount,
+        totalPartyMemberCount: partySnapshotSummary.totalPartyMemberCount,
+      },
+    });
+
+    if (partyGaps.length > 0) {
+      latestPartyGapRef.current = {
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partyGaps,
+        redundancyScore: partyCoverageForLogging.redundancyScore,
+        detectedAtMs: nowMs,
+      };
+
+      logStudyEvent({
+        eventCategory: "party",
+        eventType: "party_gap_detected",
+        activeView: "party-aggregate",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeFocusSource: focusedDataCircle,
+        payload: {
+          partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+          partyGaps,
+          partyGapCount: partyGaps.length,
+          partyVisualProfile,
+          redundancyScore: partyCoverageForLogging.redundancyScore,
+        },
+      });
+    } else {
+      latestPartyGapRef.current = null;
+    }
+  }, [
+    partySnapshotSummary.partySnapshotHash,
+    partyVisualProfile,
+    partyCoverageForLogging,
+    focusedSavedBuild?.id,
+    focusedLabel,
+    editingPartySlotIndex,
+    activePartyMemberLabel,
+    focusedDataCircle,
+  ]);
 
   function appendBuildHistory(
     savedBuild: SavedBuild,
@@ -837,6 +1333,12 @@ useEffect(() => {
     const race = value as RaceName | "";
 
     logCurrentBuildEdit("selectedRace", selectedRace, race, {
+      nextSnapshotPatch: {
+        selectedRace: race,
+        selectedSubrace: "",
+        selectedClassFeatureIds: [],
+        activeClassFeatureIds: [],
+      },
       resetFields: [
         "selectedSubrace",
         "selectedClassFeatureIds",
@@ -854,6 +1356,21 @@ useEffect(() => {
     const className = value as ClassName | "";
 
     logCurrentBuildEdit("selectedClass", selectedClass, className, {
+      nextSnapshotPatch: {
+        selectedClass: className,
+        selectedSubclass: "",
+        selectedClassSkills: [],
+        bardExpertise: [],
+        rogueExpertise: [],
+        loreBardSkills: [],
+        knowledgeClericExpertise: [],
+        rangerFavouredEnemy: "",
+        rangerNaturalExplorer: "",
+        selectedWarlockInvocations: [],
+        selectedSpellIds: [],
+        selectedClassFeatureIds: [],
+        activeClassFeatureIds: [],
+      },
       resetFields: [
         "selectedSubclass",
         "selectedClassSkills",
@@ -886,91 +1403,220 @@ useEffect(() => {
   }
 
   async function handleEvaluateBuild() {
-  if (isAggregateFocused || simulatorStatus === "loading") return;
+    if (isAggregateFocused || simulatorStatus === "loading") return;
 
-  const simulatorBuildName = getSimulatorBuildNameForSnapshot(
-    currentEditorSnapshot
-  );
+    const simulatorBuildName = getSimulatorBuildNameForSnapshot(
+      currentEditorSnapshot
+    );
+    const requestedAtMs = Date.now();
+    const buildSnapshotHash = createStableHash(currentEditorSnapshot, "build");
+    const focusKey = getDataCircleFocusKey(dataCircleFocus);
 
-  logStudyEvent({
-    eventCategory: "evaluation",
-    eventType: "evaluation_requested",
-    activeBuildId: focusedSavedBuild?.id,
-    activeBuildLabel: focusedLabel,
-    activeView: "main-data-circle",
-    payload: {
+    latestEvaluationRef.current = {
+      status: "started",
+      requestedAtMs,
+      simulatorBuildName,
+      buildSnapshotHash,
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    };
+    firstPostEvaluationEditLoggedRef.current = false;
+
+    const requestPayload = {
       resultSource: "bg3_simulator_api",
       simulatorBuildName,
       buildSnapshot: currentEditorSnapshot,
       buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-    },
-  });
-
-  setHasEvaluatedBuild(true);
-  setSimulatorStatus("loading");
-  setSimulatorError(null);
-
-  try {
-    const response = await runBg3PrioritySimulation({
-      build: simulatorBuildName,
-      max_rounds: 10,
-      rotation: [],
-      charname: characterName || "Player",
-      include_history: true,
-    });
-
-    const rounds = mapBg3SimulationToDprRounds(response);
-
-    if (!rounds.some((round) => round.damage > 0)) {
-      throw new Error(
-        "The simulator returned a response, but no round damage could be extracted yet. Check the response shape in the console."
-      );
-    }
-
-    setSimulatorDprRounds(rounds);
-    setSimulatorStatus("success");
+      buildSnapshotHash,
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      partySnapshotSummary,
+      partyVisualProfile,
+      partyGaps: partyCoverageForLogging.partyGaps,
+      focusToActionContext: createFocusToActionContext(requestedAtMs),
+    };
 
     logStudyEvent({
       eventCategory: "evaluation",
-      eventType: "evaluation_completed",
+      eventType: "evaluation_requested",
       activeBuildId: focusedSavedBuild?.id,
       activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
       activeView: "main-data-circle",
-      payload: {
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: focusKey,
+      taskPhase: "evaluation",
+      payload: requestPayload,
+    });
+
+    logStudyEvent({
+      eventCategory: "evaluation",
+      eventType: "simulator_request_started",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeView: "main-data-circle",
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: focusKey,
+      taskPhase: "evaluation",
+      payload: requestPayload,
+    });
+
+    setHasEvaluatedBuild(true);
+    setSimulatorStatus("loading");
+    setSimulatorError(null);
+
+    try {
+      const response = await runBg3PrioritySimulation({
+        build: simulatorBuildName,
+        max_rounds: 10,
+        rotation: [],
+        charname: characterName || "Player",
+        include_history: true,
+      });
+
+      const rounds = mapBg3SimulationToDprRounds(response);
+
+      if (!rounds.some((round) => round.damage > 0)) {
+        throw new Error(
+          "The simulator returned a response, but no round damage could be extracted yet. Check the response shape in the console."
+        );
+      }
+
+      const completedAtMs = Date.now();
+      const totalDamage = rounds.reduce((sum, round) => sum + round.damage, 0);
+      const averageDpr = getAverageDpr(rounds);
+      const roundDamages = rounds.map((round) => round.damage);
+      const resultSummary = {
+        averageDpr,
+        totalDamage,
+        roundCount: rounds.length,
+        maxRoundDamage: Math.max(...roundDamages),
+        minRoundDamage: Math.min(...roundDamages),
+      };
+
+      latestEvaluationRef.current = {
+        status: "completed",
+        requestedAtMs,
+        completedAtMs,
+        simulatorBuildName,
+        buildSnapshotHash,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        averageDpr,
+        totalDamage,
+        roundCount: rounds.length,
+      };
+      firstPostEvaluationEditLoggedRef.current = false;
+
+      setSimulatorDprRounds(rounds);
+      setSimulatorStatus("success");
+
+      const completedPayload = {
         resultSource: "bg3_simulator_api",
         simulatorBuildName,
-        averageDpr: getAverageDpr(rounds),
+        averageDpr,
+        totalDamage,
         rounds,
+        resultSummary,
+        requestToCompletionMs: completedAtMs - requestedAtMs,
         buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-      },
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown simulator error.";
+        buildSnapshotHash,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partySnapshotSummary,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
+      };
 
-    console.error("BG3 simulator evaluation failed:", error);
+      logStudyEvent({
+        eventCategory: "evaluation",
+        eventType: "evaluation_completed",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: "main-data-circle",
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: focusKey,
+        taskPhase: "evaluation",
+        payload: completedPayload,
+      });
 
-    setSimulatorStatus("error");
-    setSimulatorError(message);
-    setSimulatorDprRounds([]);
+      logStudyEvent({
+        eventCategory: "evaluation",
+        eventType: "simulator_request_succeeded",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: "main-data-circle",
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: focusKey,
+        taskPhase: "evaluation",
+        payload: completedPayload,
+      });
+    } catch (error) {
+      const failedAtMs = Date.now();
+      const message =
+        error instanceof Error ? error.message : "Unknown simulator error.";
 
-    logStudyEvent({
-      eventCategory: "evaluation",
-      eventType: "evaluation_failed",
-      activeBuildId: focusedSavedBuild?.id,
-      activeBuildLabel: focusedLabel,
-      activeView: "main-data-circle",
-      payload: {
+      console.error("BG3 simulator evaluation failed:", error);
+
+      latestEvaluationRef.current = {
+        status: "failed",
+        requestedAtMs,
+        completedAtMs: failedAtMs,
+        simulatorBuildName,
+        buildSnapshotHash,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        errorMessage: message,
+      };
+
+      setSimulatorStatus("error");
+      setSimulatorError(message);
+      setSimulatorDprRounds([]);
+
+      const failedPayload = {
         resultSource: "bg3_simulator_api",
         simulatorBuildName,
         errorMessage: message,
+        requestToFailureMs: failedAtMs - requestedAtMs,
         buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-      },
-    });
+        buildSnapshotHash,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partySnapshotSummary,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
+      };
+
+      logStudyEvent({
+        eventCategory: "evaluation",
+        eventType: "evaluation_failed",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: "main-data-circle",
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: focusKey,
+        taskPhase: "evaluation",
+        payload: failedPayload,
+      });
+
+      logStudyEvent({
+        eventCategory: "evaluation",
+        eventType: "simulator_request_failed",
+        activeBuildId: focusedSavedBuild?.id,
+        activeBuildLabel: focusedLabel,
+        activePartyMemberIndex: editingPartySlotIndex,
+        activePartyMemberLabel,
+        activeView: "main-data-circle",
+        activeFocusSource: focusedDataCircle,
+        activeVisualizationFocus: focusKey,
+        taskPhase: "evaluation",
+        payload: failedPayload,
+      });
+    }
   }
-}
 
   function applyEditorSnapshot(
     snapshot: BuildEditorSnapshot,
@@ -1010,6 +1656,9 @@ useEffect(() => {
     setFocusedSavedBuild(sourceSavedBuild);
     setEditingPartySlotIndex(sourcePartySlotIndex);
     setFocusedDataCircle("editor");
+    setDataCircleFocus(null);
+    latestVisualizationFocusRef.current = null;
+    firstPostEvaluationEditLoggedRef.current = false;
     setHasEvaluatedBuild(false);
   }
 
@@ -1021,12 +1670,24 @@ useEffect(() => {
       eventType: "build_saved",
       activeBuildId: savedBuild.id,
       activeBuildLabel: savedBuild.label,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
       activeView: activeTab,
       payload: {
         savedBuildId: savedBuild.id,
         label: savedBuild.label,
         snapshot: savedBuild.snapshot,
         snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+        snapshotHash: createStableHash(savedBuild.snapshot, "build"),
+        parentBuildId: focusedSavedBuild?.id ?? null,
+        parentBuildLabel: focusedSavedBuild?.label ?? null,
+        parentSnapshotHash: focusedSavedBuild?.snapshot
+          ? createStableHash(focusedSavedBuild.snapshot, "build")
+          : null,
+        createdFromPartySlotIndex: editingPartySlotIndex,
+        createdFromPartySlotLabel: activePartyMemberLabel,
+        focusToActionContext: createFocusToActionContext(Date.now()),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       },
     });
 
@@ -1057,13 +1718,22 @@ useEffect(() => {
       eventType: "build_overwritten",
       activeBuildId: updatedBuild.id,
       activeBuildLabel: updatedBuild.label,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
       activeView: activeTab,
       payload: {
         savedBuildId: updatedBuild.id,
         label: updatedBuild.label,
         previousSnapshotSummary: getSnapshotSummary(existingBuild.snapshot),
+        previousSnapshotHash: createStableHash(existingBuild.snapshot, "build"),
         nextSnapshot: updatedBuild.snapshot,
         nextSnapshotSummary: getSnapshotSummary(updatedBuild.snapshot),
+        nextSnapshotHash: createStableHash(updatedBuild.snapshot, "build"),
+        parentBuildId: existingBuild.id,
+        parentBuildLabel: existingBuild.label,
+        editDistanceSource: "overwrite_saved_build",
+        focusToActionContext: createFocusToActionContext(Date.now()),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       },
     });
 
@@ -1092,7 +1762,9 @@ useEffect(() => {
         savedBuildId: savedBuild.id,
         label: savedBuild.label,
         previousFocusedLabel: focusedLabel,
+        previousPartySnapshotHash: partySnapshotSummary.partySnapshotHash,
         snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+        snapshotHash: createStableHash(savedBuild.snapshot, "build"),
       },
     });
 
@@ -1113,13 +1785,22 @@ useEffect(() => {
       eventType: "party_slot_assigned",
       activeBuildId: savedBuild.id,
       activeBuildLabel: savedBuild.label,
+      activePartyMemberIndex: slotIndex,
+      activePartyMemberLabel: getPartyMemberLabel(slotIndex),
       activeView: "saved-builds-panel",
       payload: {
+        previousFocusSource: focusedDataCircle,
+        nextFocusSource: "editor",
+        focusTarget: "party-slot",
         slotIndex,
         slotNumber: slotIndex + 1,
         savedBuildId: savedBuild.id,
         label: savedBuild.label,
         snapshotSummary: getSnapshotSummary(savedBuild.snapshot),
+        snapshotHash: createStableHash(savedBuild.snapshot, "build"),
+        previousPartySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
       },
     });
 
@@ -1137,18 +1818,31 @@ useEffect(() => {
 
     logStudyEvent({
       eventCategory: "party",
-      eventType: "party_slot_focused",
+      eventType: "party_focus_changed",
       activeBuildId: selectedSlotBuild.id,
       activeBuildLabel: selectedSlotBuild.label,
+      activePartyMemberIndex: slotIndex,
+      activePartyMemberLabel: getPartyMemberLabel(slotIndex),
       activeView: "party-dock",
       payload: {
         slotIndex,
         slotNumber: slotIndex + 1,
         incomingBuildId: selectedSlotBuild.id,
         incomingBuildLabel: selectedSlotBuild.label,
+        incomingSnapshotHash: createStableHash(
+          selectedSlotBuild.snapshot,
+          "build"
+        ),
         outgoingBuildId: outgoingFocusedBuild.id,
         outgoingBuildLabel: outgoingFocusedBuild.label,
+        outgoingSnapshotHash: createStableHash(
+          outgoingFocusedBuild.snapshot,
+          "build"
+        ),
         interactionMode: "swap_focused_build_with_party_slot",
+        previousPartySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
       },
     });
 
@@ -1170,40 +1864,69 @@ useEffect(() => {
   function handleFocusAggregate() {
     logStudyEvent({
       eventCategory: "party",
-      eventType: "aggregate_focused",
+      eventType: "party_focus_changed",
       activeView: "focus-selector",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activeFocusSource: "aggregate",
       payload: {
+        previousFocusSource: focusedDataCircle,
+        nextFocusSource: "aggregate",
+        focusTarget: "aggregate",
         focusedBuildSummary: getSnapshotSummary(currentEditorSnapshot),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partySnapshotSummary,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
+        redundancyScore: partyCoverageForLogging.redundancyScore,
         assignedPartySlots: partySlots.map((slot, index) => ({
           slotIndex: index,
           slotNumber: index + 1,
           savedBuildId: slot?.id ?? null,
           label: slot?.label ?? null,
+          snapshotHash: slot?.snapshot
+            ? createStableHash(slot.snapshot, "build")
+            : null,
         })),
       },
     });
+
+    latestAggregateFocusRef.current = {
+      focusedAtMs: Date.now(),
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      partyGaps: partyCoverageForLogging.partyGaps,
+      redundancyScore: partyCoverageForLogging.redundancyScore,
+    };
 
     persistFocusedBuildIfSaved();
     setFocusedDataCircle("aggregate");
     setEditingPartySlotIndex(null);
     setDataCircleFocus(null);
+    latestVisualizationFocusRef.current = null;
   }
 
   function handleFocusCurrentEditor() {
     logStudyEvent({
       eventCategory: "party",
-      eventType: "editable_focused",
+      eventType: "party_focus_changed",
       activeBuildId: focusedSavedBuild?.id,
       activeBuildLabel: focusedLabel,
       activeView: "focus-selector",
+      activeFocusSource: "editor",
       payload: {
+        previousFocusSource: focusedDataCircle,
+        nextFocusSource: "editor",
+        focusTarget: "editable",
         focusedLabel,
         snapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+        snapshotHash: createStableHash(currentEditorSnapshot, "build"),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       },
     });
 
     setFocusedDataCircle("editor");
-        setDataCircleFocus(null);
+    setDataCircleFocus(null);
+    latestVisualizationFocusRef.current = null;
   }
 
   function handleClearPartySlot(slotIndex: number) {
@@ -1214,12 +1937,20 @@ useEffect(() => {
       eventType: "party_slot_cleared",
       activeBuildId: clearedSlot?.id,
       activeBuildLabel: clearedSlot?.label,
+      activePartyMemberIndex: slotIndex,
+      activePartyMemberLabel: getPartyMemberLabel(slotIndex),
       activeView: "saved-builds-panel",
       payload: {
         slotIndex,
         slotNumber: slotIndex + 1,
         clearedBuildId: clearedSlot?.id ?? null,
         clearedBuildLabel: clearedSlot?.label ?? null,
+        clearedSnapshotHash: clearedSlot?.snapshot
+          ? createStableHash(clearedSlot.snapshot, "build")
+          : null,
+        previousPartySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
       },
     });
 
@@ -1244,6 +1975,10 @@ useEffect(() => {
         snapshotSummary: deletedBuild
           ? getSnapshotSummary(deletedBuild.snapshot)
           : null,
+        snapshotHash: deletedBuild?.snapshot
+          ? createStableHash(deletedBuild.snapshot, "build")
+          : null,
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       },
     });
 
@@ -1280,6 +2015,8 @@ useEffect(() => {
         savedBuildId: historyEntry.savedBuildId,
         label: historyEntry.label,
         snapshotSummary: getSnapshotSummary(historyEntry.snapshot),
+        snapshotHash: createStableHash(historyEntry.snapshot, "build"),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       },
     });
 
@@ -1311,6 +2048,8 @@ useEffect(() => {
         sourceSavedBuildId: historyEntry.savedBuildId,
         snapshot: restoredBuild.snapshot,
         snapshotSummary: getSnapshotSummary(restoredBuild.snapshot),
+        snapshotHash: createStableHash(restoredBuild.snapshot, "build"),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       },
     });
 
@@ -1340,6 +2079,8 @@ useEffect(() => {
       eventType: "party_slot_assigned",
       activeBuildId: restoredBuild.id,
       activeBuildLabel: restoredBuild.label,
+      activePartyMemberIndex: slotIndex,
+      activePartyMemberLabel: getPartyMemberLabel(slotIndex),
       activeView: "process-spiral",
       payload: {
         slotIndex,
@@ -1349,6 +2090,10 @@ useEffect(() => {
         sourceHistoryEntryId: historyEntry.id,
         sourceSavedBuildId: historyEntry.savedBuildId,
         snapshotSummary: getSnapshotSummary(restoredBuild.snapshot),
+        snapshotHash: createStableHash(restoredBuild.snapshot, "build"),
+        previousPartySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
       },
     });
 
@@ -1359,6 +2104,46 @@ useEffect(() => {
     );
 
     appendBuildHistory(restoredBuild, "created");
+  }
+
+  function handleSubmitFinalParty() {
+    logStudyEvent({
+      eventCategory: "task",
+      eventType: "final_party_submitted",
+      activeView: "study-logging-panel",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeFocusSource: focusedDataCircle,
+      taskPhase: "submission",
+      payload: {
+        focusedBuild: currentEditorSnapshot,
+        focusedBuildSummary: getSnapshotSummary(currentEditorSnapshot),
+        focusedBuildHash: createStableHash(currentEditorSnapshot, "build"),
+        partySlots: partySlots.map((slot, index) => ({
+          slotIndex: index,
+          slotNumber: index + 1,
+          savedBuildId: slot?.id ?? null,
+          label: slot?.label ?? null,
+          snapshot: slot?.snapshot ?? null,
+          snapshotHash: slot?.snapshot
+            ? createStableHash(slot.snapshot, "build")
+            : null,
+          snapshotSummary: slot?.snapshot
+            ? getSnapshotSummary(slot.snapshot)
+            : null,
+        })),
+        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+        partySnapshotSummary,
+        partyVisualProfile,
+        partyGaps: partyCoverageForLogging.partyGaps,
+        redundancyScore: partyCoverageForLogging.redundancyScore,
+        simulatorStatus,
+        simulatorAverageDpr,
+        simulatorDprRounds,
+      },
+    });
   }
 
   const partyDockItems: PartyDockItem[] = [
@@ -1381,11 +2166,13 @@ useEffect(() => {
   ];
 
   return (
-    <main className="workspace-page">
+    <main className="workspace-page" data-study-region="workspace-page">
+      <StudyHeatmapCapture activeView={activeTab} />
       <section
         className={`workspace-half planner-half ${
           isAggregateFocused ? "planner-half--readonly-focus" : ""
         } ${isProcessSpiralExpanded ? "planner-half--process-expanded" : ""}`}
+        data-study-region="planner-half"
       >
         {isProcessSpiralExpanded ? (
           <ProcessSpiralPanel
@@ -1403,7 +2190,7 @@ useEffect(() => {
           />
         ) : (
           <>
-            <header className="workspace-header">
+            <header className="workspace-header" data-study-region="workspace-header">
               <div>
                 <p className="eyebrow">BG3 Build Planner</p>
                 <h1>Build Creation</h1>
@@ -1414,6 +2201,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleEvaluateBuild}
                 disabled={isAggregateFocused}
+                data-study-id="evaluate-build-button"
                 title={
                   isAggregateFocused
                     ? "Aggregate is a read-only calculated preview."
@@ -1421,14 +2209,18 @@ useEffect(() => {
                 }
               >
                 {simulatorStatus === "loading"
-  ? "Running Simulator..."
-  : hasEvaluatedBuild
-    ? "Re-evaluate Build"
-    : "Evaluate Build"}
+                  ? "Running Simulator..."
+                  : hasEvaluatedBuild
+                    ? "Re-evaluate Build"
+                    : "Evaluate Build"}
               </button>
             </header>
 
-            <nav className="tab-bar" aria-label="Build creation sections">
+            <nav
+              className="tab-bar"
+              aria-label="Build creation sections"
+              data-study-region="planner-tabs"
+            >
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -1437,12 +2229,19 @@ useEffect(() => {
                     if (activeTab === tab.id) return;
 
                     logStudyEvent({
-                      eventCategory: "visualization",
-                      eventType: "planner_tab_changed",
+                      eventCategory: "navigation",
+                      eventType: "tab_changed",
                       activeView: "build-planner",
+                      activeBuildId: focusedSavedBuild?.id,
+                      activeBuildLabel: focusedLabel,
+                      activePartyMemberIndex: editingPartySlotIndex,
+                      activePartyMemberLabel,
                       payload: {
                         previousTab: activeTab,
                         nextTab: tab.id,
+                        activeFocusSource: focusedDataCircle,
+                        activeVisualizationFocus: getDataCircleFocusKey(dataCircleFocus),
+                        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
                       },
                     });
 
@@ -1450,14 +2249,21 @@ useEffect(() => {
                   }}
                   type="button"
                   disabled={isAggregateFocused}
+                  data-study-id={`planner-tab-${tab.id}`}
                 >
                   {tab.label}
                 </button>
               ))}
             </nav>
 
-            <div className="planner-content-layout">
-              <aside className="summary-card summary-card--compact">
+            <div
+              className="planner-content-layout"
+              data-study-region="planner-content-layout"
+            >
+              <aside
+                className="summary-card summary-card--compact"
+                data-study-region="current-build-summary"
+              >
                 <div className="summary-compact-header">
                   <h2>Current Build</h2>
                   <strong>{selectedLevel}</strong>
@@ -1493,6 +2299,7 @@ useEffect(() => {
                 <section
                   className="focus-selector"
                   aria-label="Focused data circle"
+                  data-study-region="focus-selector"
                 >
                   <div className="focus-selector-header">
                     <span>Big circle focus</span>
@@ -1508,6 +2315,7 @@ useEffect(() => {
                           : "focus-selector-button"
                       }
                       onClick={handleFocusCurrentEditor}
+                      data-study-id="party-editable-focus"
                     >
                       Editable
                     </button>
@@ -1520,6 +2328,7 @@ useEffect(() => {
                           : "focus-selector-button focus-selector-button--aggregate"
                       }
                       onClick={handleFocusAggregate}
+                      data-study-id="party-aggregate-focus"
                     >
                       Aggregate
                     </button>
@@ -1539,6 +2348,7 @@ useEffect(() => {
                           }
                           onClick={() => handleEditPartySlot(index)}
                           disabled={!slot || isAggregateFocused}
+                          data-study-id={`party-member-${index + 1}-focus`}
                           title={
                             slot
                               ? `Swap focused build with ${getSavedBuildTitle(
@@ -1580,12 +2390,6 @@ useEffect(() => {
                   }
                 />
 
-                <StudyLoggingPanel
-                  currentSnapshot={currentEditorSnapshot}
-                  partySlots={partySlots}
-                  focusedLabel={focusedLabel}
-                />
-
                 <SavedBuildsPanel
                   currentSnapshot={currentEditorSnapshot}
                   savedBuilds={savedBuilds}
@@ -1597,6 +2401,28 @@ useEffect(() => {
                   onClearPartySlot={handleClearPartySlot}
                   onDelete={handleDeleteSavedBuild}
                 />
+
+                <StudyLoggingPanel
+                  isPartyComplete={finalPartyReady}
+                  getFinalPayload={() => {
+                    handleSubmitFinalParty();
+
+                    return {
+                      finalPartyComplete: finalPartyReady,
+                      finalPartySnapshotSummary: partySnapshotSummary,
+                      finalPartyVisualProfile: partyVisualProfile,
+                      finalPartyGaps: partyCoverageForLogging.partyGaps,
+                      finalRedundancyScore: partyCoverageForLogging.redundancyScore,
+                      simulatorStatus,
+                      simulatorAverageDpr,
+                      simulatorDprRounds,
+                    };
+                  }}
+                  finalPartySnapshotSummary={partySnapshotSummary}
+                  finalPartyVisualProfile={partyVisualProfile}
+                  finalPartyGaps={partyCoverageForLogging.partyGaps}
+                  finalRedundancyScore={partyCoverageForLogging.redundancyScore}
+                />
               </aside>
 
               <section
@@ -1604,11 +2430,11 @@ useEffect(() => {
                   isAggregateFocused ? "main-panel--readonly-preview" : ""
                 }`}
                 aria-disabled={isAggregateFocused}
+                data-study-region="build-editor-panel"
               >
                 {isAggregateFocused ? (
                   <div className="main-panel-readonly-overlay">
-                    Viewing Aggregate. Select Editable or a party member to
-                    edit.
+                    Viewing Aggregate. Select Editable or a party member to edit.
                   </div>
                 ) : null}
 
@@ -1644,6 +2470,11 @@ useEffect(() => {
                         selectedSubrace,
                         value,
                         {
+                          nextSnapshotPatch: {
+                            selectedSubrace: value,
+                            selectedClassFeatureIds: [],
+                            activeClassFeatureIds: [],
+                          },
                           resetFields: [
                             "selectedClassFeatureIds",
                             "activeClassFeatureIds",
@@ -1760,34 +2591,34 @@ useEffect(() => {
 
                 {activeTab === "spellsAbilities" && (
                   <SpellsAbilitiesTab
-  selectedClass={selectedClass}
-  featSelections={featSelections}
-  selectedSubclass={selectedSubclass}
-  selectedLevel={selectedLevel}
-  selectedWarlockInvocations={selectedWarlockInvocations}
-  selectedSpellIds={selectedSpellIds}
-  setSelectedSpellIds={createLoggedSetter(
-    "selectedSpellIds",
-    selectedSpellIds,
-    setSelectedSpellIds
-  )}
-  availableClassFeatures={availableClassFeatures}
-  selectedClassFeatureIds={selectedClassFeatureIds}
-  fixedClassFeatureIds={fixedClassFeatureIds}
-  setSelectedClassFeatureIds={createLoggedSetter(
-    "selectedClassFeatureIds",
-    selectedClassFeatureIds,
-    setSelectedClassFeatureIds
-  )}
-  activeClassFeatureIds={activeClassFeatureIds}
-  setActiveClassFeatureIds={createLoggedSetter(
-    "activeClassFeatureIds",
-    activeClassFeatureIds,
-    setActiveClassFeatureIds
-  )}
-  spellChoiceMaxOverrides={spellChoiceMaxOverrides}
-  dataCircleFocus={dataCircleFocus}
-/>
+                    selectedClass={selectedClass}
+                    featSelections={featSelections}
+                    selectedSubclass={selectedSubclass}
+                    selectedLevel={selectedLevel}
+                    selectedWarlockInvocations={selectedWarlockInvocations}
+                    selectedSpellIds={selectedSpellIds}
+                    setSelectedSpellIds={createLoggedSetter(
+                      "selectedSpellIds",
+                      selectedSpellIds,
+                      setSelectedSpellIds
+                    )}
+                    availableClassFeatures={availableClassFeatures}
+                    selectedClassFeatureIds={selectedClassFeatureIds}
+                    fixedClassFeatureIds={fixedClassFeatureIds}
+                    setSelectedClassFeatureIds={createLoggedSetter(
+                      "selectedClassFeatureIds",
+                      selectedClassFeatureIds,
+                      setSelectedClassFeatureIds
+                    )}
+                    activeClassFeatureIds={activeClassFeatureIds}
+                    setActiveClassFeatureIds={createLoggedSetter(
+                      "activeClassFeatureIds",
+                      activeClassFeatureIds,
+                      setActiveClassFeatureIds
+                    )}
+                    spellChoiceMaxOverrides={spellChoiceMaxOverrides}
+                    dataCircleFocus={dataCircleFocus}
+                  />
                 )}
               </section>
             </div>
@@ -1795,17 +2626,22 @@ useEffect(() => {
         )}
       </section>
 
-      <section className="workspace-half visualisation-half visualisation-half--immersive">
+      <section
+        className="workspace-half visualisation-half visualisation-half--immersive"
+        data-study-region="visualisation-half"
+      >
         <div
           className={`visualisation-panel visualisation-panel--with-party-dock ${
             showPartyPlanner ? "" : "visualisation-panel--party-hidden"
           }`}
+          data-study-region="visualisation-panel"
         >
           <button
             type="button"
             className={`party-dock-toggle ${
               showPartyPlanner ? "party-dock-toggle--active" : ""
             }`}
+            data-study-id="party-dock-toggle"
             onClick={() => {
               const nextValue = !showPartyPlanner;
 
@@ -1813,9 +2649,14 @@ useEffect(() => {
                 eventCategory: "visualization",
                 eventType: "party_planner_toggled",
                 activeView: "visualisation-panel",
+                activeBuildId: focusedSavedBuild?.id,
+                activeBuildLabel: focusedLabel,
+                activePartyMemberIndex: editingPartySlotIndex,
+                activePartyMemberLabel,
                 payload: {
                   previousValue: showPartyPlanner,
                   nextValue,
+                  partySnapshotHash: partySnapshotSummary.partySnapshotHash,
                 },
               });
 
@@ -1825,23 +2666,30 @@ useEffect(() => {
             {showPartyPlanner ? "Hide party planner" : "Show party planner"}
           </button>
 
-          <div className="main-data-circle-frame">
+          <div
+            className="main-data-circle-frame"
+            data-study-region="main-data-circle-frame"
+          >
             {isAggregateFocused ? (
               <DataCircle
-                buildName="Party Aggregate"
-                characterName="Combined Party"
-                selectedClass=""
-                selectedSubclass="Aggregate"
-                selectedLevel={12}
-                selectedSpellIds={[]}
-                fixedClassFeatureIds={[]}
-                selectedClassFeatureIds={[]}
-                activeClassFeatureIds={[]}
-                showDprLayer={false}
-                visualizedItemsOverride={partyAggregateItems}
-              />
+  buildName="Party Aggregate"
+  characterName="Combined Party"
+  selectedClass=""
+  selectedSubclass="Aggregate"
+  selectedLevel={12}
+  selectedSpellIds={[]}
+  fixedClassFeatureIds={[]}
+  selectedClassFeatureIds={[]}
+  activeClassFeatureIds={[]}
+  showDprLayer={false}
+  visualizedItemsOverride={partyAggregateItems}
+  activePartyMemberIndex={null}
+  activePartyMemberLabel="Aggregate"
+  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+  setLinkedFocus={handleDataCircleFocusChange}
+/>
             ) : (
-<DataCircle
+              <DataCircle
   buildName={buildName}
   characterName={characterName}
   selectedClass={selectedClass}
@@ -1856,13 +2704,20 @@ useEffect(() => {
   averageDpr={simulatorAverageDpr}
   dprStatus={simulatorStatus}
   dprError={simulatorError}
-  setLinkedFocus={setDataCircleFocus}
+  activePartyMemberIndex={editingPartySlotIndex}
+  activePartyMemberLabel={activePartyMemberLabel}
+  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+  setLinkedFocus={handleDataCircleFocusChange}
 />
             )}
           </div>
 
           {showPartyPlanner && (
-            <section className="party-dock" aria-label="Party planner preview">
+            <section
+              className="party-dock"
+              aria-label="Party planner preview"
+              data-study-region="party-dock"
+            >
               <div className="party-dock-track">
                 {partyDockItems.map((slot, index) => {
                   const isDisabled = index > 0 && !slot.savedBuild;
@@ -1873,6 +2728,14 @@ useEffect(() => {
                         slot.isFocused ? "party-node--focused" : ""
                       }`}
                       key={slot.fallbackLabel}
+                      data-study-region={
+                        index === 0 ? "party-aggregate-node" : "party-member-node"
+                      }
+                      data-study-id={
+                        index === 0
+                          ? "party-node-aggregate"
+                          : `party-node-member-${index}`
+                      }
                       title={
                         slot.savedBuild
                           ? `${slot.fallbackLabel}: ${getSavedBuildTitle(
@@ -1886,6 +2749,11 @@ useEffect(() => {
                         className="party-node-side-label"
                         onClick={slot.onFocus}
                         disabled={isDisabled}
+                        data-study-id={
+                          index === 0
+                            ? "party-aggregate-focus-dock"
+                            : `party-member-${index}-focus-dock`
+                        }
                         title={
                           isDisabled
                             ? "Assign a saved build to this slot first."
@@ -1898,61 +2766,55 @@ useEffect(() => {
                       </button>
 
                       <div className="party-node-orb-shell">
-                        {index === 0 ? (
-                          <div className="party-node-circle">
-                            <DataCircle
-                              buildName="Party Aggregate"
-                              characterName="Combined Party"
-                              selectedClass=""
-                              selectedSubclass="Aggregate"
-                              selectedLevel={12}
-                              selectedSpellIds={[]}
-                              fixedClassFeatureIds={[]}
-                              selectedClassFeatureIds={[]}
-                              activeClassFeatureIds={[]}
-                              showDprLayer={false}
-                              visualizedItemsOverride={partyAggregateItems}
-                              variant="aggregate"
-                            />
-                          </div>
-                        ) : slot.savedBuild ? (
-                          <div className="party-node-circle">
-                            <DataCircle
-                              buildName={slot.savedBuild.snapshot.buildName}
-                              characterName={
-                                slot.savedBuild.snapshot.characterName
-                              }
-                              selectedClass={
-                                slot.savedBuild.snapshot.selectedClass
-                              }
-                              selectedSubclass={
-                                slot.savedBuild.snapshot.selectedSubclass
-                              }
-                              selectedLevel={
-                                slot.savedBuild.snapshot.selectedLevel
-                              }
-                              selectedSpellIds={
-                                slot.savedBuild.snapshot.selectedSpellIds
-                              }
-                              fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(
-                                slot.savedBuild.snapshot
-                              )}
-                              selectedClassFeatureIds={
-                                slot.savedBuild.snapshot.selectedClassFeatureIds
-                              }
-                              activeClassFeatureIds={
-                                slot.savedBuild.snapshot.activeClassFeatureIds
-                              }
-                              showDprLayer={false}
-                              variant="party"
-                            />
-                          </div>
-                        ) : (
-                          <div className="party-node-empty">
-                            <span>Empty</span>
-                          </div>
-                        )}
-                      </div>
+  {index === 0 ? (
+    <div className="party-node-circle">
+      <DataCircle
+        buildName="Party Aggregate"
+        characterName="Combined Party"
+        selectedClass=""
+        selectedSubclass="Aggregate"
+        selectedLevel={12}
+        selectedSpellIds={[]}
+        fixedClassFeatureIds={[]}
+        selectedClassFeatureIds={[]}
+        activeClassFeatureIds={[]}
+        showDprLayer={false}
+        visualizedItemsOverride={partyAggregateItems}
+        variant="aggregate"
+        activePartyMemberIndex={null}
+        activePartyMemberLabel="Aggregate"
+        partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+      />
+    </div>
+  ) : slot.savedBuild ? (
+    <div className="party-node-circle">
+      <DataCircle
+        buildName={slot.savedBuild.snapshot.buildName}
+        characterName={slot.savedBuild.snapshot.characterName}
+        selectedClass={slot.savedBuild.snapshot.selectedClass}
+        selectedSubclass={slot.savedBuild.snapshot.selectedSubclass}
+        selectedLevel={slot.savedBuild.snapshot.selectedLevel}
+        selectedSpellIds={slot.savedBuild.snapshot.selectedSpellIds}
+        fixedClassFeatureIds={getFixedClassFeatureIdsForSnapshot(
+          slot.savedBuild.snapshot
+        )}
+        selectedClassFeatureIds={
+          slot.savedBuild.snapshot.selectedClassFeatureIds
+        }
+        activeClassFeatureIds={slot.savedBuild.snapshot.activeClassFeatureIds}
+        showDprLayer={false}
+        variant="party"
+        activePartyMemberIndex={index - 1}
+        activePartyMemberLabel={`Member ${index}`}
+        partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+      />
+    </div>
+  ) : (
+    <div className="party-node-empty">
+      <span>Empty</span>
+    </div>
+  )}
+</div>
                     </article>
                   );
                 })}

@@ -26,6 +26,7 @@ import {
 import type { RoleData } from "../dataCircleTypes";
 
 type RoleDistributionLayerProps = {
+  svgInstanceId: string;
   roleData: RoleData;
   focus: DataCircleFocus;
   setFocus: Dispatch<SetStateAction<DataCircleFocus>>;
@@ -120,7 +121,6 @@ const SUBCATEGORY_LABELS: Record<
 const SUBCATEGORY_SHADE_COLORS: Record<AbilityRole, string> = {
   "single-target-damage": "rgba(255, 108, 93, 1)",
   "area-damage": "rgba(255, 143, 74, 1)",
-
   control: "rgba(91, 154, 255, 1)",
   "support-buff": "rgba(86, 199, 255, 1)",
   "defense-protection": "rgba(113, 181, 235, 1)",
@@ -133,6 +133,10 @@ const SUBCATEGORY_SHADE_COLORS: Record<AbilityRole, string> = {
 
 function getSafeId(value: string) {
   return value.replace(/[^a-zA-Z0-9-_]/g, "-");
+}
+
+function getScopedId(svgInstanceId: string, localId: string) {
+  return `${svgInstanceId}-${getSafeId(localId)}`;
 }
 
 function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
@@ -272,7 +276,7 @@ function getSubcategorySegments(
   startAngle: number,
   endAngle: number
 ): SubcategorySegment[] {
-  const total = keys.reduce((sum, key) => sum + counts[key], 0);
+  const total = keys.reduce((sum, key) => sum + (counts[key] ?? 0), 0);
   const sweep = endAngle - startAngle;
 
   if (total <= 0 || sweep <= 0) return [];
@@ -280,7 +284,7 @@ function getSubcategorySegments(
   let currentAngle = startAngle;
 
   return keys.flatMap((key) => {
-    const value = counts[key];
+    const value = counts[key] ?? 0;
 
     if (value <= 0) {
       return [];
@@ -373,65 +377,9 @@ function getSubcategoryFillOpacity(
   return index % 2 === 0 ? 0.48 : 0.38;
 }
 
-export function RoleDistributionLayer({
-  roleData,
-  focus,
-  setFocus,
-  relationshipIndex,
-  onToggleSelection,
-  selectedFocuses = [],
-  showSelectionMarks = false,
-}: RoleDistributionLayerProps) {
-  const damageAngle =
-    roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
-
-  const roleStartAngle = -90;
-  const clampedDamageAngle = Math.max(0.001, Math.min(359.999, damageAngle));
-  const utilityStartAngle = roleStartAngle + clampedDamageAngle;
-
-  const roleSegments: PrimaryRoleSegment[] =
-    roleData.total > 0
-      ? [
-          {
-            key: "damage",
-            ...ROLE_VISUALS.damage,
-            value: roleData.damageTotal,
-            startAngle: roleStartAngle,
-            endAngle: roleStartAngle + clampedDamageAngle,
-            subKeys: DAMAGE_ROLE_KEYS,
-          },
-          {
-            key: "utility",
-            ...ROLE_VISUALS.utility,
-            value: roleData.utilityTotal,
-            startAngle: utilityStartAngle,
-            endAngle: roleStartAngle + 360,
-            subKeys: UTILITY_ROLE_KEYS,
-          },
-        ]
-      : [
-          {
-            key: "damage",
-            ...ROLE_VISUALS.damage,
-            value: 0,
-            startAngle: -90,
-            endAngle: 90,
-            subKeys: DAMAGE_ROLE_KEYS,
-          },
-          {
-            key: "utility",
-            ...ROLE_VISUALS.utility,
-            value: 0,
-            startAngle: 90,
-            endAngle: 270,
-            subKeys: UTILITY_ROLE_KEYS,
-          },
-        ];
-
-  const activeFocus = hasActiveFocus(focus);
-
+function renderRoleBackground() {
   return (
-    <g className="data-circle-role-sigil">
+    <>
       <circle
         cx={CX}
         cy={CY}
@@ -468,11 +416,63 @@ export function RoleDistributionLayer({
         strokeWidth="34"
         strokeDasharray="1 12"
       />
+    </>
+  );
+}
+
+export function RoleDistributionLayer({
+  svgInstanceId,
+  roleData,
+  focus,
+  setFocus,
+  relationshipIndex,
+  onToggleSelection,
+  selectedFocuses = [],
+  showSelectionMarks = false,
+}: RoleDistributionLayerProps) {
+  const damageAngle =
+    roleData.total > 0 ? (roleData.damageTotal / roleData.total) * 360 : 180;
+
+  const roleStartAngle = -90;
+  const clampedDamageAngle = Math.max(0.001, Math.min(359.999, damageAngle));
+  const utilityStartAngle = roleStartAngle + clampedDamageAngle;
+
+  const roleSegments: PrimaryRoleSegment[] =
+    roleData.total > 0
+      ? [
+          {
+            key: "damage",
+            ...ROLE_VISUALS.damage,
+            value: roleData.damageTotal,
+            startAngle: roleStartAngle,
+            endAngle: roleStartAngle + clampedDamageAngle,
+            subKeys: DAMAGE_ROLE_KEYS,
+          },
+          {
+            key: "utility",
+            ...ROLE_VISUALS.utility,
+            value: roleData.utilityTotal,
+            startAngle: utilityStartAngle,
+            endAngle: roleStartAngle + 360,
+            subKeys: UTILITY_ROLE_KEYS,
+          },
+        ]
+      : [];
+
+  const activeFocus = hasActiveFocus(focus);
+
+  return (
+    <g
+      className="data-circle-role-sigil"
+      data-study-region="data-circle-role-layer"
+      data-study-id={`${svgInstanceId}-role-layer`}
+    >
+      {renderRoleBackground()}
 
       {roleSegments.map((segment) => {
         const sweep = segment.endAngle - segment.startAngle;
 
-        if (sweep <= 0.2 || (roleData.total > 0 && segment.value <= 0)) {
+        if (sweep <= 0.2 || segment.value <= 0) {
           return null;
         }
 
@@ -481,7 +481,10 @@ export function RoleDistributionLayer({
         const visualEndAngle = segment.endAngle - outerGap;
 
         const primaryLabel = getPrimaryLabel(segment);
-        const primaryLabelPathId = `role-primary-label-${segment.key}`;
+        const primaryLabelPathId = getScopedId(
+          svgInstanceId,
+          `role-primary-label-${segment.key}`
+        );
 
         const subcategorySegments = getSubcategorySegments(
           segment.subKeys,
@@ -514,7 +517,12 @@ export function RoleDistributionLayer({
         };
 
         return (
-          <g key={segment.key} opacity={primaryOpacity}>
+          <g
+            key={segment.key}
+            opacity={primaryOpacity}
+            data-study-element="data-circle-role-group"
+            data-study-id={`${svgInstanceId}-role-group-${segment.key}`}
+          >
             <title>
               {`${segment.label}: ${segment.value} ${
                 segment.value === 1 ? "ability" : "abilities"
@@ -552,9 +560,7 @@ export function RoleDistributionLayer({
               fill="none"
               stroke={segment.glowColor}
               strokeOpacity={
-                (roleData.total > 0 ? 0.1 : 0.04) *
-                primaryFocusBoost *
-                primarySelectionBoost
+                0.1 * primaryFocusBoost * primarySelectionBoost
               }
               strokeWidth="48"
               strokeLinecap="butt"
@@ -577,11 +583,7 @@ export function RoleDistributionLayer({
                 visualEndAngle
               )}
               fill={segment.color}
-              fillOpacity={
-                (roleData.total > 0 ? 0.38 : 0.16) *
-                primaryFocusBoost *
-                primarySelectionBoost
-              }
+              fillOpacity={0.38 * primaryFocusBoost * primarySelectionBoost}
               stroke={
                 primaryIsSelected && showSelectionMarks
                   ? "rgba(255,250,232,0.98)"
@@ -590,7 +592,7 @@ export function RoleDistributionLayer({
               strokeOpacity={
                 primaryIsSelected && showSelectionMarks
                   ? 0.9
-                  : (roleData.total > 0 ? 0.26 : 0.1) * primaryFocusBoost
+                  : 0.26 * primaryFocusBoost
               }
               strokeWidth={
                 primaryIsSelected && showSelectionMarks
@@ -684,9 +686,10 @@ export function RoleDistributionLayer({
               const subcategorySelectionBoost =
                 subcategoryIsSelected && showSelectionMarks ? 1.16 : 1;
 
-              const subLabelPathId = `role-sub-label-${segment.key}-${getSafeId(
-                subcategory.key
-              )}`;
+              const subLabelPathId = getScopedId(
+                svgInstanceId,
+                `role-sub-label-${segment.key}-${subcategory.key}`
+              );
 
               const markerPoint = polarToCartesian(
                 CX,
@@ -705,6 +708,8 @@ export function RoleDistributionLayer({
                   key={`${segment.key}-${subcategory.key}`}
                   opacity={subcategoryOpacity}
                   style={{ cursor: "pointer" }}
+                  data-study-element="data-circle-role-subcategory"
+                  data-study-id={`${svgInstanceId}-role-subcategory-${segment.key}-${subcategory.key}`}
                   onMouseEnter={(event) => {
                     event.stopPropagation();
                     setFocus(subcategoryFocus);
@@ -822,9 +827,7 @@ export function RoleDistributionLayer({
                         ? "rgba(255,250,232,1)"
                         : subcategoryShadeColor
                     }
-                    fillOpacity={
-                      activeFocus && subcategoryIsRelated ? 1 : 0.82
-                    }
+                    fillOpacity={activeFocus && subcategoryIsRelated ? 1 : 0.82}
                     stroke="rgba(5,4,6,0.86)"
                     strokeWidth="0.7"
                   />

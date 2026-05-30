@@ -1,271 +1,229 @@
 import { useMemo, useState } from "react";
 import {
   clearStudyLogs,
-  completeStudyTask,
-  downloadStudyLogs,
-  loadStudyLogs,
-  loadStudySessionMetadata,
-  logStudyEvent,
-  saveStudySessionMetadata,
-  startStudyTask,
-  updateStudySessionMetadata,
+  endAndExportStudySession,
+  isStudySessionActive,
+  loadStudySession,
+  startStudySession,
 } from "../logic/studyLogger";
-import type { BuildEditorSnapshot, SavedBuild } from "../types/savedBuildTypes";
-import type { StudySessionMetadata } from "../types/loggingTypes";
+import type { StudyLoggerEndPayload, StudySession } from "../types/loggingTypes";
+import "./StudyLoggingPanel.css";
 
 type StudyLoggingPanelProps = {
-  currentSnapshot: BuildEditorSnapshot;
-  partySlots: Array<SavedBuild | null>;
-  focusedLabel: string;
+  activeView?: string | null;
+
+  isPartyComplete?: boolean;
+  finalPartyReady?: boolean;
+
+  getFinalPayload?: () => StudyLoggerEndPayload;
+  onSubmitFinalParty?: () => void;
+
+  finalPartySnapshotSummary?: unknown;
+  finalPartyVisualProfile?: unknown;
+  finalPartyGaps?: unknown;
+  finalRedundancyScore?: number | null;
+
+  className?: string;
 };
 
-function getDefaultPartyPayload(
-  currentSnapshot: BuildEditorSnapshot,
-  partySlots: Array<SavedBuild | null>
-) {
-  return {
-    focusedBuild: currentSnapshot,
-    partySlots: partySlots.map((slot, index) => ({
-      slotIndex: index,
-      slotNumber: index + 1,
-      savedBuildId: slot?.id ?? null,
-      label: slot?.label ?? null,
-      snapshot: slot?.snapshot ?? null,
-    })),
-  };
-}
-
-function hasActiveTask(metadata: StudySessionMetadata) {
-  return Boolean(metadata.taskStartedAt) && metadata.isLoggingEnabled;
-}
-
 export default function StudyLoggingPanel({
-  currentSnapshot,
-  partySlots,
-  focusedLabel,
+  isPartyComplete,
+  finalPartyReady,
+  getFinalPayload,
+  onSubmitFinalParty,
+  finalPartySnapshotSummary,
+  finalPartyVisualProfile,
+  finalPartyGaps,
+  finalRedundancyScore,
+  className = "",
 }: StudyLoggingPanelProps) {
-  const [metadata, setMetadata] = useState<StudySessionMetadata>(() =>
-    loadStudySessionMetadata()
+  const [session, setSession] = useState<StudySession | null>(() =>
+    loadStudySession()
   );
-
-  const [logCount, setLogCount] = useState(() => loadStudyLogs().length);
-
-  const canStart = useMemo(
-    () =>
-      metadata.participantId.trim().length > 0 &&
-      metadata.sessionId.trim().length > 0 &&
-      metadata.taskId.trim().length > 0,
-    [metadata.participantId, metadata.sessionId, metadata.taskId]
+  const [participantId, setParticipantId] = useState(
+    session?.participantId ?? ""
   );
+  const [hasTriedStart, setHasTriedStart] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const taskIsActive = hasActiveTask(metadata);
+  const isRunning = session?.status === "running" || isStudySessionActive();
+  const partyComplete = isPartyComplete ?? finalPartyReady ?? false;
+  const hasParticipantId = participantId.trim().length > 0;
 
-  function refreshLogCount() {
-    setLogCount(loadStudyLogs().length);
-  }
+  const canStart = useMemo(() => {
+    return hasParticipantId && !isRunning;
+  }, [hasParticipantId, isRunning]);
 
-  function updateMetadata(patch: Partial<StudySessionMetadata>) {
-    const nextMetadata = {
-      ...metadata,
-      ...patch,
-    };
+  const participantError =
+    hasTriedStart && !hasParticipantId
+      ? "Participant ID is required before starting."
+      : null;
 
-    setMetadata(nextMetadata);
-    saveStudySessionMetadata(nextMetadata);
+  const readinessText = !hasParticipantId && !isRunning
+    ? "Enter a participant ID before starting the study log."
+    : partyComplete
+      ? "Party complete. Ending will export the study log."
+      : "Party incomplete. Ending still exports, but the final party will be marked incomplete.";
 
-    /*
-      Do not log metadata typing before the task starts. This keeps the real
-      study logs clean and avoids partial participant/task IDs in the dataset.
-    */
-    if (taskIsActive) {
-      logStudyEvent({
-        eventCategory: "session",
-        eventType: "study_session_metadata_updated",
-        activeView: "study-logging-panel",
-        payload: {
-          changedFields: Object.keys(patch),
-          metadata: nextMetadata,
-        },
+  function handleStart(): void {
+    setHasTriedStart(true);
+    setError(null);
+
+    if (!hasParticipantId) {
+      return;
+    }
+
+    try {
+      const nextSession = startStudySession(participantId, {
+        clearExistingLogs: true,
       });
 
-      refreshLogCount();
+      setSession(nextSession);
+      setParticipantId(nextSession.participantId);
+    } catch (startError) {
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : "Could not start the study."
+      );
     }
   }
 
-  function handleStartTask() {
-    if (!canStart || taskIsActive) return;
+  function buildFinalPayload(): StudyLoggerEndPayload {
+    const customPayload =
+      typeof getFinalPayload === "function" ? getFinalPayload() : {};
 
-    const nextMetadata = startStudyTask();
-
-    setMetadata(nextMetadata);
-    refreshLogCount();
+    return {
+      finalPartyComplete: partyComplete,
+      finalPartySnapshotSummary,
+      finalPartyVisualProfile,
+      finalPartyGaps,
+      finalRedundancyScore: finalRedundancyScore ?? null,
+      ...customPayload,
+    };
   }
 
-  function logFinalPartySubmission() {
-    logStudyEvent({
-      eventCategory: "task",
-      eventType: "final_party_submitted",
-      activeBuildLabel: focusedLabel,
-      activeView: "study-logging-panel",
-      payload: getDefaultPartyPayload(currentSnapshot, partySlots),
-    });
+  function handleEndAndExport(): void {
+    setError(null);
+
+    try {
+      if (typeof onSubmitFinalParty === "function") {
+        onSubmitFinalParty();
+      }
+
+      endAndExportStudySession(buildFinalPayload());
+      setSession(loadStudySession());
+    } catch (exportError) {
+      setError(
+        exportError instanceof Error
+          ? exportError.message
+          : "Could not export the study log."
+      );
+    }
   }
 
-  function handleEndTask() {
-    if (!taskIsActive) return;
-
-    const finalPartyPayload = getDefaultPartyPayload(currentSnapshot, partySlots);
-
-    logFinalPartySubmission();
-
-    completeStudyTask({
-      focusedLabel,
-      finalPartyPreview: finalPartyPayload,
-    });
-
-    /*
-      Export after final_party_submitted and task_completed have been written,
-      so the downloaded JSONL is the complete study-task file.
-    */
-    downloadStudyLogs("jsonl");
-
-    const nextMetadata = updateStudySessionMetadata({
-      isLoggingEnabled: false,
-      taskStartedAt: null,
-    });
-
-    setMetadata(nextMetadata);
-    refreshLogCount();
-  }
-
-  function handleClearLogs() {
-    /*
-      Fallback reset. Use this before the next participant/task, after confirming
-      that the exported JSONL file has downloaded correctly.
-    */
-    clearStudyLogs();
-    refreshLogCount();
+  function handleClearLogs(): void {
+    clearStudyLogs({ clearSession: true });
+    setSession(null);
+    setParticipantId("");
+    setHasTriedStart(false);
+    setError(null);
   }
 
   return (
-    <section className="study-logging-panel" aria-label="Study logging controls">
+    <section
+      className={`study-logging-panel ${
+        isRunning ? "study-logging-panel--running" : ""
+      } ${className}`.trim()}
+      data-study-region="study-logging-panel"
+      data-study-element="study-logging-panel"
+    >
       <div className="study-logging-header">
         <div>
-          <h3>Study Logging</h3>
-          <p>Start recording, end task to submit and export JSONL.</p>
+          <h3>Study logging</h3>
         </div>
 
-        <span>{logCount}</span>
+        <span
+          className={
+            isRunning
+              ? "study-logging-status study-logging-status--running"
+              : "study-logging-status"
+          }
+        >
+          {isRunning ? "Running" : "Not running"}
+        </span>
       </div>
 
-      <div className="study-logging-grid">
-        <label>
-          Participant
-          <input
-            type="text"
-            value={metadata.participantId}
-            placeholder="P001"
-            disabled={taskIsActive}
-            onChange={(event) =>
-              updateMetadata({ participantId: event.target.value })
-            }
-          />
-        </label>
+      <label className="study-logging-field">
+        <span>Participant ID</span>
+        <input
+          value={participantId}
+          disabled={isRunning}
+          onChange={(event) => {
+            setParticipantId(event.target.value);
+            if (hasTriedStart) setError(null);
+          }}
+          onBlur={() => setHasTriedStart(true)}
+          placeholder="e.g. P01"
+          aria-invalid={Boolean(participantError)}
+          data-study-element="participant-id-input"
+        />
+      </label>
 
-        <label>
-          Session
-          <input
-            type="text"
-            value={metadata.sessionId}
-            disabled={taskIsActive}
-            onChange={(event) =>
-              updateMetadata({ sessionId: event.target.value })
-            }
-          />
-        </label>
-
-        <label>
-          Task
-          <input
-            type="text"
-            value={metadata.taskId}
-            placeholder="T1"
-            disabled={taskIsActive}
-            onChange={(event) => updateMetadata({ taskId: event.target.value })}
-          />
-        </label>
-
-        <label>
-          Condition
-          <select
-            value={metadata.conditionId}
-            disabled={taskIsActive}
-            onChange={(event) =>
-              updateMetadata({ conditionId: event.target.value })
-            }
-          >
-            <option value="baseline">baseline</option>
-            <option value="redesigned">redesigned</option>
-          </select>
-        </label>
-
-        <label>
-          Order
-          <select
-            value={metadata.conditionSequenceIndex}
-            disabled={taskIsActive}
-            onChange={(event) =>
-              updateMetadata({
-                conditionSequenceIndex: Number(event.target.value),
-              })
-            }
-          >
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-          </select>
-        </label>
-
-        <label>
-          Scenario
-          <input
-            type="text"
-            value={metadata.activeScenarioPreset}
-            placeholder="default"
-            disabled={taskIsActive}
-            onChange={(event) =>
-              updateMetadata({ activeScenarioPreset: event.target.value })
-            }
-          />
-        </label>
-      </div>
+      {participantError && (
+        <div className="study-logging-error">{participantError}</div>
+      )}
 
       <div
         className={
-          taskIsActive
-            ? "study-logging-recording study-logging-recording--active"
-            : "study-logging-recording"
+          partyComplete
+            ? "study-logging-readiness study-logging-readiness--ready"
+            : "study-logging-readiness"
         }
       >
-        {taskIsActive ? "Recording" : canStart ? "Ready" : "Setup required"}
+        <span
+          className={
+            partyComplete
+              ? "study-logging-readiness-dot study-logging-readiness-dot--ready"
+              : "study-logging-readiness-dot"
+          }
+        />
+        <p>{readinessText}</p>
       </div>
 
-      <div className="study-logging-actions study-logging-actions--single-row">
-  <button
-    type="button"
-    onClick={handleStartTask}
-    disabled={!canStart || taskIsActive}
-  >
-    Start
-  </button>
+      {error && <div className="study-logging-error">{error}</div>}
 
-  <button type="button" onClick={handleEndTask} disabled={!taskIsActive}>
-    End task
-  </button>
+      <div className="study-logging-actions">
+        <button
+          type="button"
+          className="study-logging-button study-logging-button--primary"
+          onClick={handleStart}
+          disabled={!canStart}
+          data-study-element="start-study-button"
+        >
+          Start
+        </button>
 
-  <button type="button" onClick={handleClearLogs}>
-    Clear
-  </button>
-</div>
+        <button
+          type="button"
+          className="study-logging-button study-logging-button--export"
+          onClick={handleEndAndExport}
+          disabled={!isRunning}
+          data-study-element="end-study-export-button"
+        >
+          End & export
+        </button>
+
+        <button
+          type="button"
+          className="study-logging-button study-logging-button--ghost"
+          onClick={handleClearLogs}
+          disabled={isRunning}
+          data-study-element="clear-study-logs-button"
+        >
+          Clear logs
+        </button>
+      </div>
     </section>
   );
 }
