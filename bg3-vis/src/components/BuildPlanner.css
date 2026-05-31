@@ -3550,3 +3550,49 @@ select {
     flex: 1 1 160px;
   }
 }
+.spell-damage-tooltip-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 178, 104, 0.28);
+  background:
+    radial-gradient(circle at top left, rgba(216, 178, 104, 0.13), transparent 55%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.spell-tooltip-subtitle {
+  color: rgba(247, 217, 149, 0.96);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.spell-tooltip-muted {
+  color: rgba(203, 189, 167, 0.72);
+}
+.spell-damage-tooltip-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 178, 104, 0.28);
+  background:
+    radial-gradient(circle at top left, rgba(216, 178, 104, 0.13), transparent 55%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.spell-tooltip-subtitle {
+  color: rgba(247, 217, 149, 0.96);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.spell-tooltip-muted {
+  color: rgba(203, 189, 167, 0.72);
+}

@@ -62,12 +62,81 @@ export type ResourceCost =
   | "class-resource"
   | "none";
 
+export type NumericEffectType =
+  | DamageType
+  | "Healing"
+  | "Temporary Hit Points";
+
+export type DamageDelivery =
+  | "instant"
+  | "weapon-hit"
+  | "weapon-rider"
+  | "retaliation"
+  | "summon-attack"
+  | "surface"
+  | "start-turn"
+  | "end-turn"
+  | "per-turn"
+  | "conditional"
+  | "delayed"
+  | "none";
+
+export type DamageScaling =
+  | "none"
+  | "cantrip"
+  | "spell-slot"
+  | "warlock-beam"
+  | "weapon"
+  | "conditional"
+  | "summon"
+  | "variable";
+
+export type DamageSaveBehaviour =
+  | "none"
+  | "half-on-save"
+  | "negates-on-save"
+  | "attack-roll"
+  | "always-hit"
+  | "weapon-attack"
+  | "saving-throw"
+  | "unknown";
+
+export type DamageRoll = {
+  diceCount: number;
+  diceSize: number;
+  flatBonus?: number;
+  damageType: NumericEffectType;
+  label?: string;
+};
+
+export type AbilityDamageProfile = {
+  hasDamage: boolean;
+  damageKind:
+    | "none"
+    | "damage"
+    | "healing"
+    | "temporary-hit-points"
+    | "mixed";
+  delivery: DamageDelivery;
+  scaling: DamageScaling;
+  saveBehaviour: DamageSaveBehaviour;
+  saveAbility?: "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA";
+  attackRoll?: boolean;
+  canCrit?: boolean;
+  repeats?: boolean;
+  repeatDurationTurns?: number;
+  targetCount?: number | "variable";
+  aoe?: boolean;
+  aoeMeters?: number;
+  rolls: DamageRoll[];
+  notes?: string;
+};
 export type BG3Spell = {
   id: string;
   name: string;
   sourceType: "spell";
   rank: SpellRank;
-    description?: string;
+  description?: string;
   range: {
     label: string;
     meters: number | null;
@@ -77,6 +146,7 @@ export type BG3Spell = {
   };
   roles: AbilityRole[];
   damageTypes: DamageType[];
+  damage?: AbilityDamageProfile;
   costs: {
     actions: ActionCost[];
     resources: ResourceCost[];
@@ -84,7 +154,6 @@ export type BG3Spell = {
     requiresConcentration: boolean;
   };
   tags?: string[];
-
 };
 
 function spell(
@@ -863,8 +932,1332 @@ const spellDescriptions: Record<string, string> = {
   "wall-of-thorns": "Create a thorn wall that damages, slows, and may Entangle creatures.",
   "wind-walk": "Transform the party into mist clouds with flight and defensive benefits."
 };
+
+const spellDamageProfiles: Record<string, AbilityDamageProfile> = {
+  "acid-splash": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    aoeMeters: 2,
+    rolls: [roll(1, 6, "Acid")],
+  }),
+
+  "blade-ward": noDamage("Defensive resistance effect."),
+
+  "bone-chill": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Necrotic")],
+    notes: "Prevents healing until the next turn.",
+  }),
+
+  "booming-blade": damageProfile({
+    delivery: "weapon-hit",
+    scaling: "cantrip",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Thunder", 0, "conditional movement damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  "bursting-sinew": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    aoeMeters: 3,
+    rolls: [roll(1, 10, "Piercing")],
+  }),
+
+  "dancing-lights": noDamage("Light and investigation utility."),
+
+  "eldritch-blast": damageProfile({
+    delivery: "instant",
+    scaling: "warlock-beam",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 10, "Force")],
+    notes: "Shown per beam.",
+  }),
+
+  "fire-bolt": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 10, "Fire")],
+  }),
+
+  friends: noDamage("Dialogue and social interaction buff."),
+  guidance: noDamage("Ability check bonus."),
+  light: noDamage("Light utility."),
+  "mage-hand": noDamage("Summoned utility hand."),
+  "minor-illusion": noDamage("Distraction utility."),
+
+  "poison-spray": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "CON",
+    rolls: [roll(1, 12, "Poison")],
+  }),
+
+  "produce-flame": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Fire")],
+    notes: "The flame can also be used as a light source.",
+  }),
+
+  "ray-of-frost": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Cold")],
+  }),
+
+  resistance: noDamage("Saving throw bonus."),
+
+  "sacred-flame": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "DEX",
+    rolls: [roll(1, 8, "Radiant")],
+  }),
+
+  shillelagh: damageProfile({
+    delivery: "weapon-hit",
+    scaling: "weapon",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Weapon", 2, "empowered staff or club damage")],
+  }),
+
+  "shocking-grasp": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Lightning")],
+  }),
+
+  thaumaturgy: noDamage("Dialogue and performance utility."),
+
+  "thorn-whip": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 6, "Piercing")],
+    notes: "Also pulls the target closer.",
+  }),
+
+  "toll-the-dead": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "WIS",
+    rolls: [roll(1, 12, "Necrotic")],
+    notes: "Uses 1d8 if the target is at full health.",
+  }),
+
+  "true-strike": noDamage("Attack advantage setup."),
+
+  "vicious-mockery": damageProfile({
+    delivery: "instant",
+    scaling: "cantrip",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "WIS",
+    rolls: [roll(1, 4, "Psychic")],
+  }),
+
+  "animal-friendship": noDamage("Beast charm/control effect."),
+
+  "armour-of-agathys": mixedProfile({
+    delivery: "retaliation",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    repeats: true,
+    rolls: [
+      flat(5, "Temporary Hit Points", "temporary HP"),
+      flat(5, "Cold", "retaliation damage"),
+    ],
+    notes: "Both temporary HP and retaliation damage scale with spell slot level.",
+  }),
+
+  "arms-of-hadar": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "STR",
+    aoe: true,
+    aoeMeters: 3,
+    rolls: [roll(2, 6, "Necrotic")],
+  }),
+
+  bane: noDamage("Attack roll and saving throw penalty."),
+  "invocation-bane": noDamage("Attack roll and saving throw penalty."),
+  bless: noDamage("Attack roll and saving throw bonus."),
+
+  "burning-hands": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    rolls: [roll(3, 6, "Fire")],
+  }),
+
+  "charm-person": noDamage("Charm and dialogue control."),
+
+  "chromatic-orb": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [
+      roll(3, 8, "Thunder", 0, "Thunder variant"),
+      roll(2, 8, "Variable", 0, "acid/cold/fire/lightning/poison variants"),
+    ],
+    notes: "Thunder variant deals 3d8. Other elemental variants deal 2d8 and create a surface.",
+  }),
+
+  "invocation-chromatic-orb": damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [
+      roll(3, 8, "Thunder", 0, "Thunder variant"),
+      roll(2, 8, "Variable", 0, "acid/cold/fire/lightning/poison variants"),
+    ],
+  }),
+
+  "colour-spray": noDamage("Blindness based on hit point threshold."),
+  command: noDamage("Command control effect."),
+  "compelled-duel": noDamage("Taunt/control effect."),
+  "create-or-destroy-water": noDamage("Surface and environmental utility."),
+
+  "cure-wounds": healingProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    rolls: [roll(1, 8, "Healing", 2, "healing")],
+    notes: "The +2 reflects the pasted wiki value. Replace with spellcasting modifier if your app later tracks ability modifiers.",
+  }),
+
+  "disguise-self": noDamage("Appearance and narrative interaction."),
+  "invocation-disguise-self": noDamage("Appearance and narrative interaction."),
+
+  "dissonant-whispers": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "WIS",
+    rolls: [roll(3, 6, "Psychic")],
+  }),
+
+  "divine-favour": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "conditional",
+    saveBehaviour: "weapon-attack",
+    repeats: true,
+    rolls: [roll(1, 4, "Radiant", 0, "added weapon damage")],
+  }),
+
+  "enhance-leap": noDamage("Mobility utility."),
+  "invocation-enhance-leap": noDamage("Mobility utility."),
+
+  "ensnaring-strike-melee": damageProfile({
+    delivery: "weapon-hit",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 6, "Piercing", 0, "ensnaring vines damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  "ensnaring-strike-ranged": damageProfile({
+    delivery: "weapon-hit",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 6, "Piercing", 0, "ensnaring vines damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  entangle: noDamage("Area control and difficult terrain."),
+  "expeditious-retreat": noDamage("Mobility utility."),
+  "faerie-fire": noDamage("Reveals targets and grants advantage against them."),
+
+  "false-life": temporaryHpProfile(7, "Temporary hit points."),
+  "invocation-false-life": temporaryHpProfile(7, "Temporary hit points."),
+
+  "feather-fall": noDamage("Fall damage protection."),
+  "find-familiar": noDamage("Summons a familiar. Familiar attack damage is not encoded here."),
+  "find-familiar-imp": noDamage("Summons an imp familiar. Familiar attack damage is not encoded here."),
+  "find-familiar-quasit": noDamage("Summons a quasit familiar. Familiar attack damage is not encoded here."),
+  "find-familiar-cheeky-quasit": noDamage("Summons a quasit familiar. Familiar attack damage is not encoded here."),
+  "fog-cloud": noDamage("Obscuring area control."),
+
+  goodberry: healingProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "none",
+    rolls: [roll(4, 4, "Healing", 0, "total healing across four berries")],
+  }),
+
+  "guiding-bolt": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(4, 6, "Radiant")],
+  }),
+
+  grease: noDamage("Surface control. The base spell is non-damaging."),
+
+  "hail-of-thorns": damageProfile({
+    delivery: "weapon-hit",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    aoeMeters: 2,
+    rolls: [roll(1, 10, "Piercing", 0, "thorn explosion")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  "healing-word": healingProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    rolls: [roll(1, 4, "Healing", 0, "healing")],
+  }),
+
+  "hellish-rebuke": damageProfile({
+    delivery: "retaliation",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    rolls: [roll(2, 10, "Fire")],
+  }),
+
+  heroism: temporaryHpProfile(5, "Temporary HP each turn while active."),
+
+  hex: damageProfile({
+    delivery: "weapon-rider",
+    scaling: "conditional",
+    saveBehaviour: "none",
+    repeats: true,
+    rolls: [roll(1, 6, "Necrotic", 0, "added damage when attacking cursed target")],
+  }),
+
+  "hunters-mark": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "conditional",
+    saveBehaviour: "weapon-attack",
+    repeats: true,
+    rolls: [roll(1, 6, "Slashing", 0, "added weapon damage against marked target")],
+  }),
+
+  "ice-knife": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    aoeMeters: 2,
+    rolls: [
+      roll(1, 10, "Piercing", 0, "initial hit"),
+      roll(2, 6, "Cold", 0, "explosion"),
+    ],
+  }),
+
+  "inflict-wounds": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(3, 10, "Necrotic")],
+  }),
+
+  longstrider: noDamage("Movement speed buff."),
+  "mage-armour": noDamage("Armour Class buff."),
+  "invocation-mage-armour": noDamage("Armour Class buff."),
+
+  "magic-missile": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "always-hit",
+    rolls: [roll(3, 4, "Force", 3, "three darts")],
+    notes: "Base spell fires three darts, each dealing 1d4 + 1 Force.",
+  }),
+
+  "protection-from-evil-and-good": noDamage("Defensive protection effect."),
+
+  "ray-of-sickness": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(2, 8, "Poison")],
+  }),
+
+  "invocation-ray-of-sickness": damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(2, 8, "Poison")],
+  }),
+
+  sanctuary: noDamage("Defensive targeting protection."),
+
+  "searing-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    repeats: true,
+    repeatDurationTurns: 10,
+    rolls: [
+      roll(1, 6, "Fire", 0, "initial bonus fire damage"),
+      roll(1, 6, "Fire", 0, "burning damage per turn"),
+    ],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  shield: noDamage("Reaction Armour Class increase."),
+  "shield-of-faith": noDamage("Armour Class buff."),
+  sleep: noDamage("Sleep based on hit point threshold."),
+  "speak-with-animals": noDamage("Narrative interaction utility."),
+  "invocation-speak-with-animals": noDamage("Narrative interaction utility."),
+  "tashas-hideous-laughter": noDamage("Prone/incapacitating control effect."),
+
+  "thunderous-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(2, 6, "Thunder", 0, "bonus thunder damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  thunderwave: damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    aoe: true,
+    aoeMeters: 5,
+    rolls: [roll(2, 8, "Thunder")],
+  }),
+
+  "witch-bolt": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    repeats: true,
+    repeatDurationTurns: 10,
+    rolls: [roll(1, 12, "Lightning")],
+    notes: "Can be reactivated while concentration remains active.",
+  }),
+
+  "wrathful-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 6, "Psychic", 0, "bonus psychic damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  aid: healingProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    aoe: true,
+    aoeMeters: 9,
+    rolls: [flat(5, "Healing", "healing and max HP increase")],
+  }),
+
+  "arcane-lock": noDamage("Locking utility."),
+  barkskin: noDamage("Armour Class buff."),
+  blindness: noDamage("Blindness control effect."),
+  blur: noDamage("Defensive illusion effect."),
+
+  "branding-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(2, 6, "Radiant", 0, "bonus radiant damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  "calm-emotions": noDamage("Charm and frighten suppression."),
+  "cloud-of-daggers": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    aoe: true,
+    rolls: [roll(4, 4, "Slashing")],
+  }),
+
+  "crown-of-madness": noDamage("Humanoid control effect."),
+  darkness: noDamage("Magical darkness control."),
+  darkvision: noDamage("Vision buff."),
+  "detect-thoughts": noDamage("Dialogue and investigation utility."),
+  "enhance-ability": noDamage("Ability check buff."),
+  "enlarge-reduce": noDamage("Size and weapon-damage modifier effect."),
+  enthrall: noDamage("Attention/peripheral vision control."),
+
+  "flame-blade": damageProfile({
+    delivery: "summon-attack",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(3, 6, "Fire", 0, "summoned blade attack")],
+  }),
+
+  "flaming-sphere": damageProfile({
+    delivery: "summon-attack",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    aoe: true,
+    aoeMeters: 2,
+    rolls: [roll(2, 6, "Fire")],
+  }),
+
+  "gust-of-wind": noDamage("Push and cloud-clearing control."),
+
+  "heat-metal": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "saving-throw",
+    saveAbility: "CON",
+    repeats: true,
+    repeatDurationTurns: 10,
+    rolls: [roll(2, 8, "Fire")],
+  }),
+
+  "hold-person": noDamage("Paralysis control effect."),
+  invisibility: noDamage("Stealth/defensive buff."),
+  knock: noDamage("Unlocking utility."),
+  "lesser-restoration": noDamage("Condition removal. No hit-point healing."),
+  "magic-weapon": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "conditional",
+    saveBehaviour: "weapon-attack",
+    repeats: true,
+    rolls: [flat(1, "Weapon", "+1 weapon damage bonus")],
+  }),
+
+  "melfs-acid-arrow": damageProfile({
+    delivery: "delayed",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [
+      roll(4, 4, "Acid", 0, "initial damage"),
+      roll(2, 4, "Acid", 0, "delayed damage"),
+    ],
+  }),
+
+  "mirror-image": noDamage("Defensive illusion effect."),
+  "misty-step": noDamage("Teleportation utility."),
+
+  moonbeam: damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    repeats: true,
+    repeatDurationTurns: 10,
+    aoe: true,
+    aoeMeters: 1,
+    rolls: [roll(2, 10, "Radiant")],
+  }),
+
+  "pass-without-trace": noDamage("Stealth buff."),
+  "phantasmal-force": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "INT",
+    repeats: true,
+    repeatDurationTurns: 10,
+    rolls: [roll(1, 6, "Psychic")],
+    notes: "Damage type can change to the last type suffered by the target.",
+  }),
+
+  "prayer-of-healing": healingProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    aoe: true,
+    aoeMeters: 9,
+    rolls: [roll(2, 8, "Healing")],
+  }),
+
+  "protection-from-poison": noDamage("Poison protection and poison condition removal."),
+  "ray-of-enfeeblement": noDamage("Weapon damage weakening effect."),
+
+  "scorching-ray": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(6, 6, "Fire", 0, "three rays")],
+    notes: "Equivalent to three rays of 2d6 Fire each.",
+  }),
+
+  "see-invisibility": noDamage("Detection utility."),
+
+  shatter: damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    aoe: true,
+    rolls: [roll(3, 8, "Thunder")],
+  }),
+
+  silence: noDamage("Silence and thunder immunity zone."),
+  "invocation-silence": noDamage("Silence and thunder immunity zone."),
+
+  "shadow-blade": damageProfile({
+    delivery: "weapon-hit",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(2, 8, "Psychic", 0, "shadow blade weapon damage")],
+  }),
+
+  "spike-growth": damageProfile({
+    delivery: "conditional",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    repeats: true,
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [roll(2, 4, "Piercing", 0, "per 1.5m moved")],
+  }),
+
+  "spiritual-weapon": damageProfile({
+    delivery: "summon-attack",
+    scaling: "summon",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(1, 8, "Force", 0, "summoned weapon attack + spellcasting modifier")],
+  }),
+
+  "warding-bond": noDamage("Defensive bond effect."),
+  web: noDamage("Web control area."),
+
+  "animate-dead": noDamage("Summons an undead servant."),
+  "beacon-of-hope": noDamage("Healing maximisation and saving throw buff."),
+  "bestow-curse": noDamage("Curse/control effect. Optional extra damage variant is not numerically encoded."),
+  "invocation-bestow-curse": noDamage("Curse/control effect. Optional extra damage variant is not numerically encoded."),
+
+  "blinding-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(3, 8, "Radiant", 0, "bonus radiant damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  blink: noDamage("Defensive mobility effect."),
+
+  "call-lightning": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    repeatDurationTurns: 10,
+    aoe: true,
+    rolls: [roll(3, 10, "Lightning")],
+  }),
+
+  "conjure-barrage": damageProfile({
+    delivery: "instant",
+    scaling: "weapon",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    rolls: [roll(2, 8, "Weapon")],
+  }),
+
+  counterspell: noDamage("Reaction spell cancellation."),
+  "crusaders-mantle": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "conditional",
+    saveBehaviour: "weapon-attack",
+    repeats: true,
+    rolls: [roll(1, 4, "Radiant", 0, "added weapon damage for nearby allies")],
+  }),
+
+  daylight: noDamage("Light and darkness removal utility."),
+
+  "elemental-weapon": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "conditional",
+    saveBehaviour: "weapon-attack",
+    repeats: true,
+    rolls: [roll(1, 4, "Variable", 0, "chosen elemental weapon damage")],
+  }),
+
+  fear: noDamage("Fear and disarm control."),
+  "feign-death": noDamage("Protective coma/resistance effect."),
+
+  fireball: damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [roll(8, 6, "Fire")],
+  }),
+
+  "gaseous-form": noDamage("Defensive transformation utility."),
+
+  "glyph-of-warding": damageProfile({
+    delivery: "delayed",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    rolls: [roll(5, 8, "Variable", 0, "selected glyph damage variant")],
+  }),
+
+  "grant-flight": noDamage("Flight mobility buff."),
+  haste: noDamage("Action, speed, and Armour Class buff."),
+
+  "hunger-of-hadar": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    repeatDurationTurns: 10,
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [
+      roll(2, 6, "Cold", 0, "start-turn damage"),
+      roll(2, 6, "Acid", 0, "end-turn damage"),
+    ],
+  }),
+
+  "hypnotic-pattern": noDamage("Area incapacitation/control effect."),
+
+  "lightning-arrow": damageProfile({
+    delivery: "weapon-hit",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    rolls: [
+      roll(4, 8, "Lightning", 0, "primary target"),
+      roll(2, 8, "Lightning", 0, "secondary bolts"),
+    ],
+  }),
+
+  "lightning-bolt": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    rolls: [roll(8, 6, "Lightning")],
+  }),
+
+  "mass-healing-word": healingProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    targetCount: 6,
+    aoe: true,
+    rolls: [roll(1, 4, "Healing", 3, "healing to up to 6 creatures")],
+  }),
+
+  "plant-growth": noDamage("Movement control terrain."),
+  "protection-from-energy": noDamage("Damage resistance buff."),
+  "remove-curse": noDamage("Curse removal."),
+  revivify: healingProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "none",
+    rolls: [flat(1, "Healing", "revived hit points")],
+  }),
+
+  "sleet-storm": noDamage("Ice surface and concentration disruption."),
+  slow: noDamage("Slow/control effect."),
+  "invocation-slow": noDamage("Slow/control effect."),
+  "speak-with-dead": noDamage("Narrative interaction utility."),
+  "invocation-speak-with-dead": noDamage("Narrative interaction utility."),
+
+  "spirit-guardians": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "WIS",
+    repeats: true,
+    aoe: true,
+    aoeMeters: 3,
+    rolls: [roll(3, 8, "Variable", 0, "Radiant or Necrotic per turn")],
+  }),
+
+  "stinking-cloud": noDamage("Action-denial cloud."),
+  "vampiric-touch": mixedProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "attack-roll",
+    attackRoll: true,
+    canCrit: true,
+    repeats: true,
+    repeatDurationTurns: 10,
+    rolls: [
+      roll(3, 6, "Necrotic"),
+      roll(3, 6, "Healing", 0, "heals half the necrotic damage dealt"),
+    ],
+  }),
+
+  "warden-of-vitality": healingProfile({
+    delivery: "per-turn",
+    scaling: "none",
+    saveBehaviour: "none",
+    repeats: true,
+    repeatDurationTurns: 10,
+    rolls: [roll(2, 6, "Healing", 0, "Restore Vitality bonus action")],
+  }),
+
+  banishment: noDamage("Banishment control effect."),
+
+  blight: damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    rolls: [roll(8, 8, "Necrotic")],
+  }),
+
+  confusion: noDamage("Confusion/control effect."),
+  "invocation-confusion": noDamage("Confusion/control effect."),
+  "conjure-minor-elemental": noDamage("Summons a minor elemental. Summon attack damage is not encoded here."),
+  "conjure-woodland-being": noDamage("Summons woodland being. Summon attack damage is not encoded here."),
+  "death-ward": noDamage("Prevents first drop to 0 HP."),
+  "dimension-door": noDamage("Teleportation utility."),
+  "dominate-beast": noDamage("Domination control effect."),
+
+  "evards-black-tentacles": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "saving-throw",
+    saveAbility: "WIS",
+    repeats: true,
+    repeatDurationTurns: 10,
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [roll(3, 6, "Bludgeoning")],
+  }),
+
+  "fire-shield": damageProfile({
+    delivery: "retaliation",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    repeats: true,
+    rolls: [roll(2, 8, "Variable", 0, "cold or fire retaliation damage")],
+  }),
+
+  "freedom-of-movement": noDamage("Movement protection buff."),
+  "greater-invisibility": noDamage("Invisibility buff."),
+  "guardian-of-faith": damageProfile({
+    delivery: "summon-attack",
+    scaling: "none",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    rolls: [flat(20, "Radiant", "guardian strike")],
+  }),
+
+  "ice-storm": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [
+      roll(2, 8, "Bludgeoning"),
+      roll(4, 6, "Cold"),
+    ],
+  }),
+
+  "otilukes-resilient-sphere": noDamage("Protective/control sphere."),
+  "phantasmal-killer": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "WIS",
+    repeats: true,
+    rolls: [roll(4, 10, "Psychic")],
+  }),
+
+  polymorph: noDamage("Transformation control effect."),
+  "invocation-polymorph": noDamage("Transformation control effect."),
+  stoneskin: noDamage("Physical damage resistance buff."),
+
+  "wall-of-fire": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    aoe: true,
+    rolls: [roll(5, 8, "Fire")],
+  }),
+
+  "artistry-of-war": damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "always-hit",
+    targetCount: 6,
+    rolls: [roll(12, 6, "Force", 36, "six apparitions")],
+    notes: "Six hits, each 2d6 + 6 Force.",
+  }),
+
+  "banishing-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(5, 10, "Force", 0, "bonus force damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  "banishing-smite-ranged": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(5, 10, "Force", 0, "bonus force damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  cloudkill: damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "saving-throw",
+    saveAbility: "CON",
+    repeats: true,
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [roll(5, 8, "Poison")],
+  }),
+
+  "cone-of-cold": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    aoe: true,
+    rolls: [roll(8, 8, "Cold")],
+    notes: "The pasted wiki text says STR Save, but this should be double-checked.",
+  }),
+
+  "conjure-elemental": noDamage("Summons an elemental. Summon attack damage is not encoded here."),
+  "invocation-conjure-elemental": noDamage("Summons an elemental. Summon attack damage is not encoded here."),
+  contagion: noDamage("Disease/control effect."),
+
+  "destructive-wave": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    aoe: true,
+    rolls: [
+      roll(5, 6, "Thunder"),
+      roll(5, 6, "Radiant", 0, "or Necrotic variant"),
+    ],
+  }),
+
+  dethrone: damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    rolls: [roll(10, 6, "Necrotic", 20)],
+  }),
+
+  "dispel-evil-and-good": noDamage("Condition removal/banishment utility."),
+  "dominate-person": noDamage("Domination control effect."),
+
+  "flame-strike": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    aoe: true,
+    rolls: [
+      roll(5, 6, "Fire"),
+      roll(5, 6, "Radiant"),
+    ],
+  }),
+
+  "grasping-vine": noDamage("Pull/control summon effect."),
+  "greater-restoration": noDamage("Condition, curse, and reduction removal. No hit-point healing."),
+  "hold-monster": noDamage("Paralysis control effect."),
+
+  "insect-plague": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    repeats: true,
+    aoe: true,
+    aoeMeters: 6,
+    rolls: [roll(4, 10, "Piercing")],
+  }),
+
+  "mass-cure-wounds": healingProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    targetCount: 6,
+    aoe: true,
+    rolls: [roll(3, 8, "Healing", 0, "healing + spellcasting modifier")],
+  }),
+
+  "planar-binding": noDamage("Planar creature control effect."),
+  seeming: noDamage("Party disguise utility."),
+
+  "staggering-smite": damageProfile({
+    delivery: "weapon-rider",
+    scaling: "spell-slot",
+    saveBehaviour: "weapon-attack",
+    attackRoll: true,
+    canCrit: true,
+    rolls: [roll(4, 6, "Psychic", 0, "bonus psychic damage")],
+    notes: "Normal weapon damage is not numerically encoded here.",
+  }),
+
+  telekinesis: noDamage("Can deal variable thrown-object damage, but damage depends on object weight and target context."),
+
+  "wall-of-stone": noDamage("Wall creation/control effect."),
+  "arcane-gate": noDamage("Portal mobility utility."),
+
+  "blade-barrier": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    aoe: true,
+    rolls: [roll(6, 10, "Slashing")],
+  }),
+
+  "chain-lightning": damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    targetCount: 4,
+    rolls: [roll(10, 8, "Lightning")],
+  }),
+
+  "circle-of-death": damageProfile({
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    aoe: true,
+    aoeMeters: 9,
+    rolls: [roll(8, 6, "Necrotic")],
+  }),
+
+  "create-undead": noDamage("Summons undead. Summon attack damage is not encoded here."),
+
+  disintegrate: damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "negates-on-save",
+    saveAbility: "DEX",
+    rolls: [roll(10, 6, "Force", 40)],
+  }),
+
+  eyebite: noDamage("Sickness, fear, or sleep control effect."),
+  "flesh-to-stone": noDamage("Restraining/petrification control effect."),
+  "globe-of-invulnerability": noDamage("Damage immunity zone."),
+
+  harm: damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    rolls: [roll(14, 6, "Necrotic")],
+    notes: "Reduces maximum HP but cannot reduce target below 1 HP.",
+  }),
+
+  heal: healingProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "none",
+    rolls: [flat(70, "Healing", "healing")],
+  }),
+
+  "heroes-feast": noDamage("Cures disease, grants poison immunity, and increases HP by 2d10."),
+
+  "otilukes-freezing-sphere": damageProfile({
+    delivery: "instant",
+    scaling: "none",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    aoe: true,
+    rolls: [roll(10, 6, "Cold")],
+  }),
+
+  "ottos-irresistible-dance": noDamage("Dance/incapacitation control effect."),
+  "planar-ally": noDamage("Summons an ally. Summon attack damage is not encoded here."),
+  "sights-of-the-seelie-summon-deva": noDamage("Summons a deva. Summon attack damage is not encoded here."),
+
+  sunbeam: damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "CON",
+    repeats: true,
+    repeatDurationTurns: 10,
+    aoe: true,
+    rolls: [roll(6, 8, "Radiant")],
+  }),
+
+  "wall-of-ice": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    saveAbility: "DEX",
+    repeats: true,
+    aoe: true,
+    rolls: [
+      roll(10, 6, "Cold", 0, "initial wall damage"),
+      roll(10, 6, "Cold", 0, "conditional cloud damage"),
+    ],
+  }),
+
+  "wall-of-thorns": damageProfile({
+    delivery: "per-turn",
+    scaling: "spell-slot",
+    saveBehaviour: "half-on-save",
+    aoe: true,
+    rolls: [roll(7, 8, "Piercing")],
+  }),
+
+  "wind-walk": noDamage("Party movement/defensive transformation."),
+};
+function roll(
+  diceCount: number,
+  diceSize: number,
+  damageType: NumericEffectType,
+  flatBonus = 0,
+  label?: string
+): DamageRoll {
+  return {
+    diceCount,
+    diceSize,
+    damageType,
+    ...(flatBonus !== 0 ? { flatBonus } : {}),
+    ...(label ? { label } : {}),
+  };
+}
+
+function flat(
+  amount: number,
+  damageType: NumericEffectType,
+  label?: string
+): DamageRoll {
+  return {
+    diceCount: 0,
+    diceSize: 0,
+    flatBonus: amount,
+    damageType,
+    ...(label ? { label } : {}),
+  };
+}
+
+function noDamage(notes?: string): AbilityDamageProfile {
+  return {
+    hasDamage: false,
+    damageKind: "none",
+    delivery: "none",
+    scaling: "none",
+    saveBehaviour: "none",
+    rolls: [],
+    notes,
+  };
+}
+
+function effectProfile(
+  damageKind: Exclude<AbilityDamageProfile["damageKind"], "none">,
+  args: Omit<AbilityDamageProfile, "hasDamage" | "damageKind">
+): AbilityDamageProfile {
+  return {
+    hasDamage: true,
+    damageKind,
+    ...args,
+  };
+}
+
+function damageProfile(
+  args: Omit<AbilityDamageProfile, "hasDamage" | "damageKind">
+): AbilityDamageProfile {
+  return effectProfile("damage", args);
+}
+
+function healingProfile(
+  args: Omit<AbilityDamageProfile, "hasDamage" | "damageKind">
+): AbilityDamageProfile {
+  return effectProfile("healing", args);
+}
+
+function temporaryHpProfile(
+  amount: number,
+  notes?: string
+): AbilityDamageProfile {
+  return effectProfile("temporary-hit-points", {
+    delivery: "instant",
+    scaling: "spell-slot",
+    saveBehaviour: "none",
+    rolls: [flat(amount, "Temporary Hit Points", `${amount} temporary HP`)],
+    notes,
+  });
+}
+
+function mixedProfile(
+  args: Omit<AbilityDamageProfile, "hasDamage" | "damageKind">
+): AbilityDamageProfile {
+  return effectProfile("mixed", args);
+}
+
+export function getDamageRollAverage(damageRoll: DamageRoll): number {
+  const diceAverage =
+    damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+      ? damageRoll.diceCount * ((damageRoll.diceSize + 1) / 2)
+      : 0;
+
+  return diceAverage + (damageRoll.flatBonus ?? 0);
+}
+
+export function getDamageProfileAverage(
+  profile?: AbilityDamageProfile
+): number {
+  if (!profile || !profile.hasDamage) return 0;
+
+  return profile.rolls.reduce(
+    (sum, damageRoll) => sum + getDamageRollAverage(damageRoll),
+    0
+  );
+}
+
+export function getDamageProfileMin(profile?: AbilityDamageProfile): number {
+  if (!profile || !profile.hasDamage) return 0;
+
+  return profile.rolls.reduce((sum, damageRoll) => {
+    const diceMin =
+      damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+        ? damageRoll.diceCount
+        : 0;
+
+    return sum + diceMin + (damageRoll.flatBonus ?? 0);
+  }, 0);
+}
+
+export function getDamageProfileMax(profile?: AbilityDamageProfile): number {
+  if (!profile || !profile.hasDamage) return 0;
+
+  return profile.rolls.reduce((sum, damageRoll) => {
+    const diceMax =
+      damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+        ? damageRoll.diceCount * damageRoll.diceSize
+        : 0;
+
+    return sum + diceMax + (damageRoll.flatBonus ?? 0);
+  }, 0);
+}
+
+export function formatDamageRoll(damageRoll: DamageRoll): string {
+  const dice =
+    damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+      ? `${damageRoll.diceCount}d${damageRoll.diceSize}`
+      : "";
+
+  const flatBonus =
+    damageRoll.flatBonus && damageRoll.flatBonus !== 0
+      ? `${damageRoll.flatBonus > 0 && dice ? "+" : ""}${damageRoll.flatBonus}`
+      : "";
+
+  const amount = `${dice}${flatBonus}` || "0";
+
+  return damageRoll.label
+    ? `${amount} ${damageRoll.damageType} (${damageRoll.label})`
+    : `${amount} ${damageRoll.damageType}`;
+}
+
+export function formatDamageProfile(
+  profile?: AbilityDamageProfile
+): string | null {
+  if (!profile || !profile.hasDamage || profile.rolls.length === 0) return null;
+
+  return profile.rolls.map(formatDamageRoll).join(" + ");
+}
 for (const spellEntry of bg3Spells) {
   spellEntry.description = spellDescriptions[spellEntry.id];
+  spellEntry.damage = spellDamageProfiles[spellEntry.id] ?? noDamage();
 }
 export function getSpellById(id: string): BG3Spell | undefined {
   return bg3Spells.find((spellEntry) => spellEntry.id === id);
@@ -885,3 +2278,4 @@ export function getSpellsByRole(role: AbilityRole): BG3Spell[] {
 export function getSpellsByDamageType(damageType: DamageType): BG3Spell[] {
   return bg3Spells.filter((spellEntry) => spellEntry.damageTypes.includes(damageType));
 }
+

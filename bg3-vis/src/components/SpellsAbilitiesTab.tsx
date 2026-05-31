@@ -11,7 +11,15 @@ import {
   type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
-import { bg3Spells, type AbilityRole, type BG3Spell } from "../data/bg3Spells";
+import {
+  bg3Spells,
+  formatDamageProfile,
+  getDamageProfileAverage,
+  getDamageProfileMax,
+  getDamageProfileMin,
+  type AbilityRole,
+  type BG3Spell,
+} from "../data/bg3Spells";
 import type { BG3ClassFeature } from "../data/bg3ClassFeatures";
 import { getAvailableSpellsForBuild } from "../data/bg3SpellAvailability";
 import { toggleSpellSelection } from "../logic/spellSelectionLogic";
@@ -815,6 +823,77 @@ function createFeatureSummaryForLogging(
     isDataCircleHighlighted: args.isDataCircleHighlighted ?? false,
   };
 }
+function formatDamageKindLabel(kind: string): string {
+  if (kind === "temporary-hit-points") return "Temporary HP";
+  return kind.replaceAll("-", " ");
+}
+
+function formatSaveBehaviour(value: string): string {
+  return value.replaceAll("-", " ");
+}
+
+function formatDamageAverage(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function renderSpellDamageTooltipSection(spell: BG3Spell) {
+  const profile = spell.damage;
+
+  if (!profile || !profile.hasDamage) return null;
+
+  const damageText = formatDamageProfile(profile);
+  const min = getDamageProfileMin(profile);
+  const average = getDamageProfileAverage(profile);
+  const max = getDamageProfileMax(profile);
+
+  return (
+    <span className="spell-damage-tooltip-section">
+      <span className="spell-tooltip-subtitle">
+        {formatDamageKindLabel(profile.damageKind)}
+      </span>
+
+      {damageText ? (
+        <span>
+          <b>Roll:</b> {damageText}
+        </span>
+      ) : null}
+
+      {profile.rolls.length > 0 ? (
+        <span>
+          <b>Amount:</b> {formatDamageAverage(min)}–{formatDamageAverage(max)}{" "}
+          <span className="spell-tooltip-muted">
+            avg. {formatDamageAverage(average)}
+          </span>
+        </span>
+      ) : null}
+
+      <span>
+        <b>Delivery:</b> {profile.delivery.replaceAll("-", " ")}
+      </span>
+
+      {profile.saveBehaviour !== "none" ? (
+        <span>
+          <b>Resolution:</b> {formatSaveBehaviour(profile.saveBehaviour)}
+          {profile.saveAbility ? ` (${profile.saveAbility})` : ""}
+        </span>
+      ) : null}
+
+      {profile.repeats ? (
+        <span>
+          <b>Repeats:</b>{" "}
+          {profile.repeatDurationTurns
+            ? `up to ${profile.repeatDurationTurns} turns`
+            : "yes"}
+        </span>
+      ) : null}
+
+      {profile.notes ? (
+        <span className="spell-tooltip-muted">{profile.notes}</span>
+      ) : null}
+    </span>
+  );
+}
 
 function SpellsAbilitiesTab({
   selectedClass,
@@ -1245,77 +1324,68 @@ function SpellsAbilitiesTab({
     );
   }
 
-  function renderSpellTooltipContent(
-    spell: BG3Spell,
-    args: {
-      choiceRule?: ActiveSpellChoiceRule;
-      isRitual: boolean;
-      groupFull: boolean;
-      isSelected: boolean;
-      isFixed: boolean;
-      isDataCircleHighlighted: boolean;
-    }
-  ) {
-    return (
-      <>
-        <strong>{spell.name}</strong>
-
-        {spell.description && (
-          <span className="spell-description">{spell.description}</span>
-        )}
-
-        {args.choiceRule && (
-          <span>
-            <b>Choice:</b> {args.choiceRule.displayGroupLabel}{" "}
-            {
-              getSelectedSpellIdsForRule(selectedSpellIds, args.choiceRule)
-                .length
-            }
-            /{args.choiceRule.max}
-          </span>
-        )}
-
-        <span>
-          <b>Level:</b> {spell.rank === 0 ? "Cantrip" : toRoman(spell.rank)}
-        </span>
-
-        {spell.range && (
-          <span>
-            <b>Range:</b> {spell.range.label}
-          </span>
-        )}
-
-        {spell.roles.length > 0 && (
-          <span>
-            <b>Role:</b>{" "}
-            {spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
-          </span>
-        )}
-
-        {spell.damageTypes.length > 0 && (
-          <span>
-            <b>Damage:</b> {spell.damageTypes.join(", ")}
-          </span>
-        )}
-
-        {(spell.costs.actions.length > 0 ||
-          spell.costs.resources.length > 0) && (
-          <span>
-            <b>Cost:</b>{" "}
-            {formatCost(spell.costs.actions, spell.costs.resources)}
-          </span>
-        )}
-
-        {spell.costs.requiresConcentration && <span>Requires concentration</span>}
-        {args.isRitual && <span>Ritual spell</span>}
-        {args.groupFull && !args.isSelected && <span>Choice limit reached</span>}
-        {args.isFixed && <span>Granted automatically</span>}
-        {args.isDataCircleHighlighted && (
-          <span>Matches the current Data Circle focus</span>
-        )}
-      </>
-    );
+function renderSpellTooltipContent(
+  spell: BG3Spell,
+  args: {
+    choiceRule?: ActiveSpellChoiceRule;
+    isRitual: boolean;
+    groupFull: boolean;
+    isSelected: boolean;
+    isFixed: boolean;
+    isDataCircleHighlighted?: boolean;
   }
+) {
+  return (
+    <>
+      <strong>{spell.name}</strong>
+
+      {spell.description && (
+        <span className="spell-description">{spell.description}</span>
+      )}
+
+      {renderSpellDamageTooltipSection(spell)}
+
+      {args.choiceRule && (
+        <span>
+          <b>Choice:</b> {args.choiceRule.displayGroupLabel}{" "}
+          {getSelectedSpellIdsForRule(selectedSpellIds, args.choiceRule).length}/
+          {args.choiceRule.max}
+        </span>
+      )}
+
+      <span>
+        <b>Level:</b> {spell.rank === 0 ? "Cantrip" : toRoman(spell.rank)}
+      </span>
+
+      {spell.roles.length > 0 && (
+        <span>
+          <b>Role:</b>{" "}
+          {spell.roles.map((role) => role.replaceAll("-", " ")).join(", ")}
+        </span>
+      )}
+
+      {spell.damageTypes.length > 0 && (
+        <span>
+          <b>Damage type:</b> {spell.damageTypes.join(", ")}
+        </span>
+      )}
+
+      {(spell.costs.actions.length > 0 || spell.costs.resources.length > 0) && (
+        <span>
+          <b>Cost:</b> {formatCost(spell.costs.actions, spell.costs.resources)}
+        </span>
+      )}
+
+      {spell.costs.requiresConcentration && <span>Requires concentration</span>}
+      {args.isRitual && <span>Ritual spell</span>}
+      {args.groupFull && !args.isSelected && <span>Choice limit reached</span>}
+      {args.isFixed && <span>Granted automatically</span>}
+      {args.isDataCircleHighlighted && (
+        <span>Matches the current Data Circle focus</span>
+      )}
+    </>
+  );
+}
 
   function renderFeatureButton(
     feature: BG3ClassFeature,
