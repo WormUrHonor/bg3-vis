@@ -42,7 +42,7 @@ type LastZipExport = {
 };
 
 const STUDY_SURVEY_CACHE_PREFIX = "bg3-study-survey-cache-v1";
-const SUBMISSION_EMAIL = "sinkovichana@gmail.com";
+const STUDY_UPLOAD_URL = "https://www.dropbox.com/request/guzuiiqjn65qw4kflmfd";
 
 function hasWindow(): boolean {
   return typeof window !== "undefined";
@@ -105,15 +105,10 @@ function downloadBlob(blob: Blob, filename: string): void {
   window.URL.revokeObjectURL(url);
 }
 
-function openSubmissionEmail(filename: string): void {
+function openStudyUploadPage(): void {
   if (!hasWindow()) return;
 
-  const subject = encodeURIComponent("BG3 build planner study files");
-  const body = encodeURIComponent(
-    `Hi,\n\nPlease find attached my BG3 build planner study ZIP file.\n\nFile name: ${filename}\n\nBest`
-  );
-
-  window.location.href = `mailto:${SUBMISSION_EMAIL}?subject=${subject}&body=${body}`;
+  window.open(STUDY_UPLOAD_URL, "_blank", "noopener,noreferrer");
 }
 
 function dateToDosTime(date: Date): { time: number; date: number } {
@@ -250,6 +245,10 @@ export default function StudyLoggingPanel({
   const [lastZipExport, setLastZipExport] = useState<LastZipExport | null>(
     null
   );
+  const [hasAcknowledgedManualUpload, setHasAcknowledgedManualUpload] =
+    useState(false);
+  const [showManualUploadCloseCheck, setShowManualUploadCloseCheck] =
+    useState(false);
 
   const isRunning = session?.status === "running" || isStudySessionActive();
   const trimmedParticipantId = participantId.trim();
@@ -327,6 +326,8 @@ export default function StudyLoggingPanel({
       setParticipantId(nextSession.participantId);
       setShowPreTaskSurvey(false);
       setLastZipExport(null);
+      setHasAcknowledgedManualUpload(false);
+      setShowManualUploadCloseCheck(false);
     } catch (startError) {
       setError(
         startError instanceof Error
@@ -363,8 +364,7 @@ export default function StudyLoggingPanel({
       };
 
       const previousCache =
-        loadSurveyCache(activeSession.participantId) ??
-        {
+        loadSurveyCache(activeSession.participantId) ?? {
           participantId: activeSession.participantId,
           sessionId: activeSession.sessionId,
           preTaskSurvey: null,
@@ -451,7 +451,10 @@ export default function StudyLoggingPanel({
       });
 
       setShowPostTaskSurvey(false);
-      setSession(loadStudySession());
+      setSession(endedSession);
+      setParticipantId(endedSession.participantId);
+      setHasAcknowledgedManualUpload(false);
+      setShowManualUploadCloseCheck(false);
     } catch (exportError) {
       setError(
         exportError instanceof Error
@@ -461,11 +464,17 @@ export default function StudyLoggingPanel({
     }
   }
 
-  function handleClearLogs(): void {
+  function handleRestartStudy(): void {
+    const confirmed = window.confirm(
+      "Restart the study session? This clears the current study logs, survey cache, and export reminder, then returns the logging panel to the state before Start was clicked."
+    );
+
+    if (!confirmed) return;
+
     const currentParticipantId =
       loadStudySession()?.participantId ?? participantId.trim();
 
-    clearStudyLogs({ clearSession: true });
+    clearStudyLogs({ clearSession: true, silent: true });
 
     if (currentParticipantId) {
       removeSurveyCache(currentParticipantId);
@@ -477,6 +486,21 @@ export default function StudyLoggingPanel({
     setShowPreTaskSurvey(false);
     setShowPostTaskSurvey(false);
     setLastZipExport(null);
+    setHasAcknowledgedManualUpload(false);
+    setShowManualUploadCloseCheck(false);
+  }
+
+  function handleRequestExportClose(): void {
+    if (!hasAcknowledgedManualUpload) return;
+
+    setShowManualUploadCloseCheck(true);
+  }
+
+  function handleConfirmExportClose(): void {
+    setLastZipExport(null);
+    setShowManualUploadCloseCheck(false);
+    setHasAcknowledgedManualUpload(false);
+    setSession(loadStudySession());
   }
 
   return (
@@ -549,11 +573,10 @@ export default function StudyLoggingPanel({
           <button
             type="button"
             className="study-logging-button study-logging-button--ghost"
-            onClick={handleClearLogs}
-            disabled={isRunning}
-            data-study-element="clear-study-logs-button"
+            onClick={handleRestartStudy}
+            data-study-element="restart-study-button"
           >
-            Clear logs
+            Restart
           </button>
         </div>
       </section>
@@ -577,20 +600,56 @@ export default function StudyLoggingPanel({
       ) : null}
 
       {lastZipExport ? (
-        <div className="study-export-backdrop" data-study-region="study-export-complete">
+        <div
+          className="study-export-backdrop"
+          data-study-region="study-export-complete"
+        >
           <section className="study-export-modal" role="dialog" aria-modal="true">
             <h2>Study export complete</h2>
 
             <p>
-              A ZIP file has been downloaded. Please send the downloaded file to{" "}
-              <strong>{SUBMISSION_EMAIL}</strong>.
+              Thank you for completing the study. A ZIP file has been downloaded
+              to your device.
             </p>
 
             <p className="study-export-filename">{lastZipExport.filename}</p>
 
+            <div className="study-export-required-warning">
+              <div className="study-export-required-label">
+                Required final step
+              </div>
+
+              <p>
+                The tool runs entirely in your browser, so the researcher does
+                not receive your study data automatically. Please upload the
+                downloaded ZIP file manually using the Dropbox upload page.
+              </p>
+
+              <p>
+                If Dropbox asks for a name, please enter only your participant
+                ID. Any name or email requested by Dropbox is part of the Dropbox
+                upload process and will not be used as study data.
+              </p>
+
+              <label className="study-export-required-check">
+                <input
+                  type="checkbox"
+                  checked={hasAcknowledgedManualUpload}
+                  onChange={(event) =>
+                    setHasAcknowledgedManualUpload(event.target.checked)
+                  }
+                />
+                <span>
+                  I understand that I must manually upload the downloaded ZIP
+                  file before closing this window.
+                </span>
+              </label>
+            </div>
+
             <p className="study-export-note">
-              Email attachment cannot be automated from this browser-only tool.
-              Use the button below to open an email draft, then attach the ZIP file manually.
+              If there are any issues, you can contact me or send the ZIP file
+              to sinkovichana@gmail.com. Thank you again for taking the time to
+              participate.
             </p>
 
             <div className="study-export-actions">
@@ -607,17 +666,70 @@ export default function StudyLoggingPanel({
               <button
                 type="button"
                 className="study-survey-primary"
-                onClick={() => openSubmissionEmail(lastZipExport.filename)}
+                onClick={openStudyUploadPage}
               >
-                Open email
+                Upload ZIP file
               </button>
 
               <button
                 type="button"
                 className="study-survey-secondary"
-                onClick={() => setLastZipExport(null)}
+                onClick={handleRequestExportClose}
+                disabled={!hasAcknowledgedManualUpload}
+                title={
+                  hasAcknowledgedManualUpload
+                    ? "Close this export reminder."
+                    : "Please confirm that you understand the ZIP file must be uploaded manually."
+                }
               >
                 Close
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showManualUploadCloseCheck ? (
+        <div
+          className="study-export-close-check-backdrop"
+          data-study-region="study-export-close-check"
+        >
+          <section
+            className="study-export-close-check-modal"
+            role="dialog"
+            aria-modal="true"
+          >
+            <h2>Before closing</h2>
+
+            <p>
+              Please make sure you have uploaded the downloaded ZIP file through
+              Dropbox, or sent it by email (sinkovichana@gmail.com) if Dropbox did not work. Without that
+              file, the study data cannot be received. Thank you for your understanding!
+            </p>
+
+            <div className="study-export-close-check-actions">
+              <button
+                type="button"
+                className="study-survey-secondary"
+                onClick={() => setShowManualUploadCloseCheck(false)}
+              >
+                Go back
+              </button>
+
+              <button
+                type="button"
+                className="study-survey-primary"
+                onClick={openStudyUploadPage}
+              >
+                Open upload page
+              </button>
+
+              <button
+                type="button"
+                className="study-survey-primary"
+                onClick={handleConfirmExportClose}
+              >
+                I uploaded or sent it
               </button>
             </div>
           </section>

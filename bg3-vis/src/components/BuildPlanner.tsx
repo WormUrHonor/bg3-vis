@@ -2402,10 +2402,16 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
           />
         ) : (
           <>
-            <header className="workspace-header" data-study-region="workspace-header">
-              <div>
-                <h1>BG3 Build Planner</h1>
-              </div>
+<header
+  className="workspace-header workspace-header--compact"
+  data-study-region="workspace-header"
+>
+  <div className="workspace-title-lockup">
+    <div className="workspace-title-copy">
+      <p>Baldur&apos;s Gate 3</p>
+      <h1>Build Planner</h1>
+    </div>
+  </div>
 
 <div
   className="workspace-header-actions"

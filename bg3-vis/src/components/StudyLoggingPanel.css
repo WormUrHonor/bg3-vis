@@ -253,4 +253,196 @@
 .study-logging-readiness-dot--ready {
   background: rgba(93, 214, 139, 0.95);
   box-shadow: 0 0 0 3px rgba(93, 214, 139, 0.12);
+}/* -------------------------------------------------------------------------- */
+/* Required final manual-upload reminder                                      */
+/* -------------------------------------------------------------------------- */
+
+.study-export-required-warning {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  margin: 13px 0 12px;
+  padding: 13px;
+  border: 2px solid rgba(255, 216, 128, 0.82);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 216, 128, 0.2), transparent 42%),
+    linear-gradient(145deg, rgba(73, 43, 14, 0.72), rgba(28, 17, 10, 0.86));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.32),
+    0 0 28px rgba(255, 184, 72, 0.22),
+    inset 0 0 20px rgba(255, 220, 128, 0.06);
+  overflow: hidden;
+}
+
+.study-export-required-warning::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent 33%,
+      rgba(255, 244, 218, 0.12) 44%,
+      transparent 56%,
+      transparent 100%
+    );
+  animation: studyExportRequiredSheen 2400ms ease-in-out infinite;
+}
+
+.study-export-required-label {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  border: 1px solid rgba(255, 231, 156, 0.48);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255, 216, 128, 0.16);
+  color: rgba(255, 236, 184, 0.98);
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.study-export-required-warning p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: rgba(255, 244, 218, 0.94);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.study-export-required-check {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 2px;
+  padding: 10px;
+  border: 1px solid rgba(255, 231, 156, 0.38);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 244, 218, 0.94);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.34;
+  cursor: pointer;
+}
+
+.study-export-required-check:hover {
+  border-color: rgba(255, 231, 156, 0.62);
+  background: rgba(255, 216, 128, 0.075);
+}
+
+.study-export-required-check input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: rgb(255, 216, 128);
+  cursor: pointer;
+}
+
+.study-export-actions .study-survey-primary:disabled,
+.study-export-actions .study-survey-secondary:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+}
+
+.study-export-close-check-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 53000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(7px);
+}
+
+.study-export-close-check-modal {
+  width: min(520px, calc(100vw - 42px));
+  border: 1px solid rgba(255, 216, 128, 0.46);
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 216, 128, 0.15), transparent 36%),
+    linear-gradient(145deg, rgba(31, 24, 18, 0.99), rgba(9, 7, 8, 0.99));
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.68),
+    0 0 0 2px rgba(255, 216, 128, 0.12),
+    inset 0 0 46px rgba(0, 0, 0, 0.46);
+  color: rgba(255, 244, 218, 0.94);
+}
+
+.study-export-close-check-modal h2 {
+  margin: 0 0 10px;
+  color: rgba(255, 244, 218, 0.98);
+  font-size: 1.06rem;
+}
+
+.study-export-close-check-modal p {
+  margin: 0;
+  color: rgba(226, 211, 184, 0.84);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.study-export-close-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@keyframes studyExportRequiredSheen {
+  0% {
+    transform: translateX(-80%);
+    opacity: 0;
+  }
+
+  28% {
+    opacity: 0.85;
+  }
+
+  62% {
+    opacity: 0.15;
+  }
+
+  100% {
+    transform: translateX(80%);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .study-export-required-warning {
+    padding: 11px;
+  }
+
+  .study-export-required-warning p {
+    font-size: 0.73rem;
+  }
+
+  .study-export-required-check {
+    font-size: 0.7rem;
+  }
+
+  .study-export-close-check-actions {
+    flex-direction: column;
+  }
+
+  .study-export-close-check-actions .study-survey-primary,
+  .study-export-close-check-actions .study-survey-secondary {
+    width: 100%;
+  }
 }
