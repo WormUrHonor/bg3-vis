@@ -488,7 +488,6 @@ export default function StudyLoggingPanel({
         <div className="study-logging-header">
           <div>
             <h3>Study logging</h3>
-            <p>Single-session party-building log.</p>
           </div>
 
           <span

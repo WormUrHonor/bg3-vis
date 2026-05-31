@@ -11,7 +11,6 @@ type ToolTutorialOverlayProps = {
   partySnapshotHash?: string | null;
   onRequestTab?: (tabId: TutorialRequestedTab) => void;
   onRequestEditableFocus?: () => void;
-  onRequestAggregateFocus?: () => void;
 };
 
 type HighlightRect = {
@@ -34,12 +33,14 @@ type TutorialStep = {
     | "center"
     | "safeTopRight";
   requestedTab?: TutorialRequestedTab;
-  requestAggregateFocus?: boolean;
+
   requestEditableFocus?: boolean;
   scrollTarget?: boolean;
   does: string;
   action: string;
   note?: string;
+  requiredMessage?: string;
+  requiredAcknowledgementLabel?: string;
   layerLegend?: Array<{
     label: string;
     description: string;
@@ -56,17 +57,6 @@ const tutorialSteps: TutorialStep[] = [
     action:
       "Create a build, save it, assign it to a slot, then start another build.",
     note: "The editable build is always included as one party member.",
-  },
-  {
-    title: "Start logging",
-    targetSelector: '[data-study-region="study-logging-panel"]',
-    placementHint: "safeTopRight",
-    scrollTarget: true,
-    does:
-      "Study logging records the session and exports one JSONL file.",
-    action:
-      "Enter the participant ID, click Start, use the tool, then click End & export.",
-    note: "The exported file downloads locally and must be sent manually.",
   },
   {
     title: "Use the editor tabs",
@@ -238,8 +228,8 @@ const tutorialSteps: TutorialStep[] = [
     title: "Review the party",
     targetSelector: '[data-study-region="party-dock"]',
     placementHint: "safeTopRight",
-    requestAggregateFocus: true,
     scrollTarget: false,
+    requestEditableFocus: true,
     does:
       "The party dock shows the aggregate party and each party member.",
     action:
@@ -247,15 +237,20 @@ const tutorialSteps: TutorialStep[] = [
     note: "Empty slots need saved builds assigned to them.",
   },
   {
-    title: "Export the result",
+    title: "Required: start and export the study log",
     targetSelector: '[data-study-region="study-logging-panel"]',
     placementHint: "safeTopRight",
     scrollTarget: true,
     does:
-      "End & export closes the session and downloads the study log.",
-    action: "Click it when the party-building task is finished.",
+      "The study log only records the party-building task correctly if it is started before the participant begins building.",
+    action:
+      "Before starting the task, enter the participant ID and click Start. When the party is finished, click End & export and send the downloaded JSONL file to the researcher.",
     note:
-      "The export still works if the party is incomplete, but records that it was incomplete.",
+      "This is the final tutorial step so participants see it immediately before starting the actual task.",
+    requiredMessage:
+      "Do not begin building before clicking Start. When finished, click End & export and send the downloaded JSONL file to the researcher.",
+    requiredAcknowledgementLabel:
+      "I understand that I must click Start before beginning the task, and click End & export when I finish.",
   },
 ];
 
@@ -353,6 +348,7 @@ function estimateCardHeight(step: TutorialStep) {
 
   if (step.note) height += 34;
   if (step.layerLegend) height += 126;
+  if (step.requiredMessage) height += 132;
 
   return Math.min(height, window.innerHeight - 32);
 }
@@ -404,7 +400,7 @@ function getCardStyle(
 ): CSSProperties {
   const viewportPadding = 16;
   const cardWidth = Math.min(
-    step.layerLegend ? 430 : 370,
+    step.layerLegend ? 430 : step.requiredMessage ? 430 : 370,
     window.innerWidth - viewportPadding * 2
   );
   const cardHeight = estimateCardHeight(step);
@@ -494,7 +490,6 @@ export default function ToolTutorialOverlay({
   partySnapshotHash = null,
   onRequestTab,
   onRequestEditableFocus,
-  onRequestAggregateFocus,
 }: ToolTutorialOverlayProps) {
   const [isOpen, setIsOpen] = useState(() => {
     return window.localStorage.getItem("bg3-tool-tutorial-seen") !== "true";
@@ -505,10 +500,14 @@ export default function ToolTutorialOverlay({
   const [highlightRects, setHighlightRects] = useState<HighlightRect[]>([]);
   const [positionRevision, setPositionRevision] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [hasAcknowledgedStudyLogging, setHasAcknowledgedStudyLogging] =
+    useState(false);
 
   const currentStep = tutorialSteps[stepIndex];
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === tutorialSteps.length - 1;
+  const isRequiredStep = Boolean(currentStep.requiredMessage);
+  const canFinishRequiredStep = !isRequiredStep || hasAcknowledgedStudyLogging;
 
   const cardStyle = useMemo(
     () => getCardStyle(targetElement, currentStep),
@@ -594,10 +593,6 @@ export default function ToolTutorialOverlay({
       onRequestTab?.(currentStep.requestedTab);
     }
 
-    if (currentStep.requestAggregateFocus) {
-      onRequestAggregateFocus?.();
-    }
-
     if (currentStep.requestEditableFocus) {
       onRequestEditableFocus?.();
     }
@@ -644,6 +639,7 @@ export default function ToolTutorialOverlay({
     setIsOpen(true);
     setStepIndex(0);
     setIsTransitioning(false);
+    setHasAcknowledgedStudyLogging(false);
 
     logTutorialEvent("tutorial_opened", {
       openedFrom: "help_button",
@@ -651,6 +647,13 @@ export default function ToolTutorialOverlay({
   }
 
   function closeTutorial(reason: "finished" | "dismissed") {
+    if (reason === "finished" && isRequiredStep && !hasAcknowledgedStudyLogging) {
+      logTutorialEvent("tutorial_required_acknowledgement_missing", {
+        attemptedCloseReason: reason,
+      });
+      return;
+    }
+
     window.localStorage.setItem("bg3-tool-tutorial-seen", "true");
     setIsOpen(false);
     setHighlightRects([]);
@@ -659,6 +662,7 @@ export default function ToolTutorialOverlay({
     logTutorialEvent("tutorial_closed", {
       closeReason: reason,
       completedTutorial: reason === "finished",
+      acknowledgedStudyLogging: hasAcknowledgedStudyLogging,
     });
   }
 
@@ -677,6 +681,14 @@ export default function ToolTutorialOverlay({
     changeStep(stepIndex - 1, "back");
   }
 
+  function handleRequiredAcknowledgement(checked: boolean) {
+    setHasAcknowledgedStudyLogging(checked);
+
+    logTutorialEvent("tutorial_required_acknowledgement_changed", {
+      checked,
+    });
+  }
+
   return (
     <>
       <button
@@ -691,7 +703,12 @@ export default function ToolTutorialOverlay({
 
       {isOpen ? (
         <div
-          className="tool-tutorial-backdrop"
+          className={[
+            "tool-tutorial-backdrop",
+            isRequiredStep ? "tool-tutorial-backdrop--required" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           data-study-region="tool-tutorial-overlay"
           data-study-id="tool-tutorial-overlay"
         >
@@ -711,11 +728,13 @@ export default function ToolTutorialOverlay({
           ))}
 
           <section
-            className={
-              isTransitioning
-                ? "tool-tutorial-card tool-tutorial-card--transitioning"
-                : "tool-tutorial-card"
-            }
+            className={[
+              "tool-tutorial-card",
+              isRequiredStep ? "tool-tutorial-card--required" : "",
+              isTransitioning ? "tool-tutorial-card--transitioning" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             style={cardStyle}
             role="dialog"
             aria-modal="true"
@@ -778,6 +797,30 @@ export default function ToolTutorialOverlay({
                 </div>
               ) : null}
 
+              {currentStep.requiredMessage ? (
+                <div className="tool-tutorial-required-warning">
+                  <div className="tool-tutorial-required-warning-label">
+                    Required for the study
+                  </div>
+
+                  <p>{currentStep.requiredMessage}</p>
+
+                  <label className="tool-tutorial-required-check">
+                    <input
+                      type="checkbox"
+                      checked={hasAcknowledgedStudyLogging}
+                      onChange={(event) =>
+                        handleRequiredAcknowledgement(event.target.checked)
+                      }
+                    />
+                    <span>
+                      {currentStep.requiredAcknowledgementLabel ??
+                        "I understand this instruction."}
+                    </span>
+                  </label>
+                </div>
+              ) : null}
+
               {currentStep.layerLegend ? (
                 <div className="tool-tutorial-layer-list">
                   {currentStep.layerLegend.map((layer) => (
@@ -805,9 +848,10 @@ export default function ToolTutorialOverlay({
                 type="button"
                 className="tool-tutorial-primary"
                 onClick={goNext}
+                disabled={isLastStep && !canFinishRequiredStep}
                 data-study-id="tutorial-next-button"
               >
-                {isLastStep ? "Start using the tool" : "Next"}
+                {isLastStep ? "I understand" : "Next"}
               </button>
             </footer>
           </section>

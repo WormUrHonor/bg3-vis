@@ -2395,11 +2395,6 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       handleFocusCurrentEditor();
     }
   }}
-  onRequestAggregateFocus={() => {
-    if (!isAggregateFocused) {
-      handleFocusAggregate();
-    }
-  }}
 />
       <section
         className={`workspace-half planner-half ${
@@ -2939,7 +2934,7 @@ aria-disabled={!slot || isAggregateFocused}
               setShowPartyPlanner(nextValue);
             }}
           >
-            {showPartyPlanner ? "Hide party planner" : "Show party planner"}
+            {showPartyPlanner ? "Enlarge Focus Circle" : "Show party planner"}
           </button>
 
           <div

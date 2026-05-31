@@ -46,10 +46,8 @@ const agreementScale: ScaleChoice[] = [
 
 const familiarityScale: ScaleChoice[] = [
   { value: "1", label: "Not familiar" },
-  { value: "2", label: "Slightly" },
-  { value: "3", label: "Moderately" },
-  { value: "4", label: "Familiar" },
-  { value: "5", label: "Very familiar" },
+  { value: "2", label: "Familiar" },
+  { value: "3", label: "Very familiar" },
 ];
 
 const frequencyScale: ScaleChoice[] = [
@@ -99,7 +97,10 @@ const priorityOptions: ScaleChoice[] = [
   { value: "party_balance", label: "Party balance" },
   { value: "clear_party_roles", label: "Clear party roles" },
   { value: "roleplay_fantasy", label: "Roleplaying or character fantasy" },
-  { value: "narrative_strength", label: "Narrative strength, such as dialogue options or story usefulness" },
+  {
+    value: "narrative_strength",
+    label: "Narrative strength, such as dialogue options or story usefulness",
+  },
   { value: "experimentation", label: "Experimentation" },
   { value: "ease_of_use", label: "Ease of use during actual play" },
   { value: "versatility", label: "Versatility across different situations" },
@@ -108,16 +109,28 @@ const priorityOptions: ScaleChoice[] = [
 
 const finalFactorOptions: ScaleChoice[] = [
   ...priorityOptions,
-  { value: "visualization_observation", label: "Something I noticed in the visualization" },
-  { value: "prior_bg3_knowledge", label: "Something I already knew about BG3" },
+  {
+    value: "visualization_observation",
+    label: "Something I noticed in the visualization",
+  },
+  {
+    value: "prior_bg3_knowledge",
+    label: "Something I already knew about BG3",
+  },
 ];
 
 const stopReasonOptions: ScaleChoice[] = [
   { value: "satisfied", label: "I was satisfied with the party" },
   { value: "explored_enough", label: "I felt I had explored enough" },
   { value: "ran_out_of_time", label: "I ran out of time" },
-  { value: "no_useful_changes", label: "I could not see useful changes anymore" },
-  { value: "tool_preferred_option", label: "The tool made one option seem clearly preferable" },
+  {
+    value: "no_useful_changes",
+    label: "I could not see useful changes anymore",
+  },
+  {
+    value: "tool_preferred_option",
+    label: "The tool made one option seem clearly preferable",
+  },
   { value: "tired", label: "I became tired" },
   { value: "unsure", label: "I was unsure what else to try" },
   { value: "other", label: "Other" },
@@ -143,86 +156,245 @@ const revisedMembersOptions: ScaleChoice[] = [
 
 const familiarityRows: MatrixRow[] = [
   { id: "bg3", label: "Baldur’s Gate 3" },
-  { id: "dnd_or_rpg_systems", label: "Dungeons & Dragons or similar roleplaying systems" },
+  {
+    id: "dnd_or_rpg_systems",
+    label: "Dungeons & Dragons or similar roleplaying (RPG) systems",
+  },
   { id: "build_planning", label: "Character build planning in games" },
-  { id: "charts_visual_summaries", label: "Charts, visual summaries, or dashboards" },
+  {
+    id: "charts_visual_summaries",
+    label: "Charts, visual summaries, or dashboards",
+  },
 ];
 
 const priorityRows: MatrixRow[] = [
   { id: "damage_combat_performance", label: "Damage or combat performance" },
   { id: "survivability", label: "Survivability" },
   { id: "party_balance", label: "Party balance" },
-  { id: "clear_party_roles", label: "Clear party roles, such as healer, tank, support, or damage dealer" },
+  {
+    id: "clear_party_roles",
+    label: "Clear party roles, such as healer, tank, support, or damage dealer",
+  },
   { id: "roleplay_fantasy", label: "Roleplaying or character fantasy" },
-  { id: "narrative_strength", label: "Narrative strength, such as dialogue options, charisma, or story usefulness" },
+  {
+    id: "narrative_strength",
+    label:
+      "Narrative strength, such as dialogue options, charisma, or story usefulness",
+  },
   { id: "experimentation", label: "Experimenting with unusual combinations" },
   { id: "ease_of_use", label: "Ease of use during actual play" },
   { id: "versatility", label: "Versatility across different situations" },
 ];
 
 const preUnderstandingRows: MatrixRow[] = [
-  { id: "ready_to_use_tool", label: "I feel ready to use the tool for the party-building task." },
-  { id: "goal_party_of_four", label: "I understand that the goal is to create a party of four characters." },
-  { id: "aggregate_whole_party", label: "I understand that the aggregate view shows the party as a whole." },
+  {
+    id: "ready_to_use_tool",
+    label: "I feel ready to use the tool for the party-building task.",
+  },
+  {
+    id: "goal_party_of_four",
+    label: "I understand that the goal is to create a party of four characters.",
+  },
+  {
+    id: "aggregate_whole_party",
+    label: "I understand that the aggregate view shows the party as a whole.",
+  },
 ];
 
 const workloadRows: MatrixRow[] = [
   { id: "mental_demand", label: "How mentally demanding was the task?" },
   { id: "time_pressure", label: "How much time pressure did you feel?" },
   { id: "effort", label: "How much effort did you need to complete the task?" },
-  { id: "frustration", label: "How frustrated did you feel during the task?" },
-  { id: "unsuccessful", label: "How unsuccessful did you feel while completing the task?" },
+  {
+    id: "frustration",
+    label: "How frustrated did you feel during the task?",
+  },
+  {
+    id: "unsuccessful",
+    label: "How unsuccessful did you feel while completing the task?",
+  },
 ];
 
 const usabilityRows: MatrixRow[] = [
   { id: "easy_to_use", label: "The tool was easy to use." },
-  { id: "features_supported_task", label: "The tool’s features supported what I needed to do." },
-  { id: "parts_worked_together", label: "The different parts of the tool worked together clearly." },
-  { id: "found_information", label: "I could find the information I needed without too much effort." },
-  { id: "tutorial_enough", label: "The tutorial gave me enough information to use the tool." },
+  {
+    id: "features_supported_task",
+    label: "The tool’s features supported what I needed to do.",
+  },
+  {
+    id: "parts_worked_together",
+    label: "The different parts of the tool worked together clearly.",
+  },
+  {
+    id: "found_information",
+    label: "I could find the information I needed without too much effort.",
+  },
+  {
+    id: "tutorial_enough",
+    label: "The tutorial gave me enough information to use the tool.",
+  },
 ];
 
 const explorationRows: MatrixRow[] = [
-  { id: "try_ideas", label: "The tool made it easy to try different build ideas." },
-  { id: "revise_after_info", label: "The tool made it easy to revise a build after seeing new information." },
-  { id: "compare_party_options", label: "The tool helped me compare different party options." },
-  { id: "return_to_ideas", label: "The tool helped me return to earlier ideas or saved versions." },
-  { id: "consider_new_options", label: "The tool helped me consider options I might not have considered otherwise." },
+  {
+    id: "try_ideas",
+    label: "The tool made it easy to try different build ideas.",
+  },
+  {
+    id: "revise_after_info",
+    label:
+      "The tool made it easy to revise a build after seeing new information.",
+  },
+  {
+    id: "compare_party_options",
+    label: "The tool helped me compare different party options.",
+  },
+  {
+    id: "return_to_ideas",
+    label: "The tool helped me return to earlier ideas or saved versions.",
+  },
+  {
+    id: "consider_new_options",
+    label:
+      "The tool helped me consider options I might not have considered otherwise.",
+  },
 ];
 
 const reasoningRows: MatrixRow[] = [
-  { id: "final_party_confidence", label: "I am confident in the final party I created." },
-  { id: "could_explain_choice", label: "I could explain why I chose this final party." },
-  { id: "understood_strengths", label: "I understood the main strengths of my final party." },
-  { id: "understood_weaknesses", label: "I understood the main weaknesses or limitations of my final party." },
-  { id: "tradeoffs", label: "The tool helped me think about trade-offs between different build choices." },
-  { id: "party_as_whole", label: "The tool helped me think about the party as a whole, not only individual characters." },
-  { id: "balance_with_other_goals", label: "The tool helped me balance combat performance with other goals such as utility, roleplay, or narrative usefulness." },
+  {
+    id: "final_party_confidence",
+    label: "I am confident in the final party I created.",
+  },
+  {
+    id: "could_explain_choice",
+    label: "I could explain why I chose this final party.",
+  },
+  {
+    id: "understood_strengths",
+    label: "I understood the main strengths of my final party.",
+  },
+  {
+    id: "understood_weaknesses",
+    label: "I understood the main weaknesses or limitations of my final party.",
+  },
+  {
+    id: "tradeoffs",
+    label:
+      "The tool helped me think about trade-offs between different build choices.",
+  },
+  {
+    id: "party_as_whole",
+    label:
+      "The tool helped me think about the party as a whole, not only individual characters.",
+  },
+  {
+    id: "balance_with_other_goals",
+    label:
+      "The tool helped me balance combat performance with other goals such as utility, roleplay, or narrative usefulness.",
+  },
 ];
 
 const visualizationRows: MatrixRow[] = [
-  { id: "understood_visualization", label: "I understood what the main visualization was showing." },
-  { id: "related_to_choices", label: "I understood how the visualization related to the choices I made in the build planner." },
-  { id: "noticed_weak_areas", label: "The visualization helped me notice missing or weak areas in the party." },
-  { id: "noticed_overlap", label: "The visualization helped me notice overlap between party members." },
-  { id: "hover_explanations", label: "The hover explanations helped me understand spells, abilities, or visualized categories." },
-  { id: "readable", label: "The visualization was readable enough for the task." },
+  {
+    id: "understood_visualization",
+    label: "I understood what the main visualization was showing.",
+  },
+  {
+    id: "related_to_choices",
+    label:
+      "I understood how the visualization related to the choices I made in the build planner.",
+  },
+  {
+    id: "noticed_weak_areas",
+    label:
+      "The visualization helped me notice missing or weak areas in the party.",
+  },
+  {
+    id: "noticed_overlap",
+    label: "The visualization helped me notice overlap between party members.",
+  },
+  {
+    id: "hover_explanations",
+    label:
+      "The hover explanations helped me understand spells, abilities, or visualized categories.",
+  },
+  {
+    id: "readable",
+    label: "The visualization was readable enough for the task.",
+  },
 ];
 
 const autonomyRows: MatrixRow[] = [
-  { id: "own_decision", label: "The tool helped me make my own decision rather than simply follow one “best” number." },
-  { id: "damage_one_factor", label: "I treated damage information as one factor among several." },
-  { id: "non_damage_factors", label: "I considered non-damage factors such as support, control, utility, range, roleplay, or narrative strength." },
-  { id: "could_ignore_tool", label: "I felt able to ignore tool information when it did not match my own build goal." },
-  { id: "not_pure_optimization", label: "The tool supported exploration without making the task feel like pure optimization." },
+  {
+    id: "own_decision",
+    label:
+      "The tool helped me make my own decision rather than simply follow one “best” number.",
+  },
+  {
+    id: "damage_one_factor",
+    label: "I treated damage information as one factor among several.",
+  },
+  {
+    id: "non_damage_factors",
+    label:
+      "I considered non-damage factors such as support, control, utility, range, roleplay, or narrative strength.",
+  },
+  {
+    id: "could_ignore_tool",
+    label:
+      "I felt able to ignore tool information when it did not match my own build goal.",
+  },
+  {
+    id: "not_pure_optimization",
+    label:
+      "The tool supported exploration without making the task feel like pure optimization.",
+  },
 ];
 
 const experienceRows: MatrixRow[] = [
-  { id: "appropriate_for_bg3", label: "The tool felt appropriate for planning a Baldur’s Gate 3 party." },
+  {
+    id: "appropriate_for_bg3",
+    label: "The tool felt appropriate for planning a Baldur’s Gate 3 party.",
+  },
   { id: "visual_style_fit", label: "The visual style fit the game context." },
-  { id: "more_interesting", label: "Using the tool made build planning more interesting." },
-  { id: "control", label: "I felt in control of the party-building process." },
-  { id: "would_use_again", label: "I would consider using a tool like this outside the study." },
+  {
+    id: "more_interesting",
+    label: "Using the tool made build planning more interesting.",
+  },
+  {
+    id: "decision_space_exploration",
+    label:
+      "The tool helped me explore the RPG build decision space more than I usually would.",
+  },
+  {
+    id: "creativity_support",
+    label:
+      "The tool made the build-planning process feel more creative than usual.",
+  },
+  {
+    id: "control",
+    label: "I felt in control of the party-building process.",
+  },
+  {
+    id: "would_use_again",
+    label: "I would consider using a tool like this outside the study.",
+  },
+];
+
+const toolUseRows: MatrixRow[] = [
+  {
+    id: "aggregate_use_frequency",
+    label: "How often did you use the aggregate party view while deciding?",
+  },
+  {
+    id: "description_inspection_frequency",
+    label: "How often did you inspect spell, ability, or feature descriptions?",
+  },
+  {
+    id: "visualization_change_frequency",
+    label:
+      "How often did you change a build because of something you noticed in the visualization?",
+  },
 ];
 
 const featureRows: MatrixRow[] = [
@@ -230,8 +402,14 @@ const featureRows: MatrixRow[] = [
   { id: "class_scores", label: "Class and ability score choices" },
   { id: "spells_abilities", label: "Spells and abilities tab" },
   { id: "hover_descriptions", label: "Spell and ability hover descriptions" },
-  { id: "focused_data_circle", label: "Individual Data Circle for the focused build" },
-  { id: "center_explanation", label: "Focused explanation in the center of the Data Circle" },
+  {
+    id: "focused_data_circle",
+    label: "Individual Data Circle for the focused build",
+  },
+  {
+    id: "center_explanation",
+    label: "Focused explanation in the center of the Data Circle",
+  },
   { id: "party_aggregate", label: "Party aggregate view" },
   { id: "small_party_circles", label: "Small party member circles" },
   { id: "saved_builds", label: "Saved builds panel" },
@@ -241,15 +419,132 @@ const featureRows: MatrixRow[] = [
   { id: "tutorial", label: "Tutorial/help overlay" },
   { id: "evaluation", label: "Evaluation/simulator output, if used" },
 ];
-
 const openTextRows: MatrixRow[] = [
-  { id: "final_party_description", label: "Briefly describe the final party you were trying to create." },
-  { id: "most_important_tradeoff", label: "What was the most important trade-off you considered?" },
-  { id: "most_influential_tool_part", label: "What part of the tool influenced your decisions the most?" },
-  { id: "missing_information", label: "Was there any information you wanted but could not find?" },
-  { id: "confusing_or_misleading", label: "Was anything confusing or misleading?" },
-  { id: "changed_normal_planning", label: "Did the tool change how you would normally plan a party or character build? If yes, how?" },
-  { id: "first_change", label: "What would you change first about the tool?" },
+  {
+    id: "most_important_tradeoff",
+    label:
+      "What trade-offs, if any, did you consider while building the party?",
+  },
+  {
+    id: "exploration_supporting_features",
+    label:
+      "Which parts of the tool, if any, helped you explore different party or build options?",
+  },
+  {
+    id: "exploration_blocking_features",
+    label:
+      "Which parts of the tool, if any, made it harder to explore, compare, or decide between options?",
+  },
+  {
+    id: "visualization_changed_understanding",
+    label:
+      "Did the visualization affect how you understood the party or your build choices? Please describe your answer.",
+  },
+  {
+    id: "metric_influence",
+    label:
+      "How, if at all, did the performance or damage-related information affect your decisions?",
+  },
+  {
+    id: "creativity_and_decision_space",
+    label:
+      "How, if at all, did the tool affect the range or creativity of the build options you considered?",
+  },
+  {
+    id: "missing_information",
+    label:
+      "Was there any information you wanted during the task that was missing, difficult to find, or difficult to understand?",
+  },
+  {
+    id: "changed_normal_planning",
+    label:
+      "How, if at all, did using the tool differ from how you would normally plan a party or character build?",
+  },
+  {
+    id: "first_change",
+    label:
+      "What, if anything, would you change, add or remove to improve the tool?",
+  },
+  {
+    id: "any_further_comments",
+    label:
+      "Do you have any further comments about the tool, the visualizations, or the party-building task?",
+  },
+];
+
+const optionalPostCommentRows: MatrixRow[] = [
+  {
+    id: "task_ease_comments",
+    label:
+      "Optional: any further comments about task ease? For example, was there anything that made the task especially easy or difficult?",
+  },
+  {
+    id: "workload_comments",
+    label:
+      "Optional: any further comments about workload? For example, was there anything that affected effort, frustration, or mental demand?",
+  },
+  {
+    id: "usability_comments",
+    label:
+      "Optional: any further comments about usability and usefulness? For example, was there anything that felt clear, unclear, helpful, or unnecessary?",
+  },
+  {
+    id: "exploration_comments",
+    label:
+      "Optional: any further comments about exploration and iteration? For example, was there anything that helped or prevented you from trying different ideas?",
+  },
+  {
+    id: "reasoning_comments",
+    label:
+      "Optional: any further comments about decision reasoning? For example, was there anything that helped or made it harder to justify your final party?",
+  },
+  {
+    id: "visualization_comments",
+    label:
+      "Optional: any further comments about visualization interpretation? For example, was there anything in the visualization that was helpful, unclear, or misleading?",
+  },
+  {
+    id: "autonomy_comments",
+    label:
+      "Optional: any further comments about metric focus and decision autonomy? For example, did the tool support your own goals or push you toward a certain kind of choice?",
+  },
+  {
+    id: "experience_comments",
+    label:
+      "Optional: any further comments about game-context fit, engagement, creativity, or exploration?",
+  },
+  {
+    id: "party_iteration_comments",
+    label:
+      "Optional: any further comments about party concepts or revisions? For example, was there anything that made you revise, save, abandon, or return to an idea?",
+  },
+  {
+    id: "tool_use_frequency_comments",
+    label:
+      "Optional: any further comments about how you used the tool? For example, were there parts you relied on more or less than expected?",
+  },
+  {
+    id: "final_party_main_factor_comments",
+    label:
+      "Optional: any further comments about what shaped your final party?",
+  },
+  {
+    id: "stop_reason_comments",
+    label:
+      "Optional: any further comments about why you stopped?",
+  },
+  {
+    id: "feature_usefulness_comments",
+    label:
+      "Optional: any further comments about feature usefulness? For example, were any features more or less useful than your ratings suggest?",
+  },
+];
+
+const postOptionalTextAnswerIds = [
+  ...optionalPostCommentRows.map((row) => row.id),
+  ...openTextRows.map((row) => row.id),
+  "final_party_main_factor_other",
+  "stop_reason_other",
 ];
 
 function getMatrixAnswer(
@@ -264,8 +559,31 @@ function getMatrixAnswer(
   return answer[rowId] ?? "";
 }
 
-function hasSingleAnswer(answers: StudySurveyAnswers, questionId: string): boolean {
+function getMultiChoiceAnswer(
+  answers: StudySurveyAnswers,
+  questionId: string
+): Record<string, string> {
+  const answer = answers[questionId];
+
+  if (!answer || typeof answer === "string") return {};
+
+  return answer;
+}
+
+function hasSingleAnswer(
+  answers: StudySurveyAnswers,
+  questionId: string
+): boolean {
   return typeof answers[questionId] === "string" && answers[questionId] !== "";
+}
+
+function hasMultiAnswer(
+  answers: StudySurveyAnswers,
+  questionId: string
+): boolean {
+  const answer = getMultiChoiceAnswer(answers, questionId);
+
+  return Object.values(answer).some((value) => value === "true");
 }
 
 function hasMatrixAnswers(
@@ -287,8 +605,6 @@ function getCompletionStatus(
       hasMatrixAnswers(answers, "pre_familiarity", familiarityRows) &&
       hasSingleAnswer(answers, "external_resources_frequency") &&
       hasMatrixAnswers(answers, "build_priorities", priorityRows) &&
-      hasSingleAnswer(answers, "main_build_priority") &&
-      hasSingleAnswer(answers, "second_build_priority") &&
       hasMatrixAnswers(answers, "pre_understanding", preUnderstandingRows)
     );
   }
@@ -304,11 +620,9 @@ function getCompletionStatus(
     hasMatrixAnswers(answers, "experience", experienceRows) &&
     hasSingleAnswer(answers, "party_concepts_considered") &&
     hasSingleAnswer(answers, "revised_party_members") &&
-    hasSingleAnswer(answers, "aggregate_use_frequency") &&
-    hasSingleAnswer(answers, "description_inspection_frequency") &&
-    hasSingleAnswer(answers, "visualization_change_frequency") &&
-    hasSingleAnswer(answers, "final_party_main_factor") &&
-    hasSingleAnswer(answers, "stop_reason") &&
+    hasMatrixAnswers(answers, "tool_use_frequency", toolUseRows) &&
+    hasMultiAnswer(answers, "final_party_main_factor") &&
+    hasMultiAnswer(answers, "stop_reason") &&
     hasMatrixAnswers(answers, "feature_usefulness", featureRows)
   );
 }
@@ -333,12 +647,16 @@ function MatrixBlock({
   return (
     <section className="study-survey-section">
       <h3>{title}</h3>
-      {description ? <p className="study-survey-section-note">{description}</p> : null}
+      {description ? (
+        <p className="study-survey-section-note">{description}</p>
+      ) : null}
 
       <div className="study-survey-matrix">
         <div
           className="study-survey-matrix-header"
-          style={{ gridTemplateColumns: `minmax(190px, 1.3fr) repeat(${scale.length}, minmax(72px, 1fr))` }}
+          style={{
+            gridTemplateColumns: `minmax(190px, 1.3fr) repeat(${scale.length}, minmax(72px, 1fr))`,
+          }}
         >
           <span />
           {scale.map((choice) => (
@@ -350,7 +668,9 @@ function MatrixBlock({
           <div
             key={row.id}
             className="study-survey-matrix-row"
-            style={{ gridTemplateColumns: `minmax(190px, 1.3fr) repeat(${scale.length}, minmax(72px, 1fr))` }}
+            style={{
+              gridTemplateColumns: `minmax(190px, 1.3fr) repeat(${scale.length}, minmax(72px, 1fr))`,
+            }}
           >
             <span className="study-survey-row-label">{row.label}</span>
 
@@ -363,8 +683,13 @@ function MatrixBlock({
                     type="radio"
                     name={name}
                     value={choice.value}
-                    checked={getMatrixAnswer(answers, questionId, row.id) === choice.value}
-                    onChange={() => onChange(questionId, row.id, choice.value)}
+                    checked={
+                      getMatrixAnswer(answers, questionId, row.id) ===
+                      choice.value
+                    }
+                    onChange={() =>
+                      onChange(questionId, row.id, choice.value)
+                    }
                   />
                 </label>
               );
@@ -396,7 +721,9 @@ function SingleChoiceBlock({
   return (
     <section className="study-survey-section">
       <h3>{title}</h3>
-      {description ? <p className="study-survey-section-note">{description}</p> : null}
+      {description ? (
+        <p className="study-survey-section-note">{description}</p>
+      ) : null}
 
       <div className="study-survey-choice-list">
         {scale.map((choice) => (
@@ -416,6 +743,98 @@ function SingleChoiceBlock({
   );
 }
 
+function MultiChoiceBlock({
+  title,
+  description,
+  questionId,
+  scale,
+  answers,
+  otherQuestionId,
+  otherLabel = "Please specify.",
+  onToggle,
+  onTextChange,
+}: {
+  title: string;
+  description?: string;
+  questionId: string;
+  scale: ScaleChoice[];
+  answers: StudySurveyAnswers;
+  otherQuestionId?: string;
+  otherLabel?: string;
+  onToggle: (questionId: string, choiceId: string, checked: boolean) => void;
+  onTextChange: (questionId: string, value: string) => void;
+}) {
+  const selectedValues = getMultiChoiceAnswer(answers, questionId);
+  const otherSelected = selectedValues.other === "true";
+  const rawOtherValue = otherQuestionId ? answers[otherQuestionId] : "";
+  const otherValue = typeof rawOtherValue === "string" ? rawOtherValue : "";
+
+  return (
+    <section className="study-survey-section">
+      <h3>{title}</h3>
+      {description ? (
+        <p className="study-survey-section-note">{description}</p>
+      ) : null}
+
+      <div className="study-survey-choice-list">
+        {scale.map((choice) => (
+          <label key={choice.value} className="study-survey-choice">
+            <input
+              type="checkbox"
+              name={`${questionId}-${choice.value}`}
+              value={choice.value}
+              checked={selectedValues[choice.value] === "true"}
+              onChange={(event) =>
+                onToggle(questionId, choice.value, event.target.checked)
+              }
+            />
+            <span>{choice.label}</span>
+          </label>
+        ))}
+      </div>
+
+      {otherQuestionId && otherSelected ? (
+        <label className="study-survey-text-question">
+          <span>{otherLabel}</span>
+          <textarea
+            value={otherValue}
+            onChange={(event) => onTextChange(otherQuestionId, event.target.value)}
+            rows={3}
+          />
+        </label>
+      ) : null}
+    </section>
+  );
+}
+
+function OptionalCommentBlock({
+  questionId,
+  title,
+  answers,
+  onChange,
+}: {
+  questionId: string;
+  title: string;
+  answers: StudySurveyAnswers;
+  onChange: (questionId: string, value: string) => void;
+}) {
+  const rawValue = answers[questionId];
+  const value = typeof rawValue === "string" ? rawValue : "";
+
+  return (
+    <section className="study-survey-section">
+      <label className="study-survey-text-question">
+        <span>{title}</span>
+        <textarea
+          value={value}
+          onChange={(event) => onChange(questionId, event.target.value)}
+          rows={3}
+        />
+      </label>
+    </section>
+  );
+}
+
 function TextQuestionsBlock({
   rows,
   answers,
@@ -429,7 +848,6 @@ function TextQuestionsBlock({
     <section className="study-survey-section">
       <h3>Open-ended questions</h3>
       <p className="study-survey-section-note">
-        These are optional, but they help explain the interaction logs.
       </p>
 
       <div className="study-survey-text-list">
@@ -497,45 +915,66 @@ export default function StudySurveyModal({
     });
   }
 
-function getNormalizedAnswersForExport(
-  mode: StudySurveyMode,
-  answers: StudySurveyAnswers
-): StudySurveyAnswers {
-  if (mode !== "post") return answers;
+  function setMultiChoiceAnswer(
+    questionId: string,
+    choiceId: string,
+    checked: boolean
+  ): void {
+    setAnswers((current) => {
+      const currentChoices =
+        current[questionId] && typeof current[questionId] !== "string"
+          ? (current[questionId] as Record<string, string>)
+          : {};
 
-  return openTextRows.reduce<StudySurveyAnswers>(
-    (normalizedAnswers, row) => {
-      if (normalizedAnswers[row.id] === undefined) {
-        normalizedAnswers[row.id] = "";
-      }
+      return {
+        ...current,
+        [questionId]: {
+          ...currentChoices,
+          [choiceId]: checked ? "true" : "false",
+        },
+      };
+    });
+  }
 
-      return normalizedAnswers;
-    },
-    { ...answers }
-  );
-}
+  function getNormalizedAnswersForExport(
+    mode: StudySurveyMode,
+    answers: StudySurveyAnswers
+  ): StudySurveyAnswers {
+    if (mode !== "post") return answers;
 
-function handleSubmit(): void {
-  if (!isComplete) return;
-
-  onSubmit({
-    surveySchemaVersion: "bg3-build-planner-survey-v1",
-    mode,
-    participantId,
-    submittedAt: new Date().toISOString(),
-    submittedAtMs: Date.now(),
-    ...(mode === "pre"
-      ? {
-          consent: {
-            requiredConsent: requiredConsentAccepted,
-            anonymizedQuotesConsent: quotesConsent,
-            dataReuseConsent,
-          },
+    return postOptionalTextAnswerIds.reduce<StudySurveyAnswers>(
+      (normalizedAnswers, questionId) => {
+        if (normalizedAnswers[questionId] === undefined) {
+          normalizedAnswers[questionId] = "";
         }
-      : {}),
-    answers: getNormalizedAnswersForExport(mode, answers),
-  });
-}
+
+        return normalizedAnswers;
+      },
+      { ...answers }
+    );
+  }
+
+  function handleSubmit(): void {
+    if (!isComplete) return;
+
+    onSubmit({
+      surveySchemaVersion: "bg3-build-planner-survey-v1",
+      mode,
+      participantId,
+      submittedAt: new Date().toISOString(),
+      submittedAtMs: Date.now(),
+      ...(mode === "pre"
+        ? {
+            consent: {
+              requiredConsent: requiredConsentAccepted,
+              anonymizedQuotesConsent: quotesConsent,
+              dataReuseConsent,
+            },
+          }
+        : {}),
+      answers: getNormalizedAnswersForExport(mode, answers),
+    });
+  }
 
   return (
     <div className="study-survey-backdrop" data-study-region="study-survey-modal">
@@ -580,7 +1019,7 @@ function handleSubmit(): void {
                 <p>
                   Participation is voluntary. You may stop participating at any time
                   without giving a reason. Your data will be used for scientific
-                  purposes as part of an MSc thesis, stored securely, and reported in
+                  purposes as part of a thesis, stored securely, and reported in
                   anonymized or pseudonymized form. Please do not include directly
                   identifying information in open-text answers.
                 </p>
@@ -655,22 +1094,6 @@ function handleSubmit(): void {
                 onChange={setMatrixAnswer}
               />
 
-              <SingleChoiceBlock
-                title="Which of these is usually your main priority when making a build?"
-                questionId="main_build_priority"
-                scale={priorityOptions}
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
-              <SingleChoiceBlock
-                title="Which of these is usually your second priority when making a build?"
-                questionId="second_build_priority"
-                scale={priorityOptions}
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
               <MatrixBlock
                 title="Pre-task understanding"
                 questionId="pre_understanding"
@@ -690,6 +1113,13 @@ function handleSubmit(): void {
                 onChange={setSingleAnswer}
               />
 
+              <OptionalCommentBlock
+                questionId="task_ease_comments"
+                title="Optional: any further comments about task ease? For example, was there anything that made the task especially easy or difficult?"
+                answers={answers}
+                onChange={setSingleAnswer}
+              />
+
               <MatrixBlock
                 title="Workload"
                 questionId="workload"
@@ -697,6 +1127,13 @@ function handleSubmit(): void {
                 scale={workloadScale}
                 answers={answers}
                 onChange={setMatrixAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="workload_comments"
+                title="Optional: any further comments about workload? For example, was there anything that affected effort, frustration, or mental demand?"
+                answers={answers}
+                onChange={setSingleAnswer}
               />
 
               <MatrixBlock
@@ -708,6 +1145,13 @@ function handleSubmit(): void {
                 onChange={setMatrixAnswer}
               />
 
+              <OptionalCommentBlock
+                questionId="usability_comments"
+                title="Optional: any further comments about usability and usefulness? For example, was there anything that felt clear, unclear, helpful, or unnecessary?"
+                answers={answers}
+                onChange={setSingleAnswer}
+              />
+
               <MatrixBlock
                 title="Exploration and iteration"
                 questionId="exploration"
@@ -715,6 +1159,13 @@ function handleSubmit(): void {
                 scale={agreementScale}
                 answers={answers}
                 onChange={setMatrixAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="exploration_comments"
+                title="Optional: any further comments about exploration and iteration? For example, was there anything that helped or prevented you from trying different ideas?"
+                answers={answers}
+                onChange={setSingleAnswer}
               />
 
               <MatrixBlock
@@ -726,6 +1177,13 @@ function handleSubmit(): void {
                 onChange={setMatrixAnswer}
               />
 
+              <OptionalCommentBlock
+                questionId="reasoning_comments"
+                title="Optional: any further comments about decision reasoning? For example, was there anything that helped or made it harder to justify your final party?"
+                answers={answers}
+                onChange={setSingleAnswer}
+              />
+
               <MatrixBlock
                 title="Visualization interpretation"
                 questionId="visualization"
@@ -733,6 +1191,13 @@ function handleSubmit(): void {
                 scale={agreementScale}
                 answers={answers}
                 onChange={setMatrixAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="visualization_comments"
+                title="Optional: any further comments about visualization interpretation? For example, was there anything in the visualization that was helpful, unclear, or misleading?"
+                answers={answers}
+                onChange={setSingleAnswer}
               />
 
               <MatrixBlock
@@ -744,6 +1209,13 @@ function handleSubmit(): void {
                 onChange={setMatrixAnswer}
               />
 
+              <OptionalCommentBlock
+                questionId="autonomy_comments"
+                title="Optional: any further comments about metric focus and decision autonomy? For example, did the tool support your own goals or push you toward a certain kind of choice?"
+                answers={answers}
+                onChange={setSingleAnswer}
+              />
+
               <MatrixBlock
                 title="Game-context fit and engagement"
                 questionId="experience"
@@ -751,6 +1223,13 @@ function handleSubmit(): void {
                 scale={agreementScale}
                 answers={answers}
                 onChange={setMatrixAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="experience_comments"
+                title="Optional: any further comments about game-context fit, engagement, creativity, or exploration?"
+                answers={answers}
+                onChange={setSingleAnswer}
               />
 
               <SingleChoiceBlock
@@ -769,42 +1248,63 @@ function handleSubmit(): void {
                 onChange={setSingleAnswer}
               />
 
-              <SingleChoiceBlock
-                title="How often did you use the aggregate party view while deciding?"
-                questionId="aggregate_use_frequency"
-                scale={frequencyScale}
+              <OptionalCommentBlock
+                questionId="party_iteration_comments"
+                title="Optional: any further comments about party concepts or revisions? For example, was there anything that made you revise, save, abandon, or return to an idea?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
 
-              <SingleChoiceBlock
-                title="How often did you inspect spell, ability, or feature descriptions?"
-                questionId="description_inspection_frequency"
+              <MatrixBlock
+                title="Tool use during the task"
+                questionId="tool_use_frequency"
+                rows={toolUseRows}
                 scale={frequencyScale}
+                answers={answers}
+                onChange={setMatrixAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="tool_use_frequency_comments"
+                title="Optional: any further comments about how you used the tool? For example, were there parts you relied on more or less than expected?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
 
-              <SingleChoiceBlock
-                title="How often did you change a build because of something you noticed in the visualization?"
-                questionId="visualization_change_frequency"
-                scale={frequencyScale}
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
-              <SingleChoiceBlock
-                title="What was the main factor that shaped your final party?"
+              <MultiChoiceBlock
+                title="What factors shaped your final party?"
+                description="Select all that apply."
                 questionId="final_party_main_factor"
                 scale={finalFactorOptions}
                 answers={answers}
+                otherQuestionId="final_party_main_factor_other"
+                otherLabel="If you selected Other, please describe the other factor."
+                onToggle={setMultiChoiceAnswer}
+                onTextChange={setSingleAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="final_party_main_factor_comments"
+                title="Optional: any further comments about what shaped your final party?"
+                answers={answers}
                 onChange={setSingleAnswer}
               />
 
-              <SingleChoiceBlock
+              <MultiChoiceBlock
                 title="What made you stop and submit the final party?"
+                description="Select all that apply."
                 questionId="stop_reason"
                 scale={stopReasonOptions}
+                answers={answers}
+                otherQuestionId="stop_reason_other"
+                otherLabel="If you selected Other, please describe the other reason."
+                onToggle={setMultiChoiceAnswer}
+                onTextChange={setSingleAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="stop_reason_comments"
+                title="Optional: any further comments about why you stopped?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
@@ -817,6 +1317,13 @@ function handleSubmit(): void {
                 scale={usefulnessScale}
                 answers={answers}
                 onChange={setMatrixAnswer}
+              />
+
+              <OptionalCommentBlock
+                questionId="feature_usefulness_comments"
+                title="Optional: any further comments about feature usefulness? For example, were any features more or less useful than your ratings suggest?"
+                answers={answers}
+                onChange={setSingleAnswer}
               />
 
               <TextQuestionsBlock
@@ -843,9 +1350,7 @@ function handleSubmit(): void {
             onClick={handleSubmit}
             disabled={!isComplete}
           >
-            {mode === "pre"
-              ? "Start study"
-              : "Submit survey & export"}
+            {mode === "pre" ? "Start study" : "Submit survey & export"}
           </button>
         </footer>
       </section>
