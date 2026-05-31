@@ -497,27 +497,45 @@ export default function StudySurveyModal({
     });
   }
 
-  function handleSubmit(): void {
-    if (!isComplete) return;
+function getNormalizedAnswersForExport(
+  mode: StudySurveyMode,
+  answers: StudySurveyAnswers
+): StudySurveyAnswers {
+  if (mode !== "post") return answers;
 
-    onSubmit({
-      surveySchemaVersion: "bg3-build-planner-survey-v1",
-      mode,
-      participantId,
-      submittedAt: new Date().toISOString(),
-      submittedAtMs: Date.now(),
-      ...(mode === "pre"
-        ? {
-            consent: {
-              requiredConsent: requiredConsentAccepted,
-              anonymizedQuotesConsent: quotesConsent,
-              dataReuseConsent,
-            },
-          }
-        : {}),
-      answers,
-    });
-  }
+  return openTextRows.reduce<StudySurveyAnswers>(
+    (normalizedAnswers, row) => {
+      if (normalizedAnswers[row.id] === undefined) {
+        normalizedAnswers[row.id] = "";
+      }
+
+      return normalizedAnswers;
+    },
+    { ...answers }
+  );
+}
+
+function handleSubmit(): void {
+  if (!isComplete) return;
+
+  onSubmit({
+    surveySchemaVersion: "bg3-build-planner-survey-v1",
+    mode,
+    participantId,
+    submittedAt: new Date().toISOString(),
+    submittedAtMs: Date.now(),
+    ...(mode === "pre"
+      ? {
+          consent: {
+            requiredConsent: requiredConsentAccepted,
+            anonymizedQuotesConsent: quotesConsent,
+            dataReuseConsent,
+          },
+        }
+      : {}),
+    answers: getNormalizedAnswersForExport(mode, answers),
+  });
+}
 
   return (
     <div className="study-survey-backdrop" data-study-region="study-survey-modal">

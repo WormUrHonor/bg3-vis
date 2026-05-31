@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import {
   clearStudyLogs,
-  endAndExportStudySession,
+  endStudySession,
   isStudySessionActive,
+  loadStudyLogsJsonl,
   loadStudySession,
   logStudyEvent,
   startStudySession,
@@ -31,11 +32,17 @@ type StoredSurveyCache = {
   sessionId?: string | null;
   preTaskSurvey?: StudySurveySubmission | null;
   postTaskSurvey?: StudySurveySubmission | null;
-  lastSurveyExportFilename?: string | null;
+  lastZipFilename?: string | null;
   updatedAt: string;
 };
 
+type LastZipExport = {
+  filename: string;
+  blob: Blob;
+};
+
 const STUDY_SURVEY_CACHE_PREFIX = "bg3-study-survey-cache-v1";
+const SUBMISSION_EMAIL = "sinkovichana@gmail.com";
 
 function hasWindow(): boolean {
   return typeof window !== "undefined";
@@ -83,16 +90,9 @@ function removeSurveyCache(participantId: string): void {
   }
 }
 
-function exportSurveyAnswersAsJson(payload: unknown, participantId: string): string {
-  if (!hasWindow()) {
-    throw new Error("Survey export is only available in the browser.");
-  }
+function downloadBlob(blob: Blob, filename: string): void {
+  if (!hasWindow()) return;
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const filename = `bg3-study-survey-${safeFilenamePart(participantId)}-${timestamp}.json`;
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json;charset=utf-8",
-  });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -103,8 +103,130 @@ function exportSurveyAnswersAsJson(payload: unknown, participantId: string): str
   link.remove();
 
   window.URL.revokeObjectURL(url);
+}
 
-  return filename;
+function openSubmissionEmail(filename: string): void {
+  if (!hasWindow()) return;
+
+  const subject = encodeURIComponent("BG3 build planner study files");
+  const body = encodeURIComponent(
+    `Hi,\n\nPlease find attached my BG3 build planner study ZIP file.\n\nFile name: ${filename}\n\nBest`
+  );
+
+  window.location.href = `mailto:${SUBMISSION_EMAIL}?subject=${subject}&body=${body}`;
+}
+
+function dateToDosTime(date: Date): { time: number; date: number } {
+  const year = Math.max(1980, date.getFullYear());
+
+  return {
+    time:
+      (date.getHours() << 11) |
+      (date.getMinutes() << 5) |
+      Math.floor(date.getSeconds() / 2),
+    date:
+      ((year - 1980) << 9) |
+      ((date.getMonth() + 1) << 5) |
+      date.getDate(),
+  };
+}
+
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff;
+
+  for (let i = 0; i < data.length; i += 1) {
+    crc ^= data[i];
+
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function writeUint16(target: number[], value: number): void {
+  target.push(value & 0xff, (value >>> 8) & 0xff);
+}
+
+function writeUint32(target: number[], value: number): void {
+  target.push(
+    value & 0xff,
+    (value >>> 8) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 24) & 0xff
+  );
+}
+
+function appendBytes(target: number[], bytes: Uint8Array): void {
+  for (const byte of bytes) {
+    target.push(byte);
+  }
+}
+
+function createZipBlob(files: Array<{ filename: string; content: string }>): Blob {
+  const encoder = new TextEncoder();
+  const now = new Date();
+  const dos = dateToDosTime(now);
+  const output: number[] = [];
+  const centralDirectory: number[] = [];
+
+  for (const file of files) {
+    const nameBytes = encoder.encode(file.filename);
+    const dataBytes = encoder.encode(file.content);
+    const localHeaderOffset = output.length;
+    const checksum = crc32(dataBytes);
+
+    writeUint32(output, 0x04034b50);
+    writeUint16(output, 20);
+    writeUint16(output, 0);
+    writeUint16(output, 0);
+    writeUint16(output, dos.time);
+    writeUint16(output, dos.date);
+    writeUint32(output, checksum);
+    writeUint32(output, dataBytes.length);
+    writeUint32(output, dataBytes.length);
+    writeUint16(output, nameBytes.length);
+    writeUint16(output, 0);
+    appendBytes(output, nameBytes);
+    appendBytes(output, dataBytes);
+
+    writeUint32(centralDirectory, 0x02014b50);
+    writeUint16(centralDirectory, 20);
+    writeUint16(centralDirectory, 20);
+    writeUint16(centralDirectory, 0);
+    writeUint16(centralDirectory, 0);
+    writeUint16(centralDirectory, dos.time);
+    writeUint16(centralDirectory, dos.date);
+    writeUint32(centralDirectory, checksum);
+    writeUint32(centralDirectory, dataBytes.length);
+    writeUint32(centralDirectory, dataBytes.length);
+    writeUint16(centralDirectory, nameBytes.length);
+    writeUint16(centralDirectory, 0);
+    writeUint16(centralDirectory, 0);
+    writeUint16(centralDirectory, 0);
+    writeUint16(centralDirectory, 0);
+    writeUint32(centralDirectory, 0);
+    writeUint32(centralDirectory, localHeaderOffset);
+    appendBytes(centralDirectory, nameBytes);
+  }
+
+  const centralDirectoryOffset = output.length;
+  appendBytes(output, new Uint8Array(centralDirectory));
+  const centralDirectorySize = centralDirectory.length;
+
+  writeUint32(output, 0x06054b50);
+  writeUint16(output, 0);
+  writeUint16(output, 0);
+  writeUint16(output, files.length);
+  writeUint16(output, files.length);
+  writeUint32(output, centralDirectorySize);
+  writeUint32(output, centralDirectoryOffset);
+  writeUint16(output, 0);
+
+  return new Blob([new Uint8Array(output)], {
+    type: "application/zip",
+  });
 }
 
 export default function StudyLoggingPanel({
@@ -125,6 +247,9 @@ export default function StudyLoggingPanel({
   const [error, setError] = useState<string | null>(null);
   const [showPreTaskSurvey, setShowPreTaskSurvey] = useState(false);
   const [showPostTaskSurvey, setShowPostTaskSurvey] = useState(false);
+  const [lastZipExport, setLastZipExport] = useState<LastZipExport | null>(
+    null
+  );
 
   const isRunning = session?.status === "running" || isStudySessionActive();
   const trimmedParticipantId = participantId.trim();
@@ -134,8 +259,8 @@ export default function StudyLoggingPanel({
   }, [trimmedParticipantId, isRunning]);
 
   const readinessText = isPartyComplete
-    ? "Party complete. Ending opens the post-task survey, then exports the survey answers and study log."
-    : "Party incomplete. Ending still works, but the final party will be marked incomplete.";
+    ? "Party complete. Ending opens the post-task survey, then exports the survey and study log together as a ZIP."
+    : "Party incomplete. Ending still works, but the final party will be marked incomplete in the interaction log.";
 
   function buildFinalPayload(): StudyLoggerEndPayload {
     const customPayload =
@@ -180,7 +305,7 @@ export default function StudyLoggingPanel({
         sessionId: nextSession.sessionId,
         preTaskSurvey: normalizedSubmission,
         postTaskSurvey: null,
-        lastSurveyExportFilename: null,
+        lastZipFilename: null,
         updatedAt: new Date().toISOString(),
       });
 
@@ -201,6 +326,7 @@ export default function StudyLoggingPanel({
       setSession(nextSession);
       setParticipantId(nextSession.participantId);
       setShowPreTaskSurvey(false);
+      setLastZipExport(null);
     } catch (startError) {
       setError(
         startError instanceof Error
@@ -236,7 +362,6 @@ export default function StudyLoggingPanel({
         participantId: activeSession.participantId,
       };
 
-      const finalPayload = buildFinalPayload();
       const previousCache =
         loadSurveyCache(activeSession.participantId) ??
         {
@@ -244,7 +369,7 @@ export default function StudyLoggingPanel({
           sessionId: activeSession.sessionId,
           preTaskSurvey: null,
           postTaskSurvey: null,
-          lastSurveyExportFilename: null,
+          lastZipFilename: null,
           updatedAt: new Date().toISOString(),
         };
 
@@ -261,55 +386,68 @@ export default function StudyLoggingPanel({
         },
       });
 
+      const finalPayload = buildFinalPayload();
+
+      const endedSession = endStudySession({
+        ...finalPayload,
+        postTaskSurveyCompleted: true,
+        exportedAsZip: true,
+      });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeId = safeFilenamePart(activeSession.participantId);
+      const surveyFilename = `bg3-study-survey-${safeId}-${timestamp}.json`;
+      const logFilename = `bg3-study-log-${safeId}-${timestamp}.jsonl`;
+      const zipFilename = `bg3-study-export-${safeId}-${timestamp}.zip`;
+
       const surveyExportPayload = {
         exportType: "bg3-build-planner-survey-answers",
-        exportSchemaVersion: "bg3-build-planner-survey-export-v1",
+        exportSchemaVersion: "bg3-build-planner-survey-export-v2",
         exportedAt: new Date().toISOString(),
         exportedAtMs: Date.now(),
-        participantId: activeSession.participantId,
-        sessionId: activeSession.sessionId,
-        studyDesign: activeSession.studyDesign,
-        prototypeVersion: activeSession.prototypeVersion,
-        appVersion: activeSession.appVersion,
-        dataModelVersion: activeSession.dataModelVersion,
-        sessionStartedAt: activeSession.startedAt,
+        participantId: endedSession.participantId,
+        sessionId: endedSession.sessionId,
+        studyDesign: endedSession.studyDesign,
+        prototypeVersion: endedSession.prototypeVersion,
+        appVersion: endedSession.appVersion,
+        dataModelVersion: endedSession.dataModelVersion,
+        sessionStartedAt: endedSession.startedAt,
+        sessionEndedAt: endedSession.endedAt,
         preTaskSurvey: previousCache.preTaskSurvey ?? null,
         postTaskSurvey: normalizedSubmission,
-        finalTaskState: finalPayload,
       };
 
-      const filename = exportSurveyAnswersAsJson(
-        surveyExportPayload,
-        activeSession.participantId
-      );
+      const logJsonl = loadStudyLogsJsonl();
+
+      if (!logJsonl.trim()) {
+        throw new Error("There are no study logs to export.");
+      }
+
+      const zipBlob = createZipBlob([
+        {
+          filename: surveyFilename,
+          content: JSON.stringify(surveyExportPayload, null, 2),
+        },
+        {
+          filename: logFilename,
+          content: logJsonl,
+        },
+      ]);
+
+      downloadBlob(zipBlob, zipFilename);
 
       saveSurveyCache({
-        participantId: activeSession.participantId,
-        sessionId: activeSession.sessionId,
+        participantId: endedSession.participantId,
+        sessionId: endedSession.sessionId,
         preTaskSurvey: previousCache.preTaskSurvey ?? null,
         postTaskSurvey: normalizedSubmission,
-        lastSurveyExportFilename: filename,
+        lastZipFilename: zipFilename,
         updatedAt: new Date().toISOString(),
       });
 
-      logStudyEvent({
-        eventCategory: "export",
-        eventType: "survey_answers_exported",
-        taskPhase: "submission",
-        activeView: "study-survey-modal",
-        payload: {
-          filename,
-          participantId: activeSession.participantId,
-          hasPreTaskSurvey: Boolean(previousCache.preTaskSurvey),
-          hasPostTaskSurvey: true,
-        },
-      });
-
-      endAndExportStudySession({
-        ...finalPayload,
-        postTaskSurveyCompleted: true,
-        surveyAnswersExported: true,
-        surveyAnswersFilename: filename,
+      setLastZipExport({
+        filename: zipFilename,
+        blob: zipBlob,
       });
 
       setShowPostTaskSurvey(false);
@@ -338,6 +476,7 @@ export default function StudyLoggingPanel({
     setError(null);
     setShowPreTaskSurvey(false);
     setShowPostTaskSurvey(false);
+    setLastZipExport(null);
   }
 
   return (
@@ -436,6 +575,54 @@ export default function StudyLoggingPanel({
           onSubmit={handlePostTaskSurveySubmit}
           onCancel={() => setShowPostTaskSurvey(false)}
         />
+      ) : null}
+
+      {lastZipExport ? (
+        <div className="study-export-backdrop" data-study-region="study-export-complete">
+          <section className="study-export-modal" role="dialog" aria-modal="true">
+            <h2>Study export complete</h2>
+
+            <p>
+              A ZIP file has been downloaded. Please send the downloaded file to{" "}
+              <strong>{SUBMISSION_EMAIL}</strong>.
+            </p>
+
+            <p className="study-export-filename">{lastZipExport.filename}</p>
+
+            <p className="study-export-note">
+              Email attachment cannot be automated from this browser-only tool.
+              Use the button below to open an email draft, then attach the ZIP file manually.
+            </p>
+
+            <div className="study-export-actions">
+              <button
+                type="button"
+                className="study-survey-secondary"
+                onClick={() =>
+                  downloadBlob(lastZipExport.blob, lastZipExport.filename)
+                }
+              >
+                Download ZIP again
+              </button>
+
+              <button
+                type="button"
+                className="study-survey-primary"
+                onClick={() => openSubmissionEmail(lastZipExport.filename)}
+              >
+                Open email
+              </button>
+
+              <button
+                type="button"
+                className="study-survey-secondary"
+                onClick={() => setLastZipExport(null)}
+              >
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
     </>
   );
