@@ -2380,22 +2380,6 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
   activeVisualizationFocus={getDataCircleFocusKey(dataCircleFocus)}
   partySnapshotHash={partySnapshotSummary.partySnapshotHash}
 />
-<ToolTutorialOverlay
-  activeView={heatmapActiveView}
-  activeBuildLabel={focusedLabel}
-  activeFocusSource={focusedDataCircle}
-  partySnapshotHash={partySnapshotSummary.partySnapshotHash}
-  onRequestTab={(tabId) => {
-    if (!isAggregateFocused) {
-      setActiveTab(tabId);
-    }
-  }}
-  onRequestEditableFocus={() => {
-    if (isAggregateFocused) {
-      handleFocusCurrentEditor();
-    }
-  }}
-/>
       <section
         className={`workspace-half planner-half ${
           isAggregateFocused ? "planner-half--readonly-focus" : ""
@@ -2420,11 +2404,30 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
           <>
             <header className="workspace-header" data-study-region="workspace-header">
               <div>
-                <p className="eyebrow">BG3 Build Planner</p>
-                <h1>Build Creation</h1>
+                <h1>BG3 Build Planner</h1>
               </div>
 
-              <div className="workspace-header-actions" data-study-region="workspace-header-actions">
+<div
+  className="workspace-header-actions"
+  data-study-region="workspace-header-actions"
+>
+  <ToolTutorialOverlay
+    activeView={heatmapActiveView}
+    activeBuildLabel={focusedLabel}
+    activeFocusSource={focusedDataCircle}
+    partySnapshotHash={partySnapshotSummary.partySnapshotHash}
+    onRequestTab={(tabId) => {
+      if (!isAggregateFocused) {
+        setActiveTab(tabId);
+      }
+    }}
+    onRequestEditableFocus={() => {
+      if (isAggregateFocused) {
+        handleFocusCurrentEditor();
+      }
+    }}
+  />
+
   <button
     className="new-blank-build-button"
     type="button"
