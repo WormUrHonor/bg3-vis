@@ -1,0 +1,312 @@
+.study-survey-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.study-survey-modal {
+  width: min(1120px, calc(100vw - 42px));
+  max-height: min(900px, calc(100vh - 42px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border: 1px solid rgba(216, 178, 104, 0.34);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(216, 178, 104, 0.13), transparent 34%),
+    linear-gradient(145deg, rgba(30, 22, 24, 0.99), rgba(9, 7, 8, 0.99));
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.62),
+    inset 0 0 46px rgba(0, 0, 0, 0.46);
+  color: rgba(255, 244, 218, 0.94);
+  overflow: hidden;
+}
+
+.study-survey-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(216, 178, 104, 0.16);
+}
+
+.study-survey-header p {
+  margin: 0 0 4px;
+  color: rgba(216, 178, 104, 0.78);
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.study-survey-header h2 {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.study-survey-close {
+  width: 31px;
+  height: 31px;
+  border: 1px solid rgba(216, 178, 104, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 244, 218, 0.86);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.study-survey-close:hover {
+  border-color: rgba(216, 178, 104, 0.5);
+  background: rgba(216, 178, 104, 0.1);
+}
+
+.study-survey-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px;
+}
+
+.study-survey-section {
+  border: 1px solid rgba(216, 178, 104, 0.14);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.study-survey-section + .study-survey-section {
+  margin-top: 14px;
+}
+
+.study-survey-section h3 {
+  margin: 0 0 8px;
+  color: rgba(255, 236, 196, 0.95);
+  font-size: 0.86rem;
+  line-height: 1.25;
+}
+
+.study-survey-section-note,
+.study-survey-consent p {
+  margin: 0 0 10px;
+  color: rgba(226, 211, 184, 0.78);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.study-survey-checkbox {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 13px;
+  border: 1px solid rgba(216, 178, 104, 0.2);
+  background: rgba(216, 178, 104, 0.06);
+  color: rgba(255, 244, 218, 0.88);
+  font-size: 0.75rem;
+  line-height: 1.38;
+}
+
+.study-survey-checkbox--optional {
+  border-color: rgba(216, 178, 104, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(226, 211, 184, 0.78);
+}
+
+.study-survey-checkbox input {
+  margin-top: 2px;
+}
+
+.study-survey-matrix {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.study-survey-matrix-header,
+.study-survey-matrix-row {
+  display: grid;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 780px;
+}
+
+.study-survey-matrix-header {
+  margin-bottom: 5px;
+}
+
+.study-survey-matrix-header span {
+  display: grid;
+  place-items: center;
+  min-height: 30px;
+  color: rgba(216, 178, 104, 0.74);
+  font-size: 0.58rem;
+  font-weight: 850;
+  text-align: center;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.study-survey-matrix-row + .study-survey-matrix-row {
+  margin-top: 5px;
+}
+
+.study-survey-row-label {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 7px 9px;
+  background: rgba(0, 0, 0, 0.16);
+  color: rgba(255, 244, 218, 0.86);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.study-survey-radio-cell {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+}
+
+.study-survey-radio-cell:hover {
+  background: rgba(216, 178, 104, 0.08);
+}
+
+.study-survey-radio-cell input,
+.study-survey-choice input {
+  accent-color: rgb(216, 178, 104);
+}
+
+.study-survey-choice-list {
+  display: grid;
+  gap: 7px;
+}
+
+.study-survey-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  border: 1px solid rgba(216, 178, 104, 0.12);
+  border-radius: 12px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 244, 218, 0.86);
+  font-size: 0.74rem;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.study-survey-choice:hover {
+  border-color: rgba(216, 178, 104, 0.28);
+  background: rgba(216, 178, 104, 0.065);
+}
+
+.study-survey-text-list {
+  display: grid;
+  gap: 11px;
+}
+
+.study-survey-text-question {
+  display: grid;
+  gap: 6px;
+  color: rgba(255, 244, 218, 0.86);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.study-survey-text-question textarea {
+  resize: vertical;
+  min-height: 70px;
+  border: 1px solid rgba(216, 178, 104, 0.2);
+  border-radius: 12px;
+  padding: 9px 10px;
+  background: rgba(7, 5, 6, 0.66);
+  color: rgba(255, 244, 218, 0.94);
+  font: inherit;
+  outline: none;
+}
+
+.study-survey-text-question textarea:focus {
+  border-color: rgba(216, 178, 104, 0.55);
+  box-shadow: 0 0 0 2px rgba(216, 178, 104, 0.09);
+}
+
+.study-survey-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid rgba(216, 178, 104, 0.14);
+}
+
+.study-survey-primary,
+.study-survey-secondary {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 15px;
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.study-survey-primary {
+  border: 1px solid rgba(216, 178, 104, 0.52);
+  background: linear-gradient(
+    180deg,
+    rgba(216, 178, 104, 0.92),
+    rgba(154, 102, 46, 0.86)
+  );
+  color: rgba(22, 15, 8, 0.96);
+}
+
+.study-survey-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.study-survey-secondary {
+  border: 1px solid rgba(216, 178, 104, 0.22);
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 244, 218, 0.78);
+}
+
+@media (max-width: 760px) {
+  .study-survey-backdrop {
+    padding: 10px;
+  }
+
+  .study-survey-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .study-survey-header,
+  .study-survey-content,
+  .study-survey-footer {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .study-survey-footer {
+    flex-direction: column-reverse;
+  }
+
+  .study-survey-primary,
+  .study-survey-secondary {
+    width: 100%;
+  }
+}
