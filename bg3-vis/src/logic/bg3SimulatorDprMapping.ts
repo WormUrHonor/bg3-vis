@@ -20,6 +20,7 @@ type NormalizedRound = DprRound & {
 };
 
 const DEFAULT_BUILD_SUFFIX = "Level12_StdEquip (gorKjan.5019)";
+const BG3_ROUND_DURATION_MS = 6_000;
 
 const STANDARD_BUILD_NAME_BY_CLASS: Record<string, string> = {
   Barbarian: `BG3_Barbarian_${DEFAULT_BUILD_SUFFIX}`,
@@ -59,6 +60,21 @@ function roundNumber(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
+function normalizeSimulatorDamage(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+
+  /*
+    Jo's exported BG3 build files often store damage-like values scaled by 1000,
+    e.g. 5000 means 5.0. If the API already returns normal damage values, this
+    leaves them untouched.
+  */
+  if (Math.abs(value) >= 1000) {
+    return value / 1000;
+  }
+
+  return value;
+}
+
 function getFirstNumber(record: UnknownRecord, keys: string[]): number | null {
   for (const key of keys) {
     const value = readNumber(record[key]);
@@ -89,14 +105,32 @@ function getRoundNumber(record: UnknownRecord, fallback: number): number {
 
   if (direct !== null) return Math.max(1, Math.round(direct));
 
+  const timeMs = getFirstNumber(record, [
+    "time",
+    "timeMs",
+    "time_ms",
+    "timestamp",
+    "timestampMs",
+    "timestamp_ms",
+    "cast_time_ms",
+    "start_time_ms",
+  ]);
+
+  if (timeMs !== null) {
+    return Math.max(1, Math.floor(timeMs / BG3_ROUND_DURATION_MS) + 1);
+  }
+
   return fallback;
 }
 
 function getDamageValue(record: UnknownRecord): number {
   const direct = getFirstNumber(record, [
     "damage",
+    "dmg",
     "totalDamage",
     "total_damage",
+    "totalDmg",
+    "total_dmg",
     "expectedDamage",
     "expected_damage",
     "damageDone",
@@ -106,9 +140,15 @@ function getDamageValue(record: UnknownRecord): number {
     "mean",
     "avg",
     "average",
+    "dmg_avg",
+    "dmg_raw",
+    "dmg_heuristic",
+    "flat_damage",
   ]);
 
-  if (direct !== null) return Math.max(0, direct);
+  if (direct !== null) {
+    return Math.max(0, normalizeSimulatorDamage(direct));
+  }
 
   const distribution = record.distribution;
 
@@ -122,18 +162,21 @@ function getDamageValue(record: UnknownRecord): number {
       "expected_value",
     ]);
 
-    if (expected !== null) return Math.max(0, expected);
+    if (expected !== null) {
+      return Math.max(0, normalizeSimulatorDamage(expected));
+    }
   }
 
   return 0;
 }
 
 function getActionName(record: UnknownRecord, fallback: string): string {
-  return (
+  const direct =
     getFirstString(record, [
       "skill",
       "skillName",
       "skill_name",
+      "skill_key",
       "action",
       "actionName",
       "action_name",
@@ -141,8 +184,25 @@ function getActionName(record: UnknownRecord, fallback: string): string {
       "source",
       "sourceSkill",
       "source_skill",
-    ]) ?? fallback
-  );
+    ]) ?? null;
+
+  if (direct) return direct;
+
+  const nestedSkill = record.skill;
+
+  if (isRecord(nestedSkill)) {
+    return (
+      getFirstString(nestedSkill, [
+        "skill",
+        "skillName",
+        "skill_name",
+        "skill_key",
+        "name",
+      ]) ?? fallback
+    );
+  }
+
+  return fallback;
 }
 
 function getArray(record: UnknownRecord, keys: string[]): unknown[] | null {
@@ -160,7 +220,7 @@ function collectNestedArrays(
   candidateKeys: string[],
   depth = 0
 ): unknown[] {
-  if (depth > 5) return [];
+  if (depth > 6) return [];
 
   if (Array.isArray(value)) return value;
 
@@ -185,8 +245,15 @@ function normalizeRoundObject(
   if (!isRecord(value)) return null;
 
   const actions =
-    getArray(value, ["actions", "skills", "events", "history", "rotation"]) ??
-    [];
+    getArray(value, [
+      "actions",
+      "skills",
+      "events",
+      "history",
+      "rotation",
+      "casts",
+      "steps",
+    ]) ?? [];
 
   const normalizedActions: Array<{
     name: string;
@@ -284,6 +351,8 @@ function getCandidateRoundArrays(response: unknown): unknown[][] {
       "turns",
       "turnResults",
       "turn_results",
+      "actionsByRound",
+      "actions_by_round",
     ]);
 
     if (directRounds) candidates.push(directRounds);
@@ -293,6 +362,7 @@ function getCandidateRoundArrays(response: unknown): unknown[][] {
       "dprRounds",
       "roundResults",
       "turns",
+      "actionsByRound",
     ]);
 
     if (resultRounds.length > 0) candidates.push(resultRounds);
@@ -302,6 +372,7 @@ function getCandidateRoundArrays(response: unknown): unknown[][] {
       "dprRounds",
       "roundResults",
       "turns",
+      "actionsByRound",
     ]);
 
     if (dataRounds.length > 0) candidates.push(dataRounds);
@@ -317,10 +388,13 @@ function getCandidateHistoryArrays(response: unknown): unknown[][] {
     const directHistory = getArray(response, [
       "history",
       "events",
+      "log",
       "combatLog",
       "combat_log",
       "simulationHistory",
       "simulation_history",
+      "priorityHistory",
+      "priority_history",
     ]);
 
     if (directHistory) candidates.push(directHistory);
@@ -328,8 +402,10 @@ function getCandidateHistoryArrays(response: unknown): unknown[][] {
     const resultHistory = collectNestedArrays(response.result, [
       "history",
       "events",
+      "log",
       "combatLog",
       "simulationHistory",
+      "priorityHistory",
     ]);
 
     if (resultHistory.length > 0) candidates.push(resultHistory);
@@ -337,8 +413,10 @@ function getCandidateHistoryArrays(response: unknown): unknown[][] {
     const dataHistory = collectNestedArrays(response.data, [
       "history",
       "events",
+      "log",
       "combatLog",
       "simulationHistory",
+      "priorityHistory",
     ]);
 
     if (dataHistory.length > 0) candidates.push(dataHistory);

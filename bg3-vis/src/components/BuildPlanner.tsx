@@ -162,7 +162,30 @@ type RecentAggregateFocusContext = {
   partyGaps: unknown[];
   redundancyScore: number;
 };
+const USE_BG3_LOCAL_MOCK_BUILD_JSON = true;
 
+const BG3_LOCAL_MOCK_BUILD_JSON_PATH =
+  "bg3-simulator-test/BG3_Warlock_Level12_StdEquip (gorKjan.5019).json";
+
+async function loadBg3LocalMockBuildJson(): Promise<unknown> {
+  const url = encodeURI(
+    `${import.meta.env.BASE_URL}${BG3_LOCAL_MOCK_BUILD_JSON_PATH}`
+  );
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not load local BG3 mock build JSON from ${url}. Status: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.json();
+}
 const FOCUS_TO_ACTION_WINDOW_MS = 30_000;
 const PARTY_GAP_RESPONSE_WINDOW_MS = 90_000;
 const EVALUATION_RESPONSE_WINDOW_MS = 120_000;
@@ -1517,55 +1540,178 @@ function handleCreateNewBlankBuild() {
     setActiveClassFeatureIds([]);
   }
 
-  async function handleEvaluateBuild() {
-    if (isAggregateFocused || simulatorStatus === "loading") {
-  logBlockedUiAction(
-    "evaluate-build",
-    "evaluate-build-button",
-    isAggregateFocused
-      ? "aggregate_view_is_readonly"
-      : "simulator_already_running",
-    {
-      simulatorStatus,
-      hasEvaluatedBuild,
-    }
-  );
-
-  return;
-}
-
-    const simulatorBuildName = getSimulatorBuildNameForSnapshot(
-      currentEditorSnapshot
+async function handleEvaluateBuild() {
+  if (isAggregateFocused || simulatorStatus === "loading") {
+    logBlockedUiAction(
+      "evaluate-build",
+      "evaluate-build-button",
+      isAggregateFocused
+        ? "aggregate_view_is_readonly"
+        : "simulator_already_running",
+      {
+        simulatorStatus,
+        hasEvaluatedBuild,
+      }
     );
-    const requestedAtMs = Date.now();
-    const buildSnapshotHash = createStableHash(currentEditorSnapshot, "build");
-    const focusKey = getDataCircleFocusKey(dataCircleFocus);
+
+    return;
+  }
+
+  const usingLocalMockBuildJson = USE_BG3_LOCAL_MOCK_BUILD_JSON;
+
+  const simulatorBuildName = usingLocalMockBuildJson
+    ? "BG3_Warlock_Level12_StdEquip (local buildJson mock)"
+    : getSimulatorBuildNameForSnapshot(currentEditorSnapshot);
+
+  const requestedAtMs = Date.now();
+  const buildSnapshotHash = createStableHash(currentEditorSnapshot, "build");
+  const focusKey = getDataCircleFocusKey(dataCircleFocus);
+
+  latestEvaluationRef.current = {
+    status: "started",
+    requestedAtMs,
+    simulatorBuildName,
+    buildSnapshotHash,
+    partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+  };
+  firstPostEvaluationEditLoggedRef.current = false;
+
+  const requestPayload = {
+    resultSource: "bg3_simulator_api",
+    simulatorEndpoint: "/api/bg3/runWithPriority",
+    simulatorBuildName,
+    usingLocalMockBuildJson,
+    localMockBuildJsonPath: usingLocalMockBuildJson
+      ? BG3_LOCAL_MOCK_BUILD_JSON_PATH
+      : null,
+    buildSnapshot: currentEditorSnapshot,
+    buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+    buildSnapshotHash,
+    partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+    partySnapshotSummary,
+    partyVisualProfile,
+    partyGaps: partyCoverageForLogging.partyGaps,
+    focusToActionContext: createFocusToActionContext(requestedAtMs),
+  };
+
+  logStudyEvent({
+    eventCategory: "evaluation",
+    eventType: "evaluation_requested",
+    activeBuildId: focusedSavedBuild?.id,
+    activeBuildLabel: focusedLabel,
+    activePartyMemberIndex: editingPartySlotIndex,
+    activePartyMemberLabel,
+    activeView: "main-data-circle",
+    activeFocusSource: focusedDataCircle,
+    activeVisualizationFocus: focusKey,
+    taskPhase: "evaluation",
+    payload: requestPayload,
+  });
+
+  logStudyEvent({
+    eventCategory: "evaluation",
+    eventType: "simulator_request_started",
+    activeBuildId: focusedSavedBuild?.id,
+    activeBuildLabel: focusedLabel,
+    activePartyMemberIndex: editingPartySlotIndex,
+    activePartyMemberLabel,
+    activeView: "main-data-circle",
+    activeFocusSource: focusedDataCircle,
+    activeVisualizationFocus: focusKey,
+    taskPhase: "evaluation",
+    payload: requestPayload,
+  });
+
+  setHasEvaluatedBuild(true);
+  setSimulatorStatus("loading");
+  setSimulatorError(null);
+
+  try {
+    const mockBuildJson = usingLocalMockBuildJson
+      ? await loadBg3LocalMockBuildJson()
+      : null;
+
+    const response = await runBg3PrioritySimulation(
+      usingLocalMockBuildJson
+        ? {
+            buildJson: mockBuildJson,
+            max_rounds: 10,
+            rotation: [],
+            charname: characterName || "Player",
+            include_history: true,
+          }
+        : {
+            build: simulatorBuildName,
+            max_rounds: 10,
+            rotation: [],
+            charname: characterName || "Player",
+            include_history: true,
+          }
+    );
+
+    console.log("BG3 simulator raw response:", response);
+
+    const rounds = mapBg3SimulationToDprRounds(response);
+
+    if (!rounds.some((round) => round.damage > 0)) {
+      throw new Error(
+        "The simulator returned a response, but no round damage could be extracted yet. Check the raw response in the console."
+      );
+    }
+
+    const completedAtMs = Date.now();
+    const totalDamage = rounds.reduce((sum, round) => sum + round.damage, 0);
+    const averageDpr = getAverageDpr(rounds);
+    const roundDamages = rounds.map((round) => round.damage);
+    const resultSummary = {
+      averageDpr,
+      totalDamage,
+      roundCount: rounds.length,
+      maxRoundDamage: Math.max(...roundDamages),
+      minRoundDamage: Math.min(...roundDamages),
+    };
 
     latestEvaluationRef.current = {
-      status: "started",
+      status: "completed",
       requestedAtMs,
+      completedAtMs,
       simulatorBuildName,
       buildSnapshotHash,
       partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      averageDpr,
+      totalDamage,
+      roundCount: rounds.length,
     };
     firstPostEvaluationEditLoggedRef.current = false;
 
-    const requestPayload = {
+    setSimulatorDprRounds(rounds);
+    setSimulatorStatus("success");
+
+    const completedPayload = {
       resultSource: "bg3_simulator_api",
+      simulatorEndpoint: "/api/bg3/runWithPriority",
       simulatorBuildName,
-      buildSnapshot: currentEditorSnapshot,
+      usingLocalMockBuildJson,
+      localMockBuildJsonPath: usingLocalMockBuildJson
+        ? BG3_LOCAL_MOCK_BUILD_JSON_PATH
+        : null,
+      averageDpr,
+      totalDamage,
+      rounds,
+      resultSummary,
+      requestToCompletionMs: completedAtMs - requestedAtMs,
       buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
       buildSnapshotHash,
       partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       partySnapshotSummary,
       partyVisualProfile,
       partyGaps: partyCoverageForLogging.partyGaps,
-      focusToActionContext: createFocusToActionContext(requestedAtMs),
+      rawResponse: response,
     };
 
     logStudyEvent({
       eventCategory: "evaluation",
-      eventType: "evaluation_requested",
+      eventType: "evaluation_completed",
       activeBuildId: focusedSavedBuild?.id,
       activeBuildLabel: focusedLabel,
       activePartyMemberIndex: editingPartySlotIndex,
@@ -1574,12 +1720,12 @@ function handleCreateNewBlankBuild() {
       activeFocusSource: focusedDataCircle,
       activeVisualizationFocus: focusKey,
       taskPhase: "evaluation",
-      payload: requestPayload,
+      payload: completedPayload,
     });
 
     logStudyEvent({
       eventCategory: "evaluation",
-      eventType: "simulator_request_started",
+      eventType: "simulator_request_succeeded",
       activeBuildId: focusedSavedBuild?.id,
       activeBuildLabel: focusedLabel,
       activePartyMemberIndex: editingPartySlotIndex,
@@ -1588,164 +1734,76 @@ function handleCreateNewBlankBuild() {
       activeFocusSource: focusedDataCircle,
       activeVisualizationFocus: focusKey,
       taskPhase: "evaluation",
-      payload: requestPayload,
+      payload: completedPayload,
+    });
+  } catch (error) {
+    const failedAtMs = Date.now();
+    const message =
+      error instanceof Error ? error.message : "Unknown simulator error.";
+
+    console.error("BG3 simulator evaluation failed:", error);
+
+    latestEvaluationRef.current = {
+      status: "failed",
+      requestedAtMs,
+      completedAtMs: failedAtMs,
+      simulatorBuildName,
+      buildSnapshotHash,
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      errorMessage: message,
+    };
+
+    setSimulatorStatus("error");
+    setSimulatorError(message);
+    setSimulatorDprRounds([]);
+
+    const failedPayload = {
+      resultSource: "bg3_simulator_api",
+      simulatorEndpoint: "/api/bg3/runWithPriority",
+      simulatorBuildName,
+      usingLocalMockBuildJson,
+      localMockBuildJsonPath: usingLocalMockBuildJson
+        ? BG3_LOCAL_MOCK_BUILD_JSON_PATH
+        : null,
+      errorMessage: message,
+      requestToFailureMs: failedAtMs - requestedAtMs,
+      buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
+      buildSnapshotHash,
+      partySnapshotHash: partySnapshotSummary.partySnapshotHash,
+      partySnapshotSummary,
+      partyVisualProfile,
+      partyGaps: partyCoverageForLogging.partyGaps,
+    };
+
+    logStudyEvent({
+      eventCategory: "evaluation",
+      eventType: "evaluation_failed",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeView: "main-data-circle",
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: focusKey,
+      taskPhase: "evaluation",
+      payload: failedPayload,
     });
 
-    setHasEvaluatedBuild(true);
-    setSimulatorStatus("loading");
-    setSimulatorError(null);
-
-    try {
-      const response = await runBg3PrioritySimulation({
-        build: simulatorBuildName,
-        max_rounds: 10,
-        rotation: [],
-        charname: characterName || "Player",
-        include_history: true,
-      });
-
-      const rounds = mapBg3SimulationToDprRounds(response);
-
-      if (!rounds.some((round) => round.damage > 0)) {
-        throw new Error(
-          "The simulator returned a response, but no round damage could be extracted yet. Check the response shape in the console."
-        );
-      }
-
-      const completedAtMs = Date.now();
-      const totalDamage = rounds.reduce((sum, round) => sum + round.damage, 0);
-      const averageDpr = getAverageDpr(rounds);
-      const roundDamages = rounds.map((round) => round.damage);
-      const resultSummary = {
-        averageDpr,
-        totalDamage,
-        roundCount: rounds.length,
-        maxRoundDamage: Math.max(...roundDamages),
-        minRoundDamage: Math.min(...roundDamages),
-      };
-
-      latestEvaluationRef.current = {
-        status: "completed",
-        requestedAtMs,
-        completedAtMs,
-        simulatorBuildName,
-        buildSnapshotHash,
-        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
-        averageDpr,
-        totalDamage,
-        roundCount: rounds.length,
-      };
-      firstPostEvaluationEditLoggedRef.current = false;
-
-      setSimulatorDprRounds(rounds);
-      setSimulatorStatus("success");
-
-      const completedPayload = {
-        resultSource: "bg3_simulator_api",
-        simulatorBuildName,
-        averageDpr,
-        totalDamage,
-        rounds,
-        resultSummary,
-        requestToCompletionMs: completedAtMs - requestedAtMs,
-        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-        buildSnapshotHash,
-        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
-        partySnapshotSummary,
-        partyVisualProfile,
-        partyGaps: partyCoverageForLogging.partyGaps,
-      };
-
-      logStudyEvent({
-        eventCategory: "evaluation",
-        eventType: "evaluation_completed",
-        activeBuildId: focusedSavedBuild?.id,
-        activeBuildLabel: focusedLabel,
-        activePartyMemberIndex: editingPartySlotIndex,
-        activePartyMemberLabel,
-        activeView: "main-data-circle",
-        activeFocusSource: focusedDataCircle,
-        activeVisualizationFocus: focusKey,
-        taskPhase: "evaluation",
-        payload: completedPayload,
-      });
-
-      logStudyEvent({
-        eventCategory: "evaluation",
-        eventType: "simulator_request_succeeded",
-        activeBuildId: focusedSavedBuild?.id,
-        activeBuildLabel: focusedLabel,
-        activePartyMemberIndex: editingPartySlotIndex,
-        activePartyMemberLabel,
-        activeView: "main-data-circle",
-        activeFocusSource: focusedDataCircle,
-        activeVisualizationFocus: focusKey,
-        taskPhase: "evaluation",
-        payload: completedPayload,
-      });
-    } catch (error) {
-      const failedAtMs = Date.now();
-      const message =
-        error instanceof Error ? error.message : "Unknown simulator error.";
-
-      console.error("BG3 simulator evaluation failed:", error);
-
-      latestEvaluationRef.current = {
-        status: "failed",
-        requestedAtMs,
-        completedAtMs: failedAtMs,
-        simulatorBuildName,
-        buildSnapshotHash,
-        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
-        errorMessage: message,
-      };
-
-      setSimulatorStatus("error");
-      setSimulatorError(message);
-      setSimulatorDprRounds([]);
-
-      const failedPayload = {
-        resultSource: "bg3_simulator_api",
-        simulatorBuildName,
-        errorMessage: message,
-        requestToFailureMs: failedAtMs - requestedAtMs,
-        buildSnapshotSummary: getSnapshotSummary(currentEditorSnapshot),
-        buildSnapshotHash,
-        partySnapshotHash: partySnapshotSummary.partySnapshotHash,
-        partySnapshotSummary,
-        partyVisualProfile,
-        partyGaps: partyCoverageForLogging.partyGaps,
-      };
-
-      logStudyEvent({
-        eventCategory: "evaluation",
-        eventType: "evaluation_failed",
-        activeBuildId: focusedSavedBuild?.id,
-        activeBuildLabel: focusedLabel,
-        activePartyMemberIndex: editingPartySlotIndex,
-        activePartyMemberLabel,
-        activeView: "main-data-circle",
-        activeFocusSource: focusedDataCircle,
-        activeVisualizationFocus: focusKey,
-        taskPhase: "evaluation",
-        payload: failedPayload,
-      });
-
-      logStudyEvent({
-        eventCategory: "evaluation",
-        eventType: "simulator_request_failed",
-        activeBuildId: focusedSavedBuild?.id,
-        activeBuildLabel: focusedLabel,
-        activePartyMemberIndex: editingPartySlotIndex,
-        activePartyMemberLabel,
-        activeView: "main-data-circle",
-        activeFocusSource: focusedDataCircle,
-        activeVisualizationFocus: focusKey,
-        taskPhase: "evaluation",
-        payload: failedPayload,
-      });
-    }
+    logStudyEvent({
+      eventCategory: "evaluation",
+      eventType: "simulator_request_failed",
+      activeBuildId: focusedSavedBuild?.id,
+      activeBuildLabel: focusedLabel,
+      activePartyMemberIndex: editingPartySlotIndex,
+      activePartyMemberLabel,
+      activeView: "main-data-circle",
+      activeFocusSource: focusedDataCircle,
+      activeVisualizationFocus: focusKey,
+      taskPhase: "evaluation",
+      payload: failedPayload,
+    });
   }
+}
 
   function applyEditorSnapshot(
     snapshot: BuildEditorSnapshot,

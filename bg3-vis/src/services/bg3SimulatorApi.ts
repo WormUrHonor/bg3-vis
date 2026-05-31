@@ -37,21 +37,15 @@ function getEndpointUrl(path: string): string {
   return `${BG3_SIMULATOR_BASE_URL}${path}`;
 }
 
-function createTimeoutSignal(timeoutMs: number): AbortSignal {
-  const controller = new AbortController();
-
-  window.setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-
-  return controller.signal;
-}
-
 async function postJson<TRequest extends object, TResponse = unknown>(
   path: string,
   payload: TRequest
 ): Promise<TResponse> {
   const url = getEndpointUrl(path);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
 
   let response: Response;
 
@@ -63,18 +57,22 @@ async function postJson<TRequest extends object, TResponse = unknown>(
         Accept: "application/json",
       },
       body: JSON.stringify(payload),
-      signal: createTimeoutSignal(REQUEST_TIMEOUT_MS),
+      signal: controller.signal,
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(
-        `The BG3 simulator request timed out after ${REQUEST_TIMEOUT_MS / 1000}s.`
+        `The BG3 simulator request timed out after ${
+          REQUEST_TIMEOUT_MS / 1000
+        }s.`
       );
     }
 
     throw new Error(
-      "Could not reach the BG3 simulator API. If this is a CORS error, the simulator server needs to allow requests from the deployed study page."
+      "Could not reach the BG3 simulator API. If this is a CORS error, the simulator server needs to allow requests from this page."
     );
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   const responseText = await response.text();
@@ -83,7 +81,7 @@ async function postJson<TRequest extends object, TResponse = unknown>(
     throw new Error(
       `BG3 simulator API request failed with ${response.status} ${
         response.statusText
-      }.${responseText ? ` Response: ${responseText.slice(0, 600)}` : ""}`
+      }.${responseText ? ` Response: ${responseText.slice(0, 800)}` : ""}`
     );
   }
 
@@ -97,7 +95,7 @@ async function postJson<TRequest extends object, TResponse = unknown>(
     throw new Error(
       `The BG3 simulator API did not return valid JSON. Response: ${responseText.slice(
         0,
-        600
+        800
       )}`
     );
   }
