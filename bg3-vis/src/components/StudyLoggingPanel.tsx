@@ -531,7 +531,7 @@ export default function StudyLoggingPanel({
             value={participantId}
             disabled={isRunning}
             onChange={(event) => setParticipantId(event.target.value)}
-            placeholder="e.g. P01"
+            placeholder="Unique fantasy name"
             data-study-element="participant-id-input"
           />
         </label>

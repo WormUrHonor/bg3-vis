@@ -1,4 +1,6 @@
-export type Bg3SimulatorRotationStep = {
+export type Bg3SimulatorStatus = "idle" | "loading" | "success" | "error";
+
+export type Bg3RotationStep = {
   skill: string;
   skillID: string;
   cast_time_ms: number;
@@ -8,162 +10,125 @@ export type Bg3PrioritySimulationRequest = {
   build?: string;
   buildJson?: unknown;
   max_rounds: number;
-  rotation: Bg3SimulatorRotationStep[];
+  rotation: Bg3RotationStep[];
   charname: string;
   include_history: boolean;
 };
 
-export type Bg3SimulatorStatus = "idle" | "loading" | "success" | "error";
-
-/*
-  Johannes' documented endpoint:
-
-  POST /api/bg3/runWithPriority
-
-  In development, this is reached through the Vite proxy:
-
-  Frontend: /bg3-api/runWithPriority
-  Backend:  https://gw2wingman.nevermindcreations.de/api/bg3/runWithPriority
-*/
-const BG3_SIMULATOR_PRIORITY_ENDPOINT = "/bg3-api/runWithPriority";
-
-/*
-  Toggle this while testing.
-
-  true:
-  Uses Johannes' uploaded backend build. This is the cleanest test because it
-  avoids buildJson format problems.
-
-  false:
-  Sends the request created by the app.
-*/
-const USE_BACKEND_TEST_BUILD_NAME = true;
-
-/*
-  Use this only after Johannes confirms that buildJson input is supported and
-  that your exported JSON has the correct structure.
-*/
-const USE_LOCAL_TEST_BUILD_JSON = false;
-
-/*
-  IMPORTANT:
-  Files in /public are served from the root path.
-
-  Correct local path:
-  public/bg3-simulator-test/warlock-build.json
-
-  Correct fetch URL:
-  /bg3-simulator-test/warlock-build.json
-
-  Do NOT put the file in public/public.
-*/
-const LOCAL_TEST_BUILD_JSON_URL = "/bg3-simulator-test/warlock-build.json";
-
-const TEST_BACKEND_BUILD_NAME_REQUEST: Bg3PrioritySimulationRequest = {
-  build: "BG3_Monk_Level12_StdEquip (gorKjan.5019)",
-  max_rounds: 10,
-  rotation: [],
-  charname: "Player",
-  include_history: true,
+export type Bg3RotationSimulationRequest = {
+  build?: string;
+  buildJson?: unknown;
+  rotation: Bg3RotationStep[];
+  charname: string;
 };
 
-async function loadLocalBuildJson(signal?: AbortSignal): Promise<unknown> {
-  const response = await fetch(LOCAL_TEST_BUILD_JSON_URL, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-    signal,
-  });
+export type Bg3SimulatorResponse = unknown;
 
-  const text = await response.text();
-  const trimmed = text.trim();
+const DEFAULT_BG3_SIMULATOR_BASE_URL =
+  "https://gw2wingman.nevermindcreations.de";
+
+const BG3_SIMULATOR_BASE_URL =
+  import.meta.env.VITE_BG3_SIMULATOR_BASE_URL ??
+  DEFAULT_BG3_SIMULATOR_BASE_URL;
+
+const REQUEST_TIMEOUT_MS = 45_000;
+
+function getEndpointUrl(path: string): string {
+  return `${BG3_SIMULATOR_BASE_URL}${path}`;
+}
+
+function createTimeoutSignal(timeoutMs: number): AbortSignal {
+  const controller = new AbortController();
+
+  window.setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  return controller.signal;
+}
+
+async function postJson<TRequest extends object, TResponse = unknown>(
+  path: string,
+  payload: TRequest
+): Promise<TResponse> {
+  const url = getEndpointUrl(path);
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: createTimeoutSignal(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(
+        `The BG3 simulator request timed out after ${REQUEST_TIMEOUT_MS / 1000}s.`
+      );
+    }
+
+    throw new Error(
+      "Could not reach the BG3 simulator API. If this is a CORS error, the simulator server needs to allow requests from the deployed study page."
+    );
+  }
+
+  const responseText = await response.text();
 
   if (!response.ok) {
     throw new Error(
-      `Could not load local BG3 build JSON (${response.status}). Tried: ${LOCAL_TEST_BUILD_JSON_URL}. Response preview: ${text.slice(
-        0,
-        500
-      )}`
+      `BG3 simulator API request failed with ${response.status} ${
+        response.statusText
+      }.${responseText ? ` Response: ${responseText.slice(0, 600)}` : ""}`
     );
   }
 
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+  if (!responseText.trim()) {
+    throw new Error("The BG3 simulator API returned an empty response.");
+  }
+
+  try {
+    return JSON.parse(responseText) as TResponse;
+  } catch {
     throw new Error(
-      `Local BG3 build file is not JSON. Tried: ${LOCAL_TEST_BUILD_JSON_URL}. Response preview: ${text.slice(
+      `The BG3 simulator API did not return valid JSON. Response: ${responseText.slice(
         0,
-        500
+        600
       )}`
     );
   }
-
-  return JSON.parse(trimmed);
-}
-
-async function getRequestForSimulator(
-  request: Bg3PrioritySimulationRequest,
-  signal?: AbortSignal
-): Promise<Bg3PrioritySimulationRequest> {
-  if (USE_LOCAL_TEST_BUILD_JSON) {
-    const buildJson = await loadLocalBuildJson(signal);
-
-    return {
-      buildJson,
-      max_rounds: 10,
-      rotation: [],
-      charname: "Player",
-      include_history: true,
-    };
-  }
-
-  if (USE_BACKEND_TEST_BUILD_NAME) {
-    return TEST_BACKEND_BUILD_NAME_REQUEST;
-  }
-
-  return request;
-}
-
-function parseSimulatorResponse(text: string): unknown {
-  const trimmed = text.trim();
-
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-    throw new Error(
-      `BG3 simulator returned a non-JSON response. Response preview: ${text.slice(
-        0,
-        700
-      )}`
-    );
-  }
-
-  return JSON.parse(trimmed);
 }
 
 export async function runBg3PrioritySimulation(
-  request: Bg3PrioritySimulationRequest,
-  signal?: AbortSignal
-): Promise<unknown> {
-  const simulatorRequest = await getRequestForSimulator(request, signal);
-
-  const response = await fetch(BG3_SIMULATOR_PRIORITY_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(simulatorRequest),
-    signal,
-  });
-
-  const text = await response.text();
-
-  if (!response.ok) {
+  payload: Bg3PrioritySimulationRequest
+): Promise<Bg3SimulatorResponse> {
+  if (!payload.build && !payload.buildJson) {
     throw new Error(
-      `BG3 simulator request failed (${response.status}). Frontend endpoint: ${BG3_SIMULATOR_PRIORITY_ENDPOINT}. Expected proxied backend endpoint: /api/bg3/runWithPriority. ${text.slice(
-        0,
-        900
-      )}`
+      "A simulator build name or raw buildJson is required before running evaluation."
     );
   }
 
-  return parseSimulatorResponse(text);
+  return postJson<Bg3PrioritySimulationRequest, Bg3SimulatorResponse>(
+    "/api/bg3/runWithPriority",
+    payload
+  );
+}
+
+export async function simulateBg3Rotation(
+  payload: Bg3RotationSimulationRequest
+): Promise<Bg3SimulatorResponse> {
+  if (!payload.build && !payload.buildJson) {
+    throw new Error(
+      "A simulator build name or raw buildJson is required before simulating a rotation."
+    );
+  }
+
+  return postJson<Bg3RotationSimulationRequest, Bg3SimulatorResponse>(
+    "/api/bg3/simulateRotation",
+    payload
+  );
 }

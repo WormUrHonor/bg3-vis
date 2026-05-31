@@ -1,33 +1,46 @@
-import type {
-  BuildEditorSnapshot,
-} from "../types/savedBuildTypes";
-import type {
-  DprContribution,
-  DprRound,
-} from "../components/DataCircle/dataCircleInteraction";
+import type { DprRound } from "../components/DataCircle/dataCircleInteraction";
+
+type BuildLike = {
+  selectedClass?: string;
+  selectedLevel?: number;
+};
 
 type UnknownRecord = Record<string, unknown>;
 
-const STANDARD_BUILD_BY_CLASS: Partial<Record<string, string>> = {
-  Barbarian: "BG3_Barbarian_Level12_StdEquip (gorKjan.5019)",
-  Bard: "BG3_Bard_Level12_StdEquip (gorKjan.5019)",
-  Cleric: "BG3_Cleric_Level12_StdEquip (gorKjan.5019)",
-  Druid: "BG3_Druid_Level12_StdEquip (gorKjan.5019)",
-  Fighter: "BG3_Fighter_Level12_StdEquip (gorKjan.5019)",
-  Monk: "BG3_Monk_Level12_StdEquip (gorKjan.5019)",
-  Paladin: "BG3_Paladin_Level12_StdEquip (gorKjan.5019)",
-  Ranger: "BG3_Ranger_Level12_StdEquip (gorKjan.5019)",
-  Rogue: "BG3_Rogue_Level12_StdEquip (gorKjan.5019)",
-  Sorcerer: "BG3_Sorcerer_Level12_StdEquip (gorKjan.5019)",
-  Warlock: "BG3_Warlock_Level12_StdEquip (gorKjan.5019)",
-  Wizard: "BG3_Wizard_Level12_StdEquip (gorKjan.5019)",
+type NormalizedRound = DprRound & {
+  round: number;
+  label: string;
+  damage: number;
+  actions?: Array<{
+    name: string;
+    damage: number;
+    raw?: unknown;
+  }>;
+  raw?: unknown;
+};
+
+const DEFAULT_BUILD_SUFFIX = "Level12_StdEquip (gorKjan.5019)";
+
+const STANDARD_BUILD_NAME_BY_CLASS: Record<string, string> = {
+  Barbarian: `BG3_Barbarian_${DEFAULT_BUILD_SUFFIX}`,
+  Bard: `BG3_Bard_${DEFAULT_BUILD_SUFFIX}`,
+  Cleric: `BG3_Cleric_${DEFAULT_BUILD_SUFFIX}`,
+  Druid: `BG3_Druid_${DEFAULT_BUILD_SUFFIX}`,
+  Fighter: `BG3_Fighter_${DEFAULT_BUILD_SUFFIX}`,
+  Monk: `BG3_Monk_${DEFAULT_BUILD_SUFFIX}`,
+  Paladin: `BG3_Paladin_${DEFAULT_BUILD_SUFFIX}`,
+  Ranger: `BG3_Ranger_${DEFAULT_BUILD_SUFFIX}`,
+  Rogue: `BG3_Rogue_${DEFAULT_BUILD_SUFFIX}`,
+  Sorcerer: `BG3_Sorcerer_${DEFAULT_BUILD_SUFFIX}`,
+  Warlock: `BG3_Warlock_${DEFAULT_BUILD_SUFFIX}`,
+  Wizard: `BG3_Wizard_${DEFAULT_BUILD_SUFFIX}`,
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function asNumber(value: unknown): number | undefined {
+function readNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
   if (typeof value === "string") {
@@ -35,332 +48,377 @@ function asNumber(value: unknown): number | undefined {
     if (Number.isFinite(parsed)) return parsed;
   }
 
-  return undefined;
+  return null;
 }
 
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function normalizeDamage(value: unknown): number {
-  const numeric = asNumber(value);
-
-  if (numeric === undefined) return 0;
-
-  // Johannes' BG3 data often stores damage as 1000-scaled values.
-  // The mock DPR layer expects readable BG3 damage values.
-  if (Math.abs(numeric) > 1000) return numeric / 1000;
-
-  return numeric;
+function roundNumber(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
-function slugifyAbilityId(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+function getFirstNumber(record: UnknownRecord, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = readNumber(record[key]);
+    if (value !== null) return value;
+  }
+
+  return null;
 }
 
-function getRoundNumber(entry: UnknownRecord, fallbackIndex: number): number {
+function getFirstString(record: UnknownRecord, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = readString(record[key]);
+    if (value) return value;
+  }
+
+  return null;
+}
+
+function getRoundNumber(record: UnknownRecord, fallback: number): number {
+  const direct = getFirstNumber(record, [
+    "round",
+    "roundNumber",
+    "round_number",
+    "turn",
+    "turnNumber",
+    "turn_number",
+  ]);
+
+  if (direct !== null) return Math.max(1, Math.round(direct));
+
+  return fallback;
+}
+
+function getDamageValue(record: UnknownRecord): number {
+  const direct = getFirstNumber(record, [
+    "damage",
+    "totalDamage",
+    "total_damage",
+    "expectedDamage",
+    "expected_damage",
+    "damageDone",
+    "damage_done",
+    "amount",
+    "value",
+    "mean",
+    "avg",
+    "average",
+  ]);
+
+  if (direct !== null) return Math.max(0, direct);
+
+  const distribution = record.distribution;
+
+  if (isRecord(distribution)) {
+    const expected = getFirstNumber(distribution, [
+      "mean",
+      "avg",
+      "average",
+      "expected",
+      "expectedValue",
+      "expected_value",
+    ]);
+
+    if (expected !== null) return Math.max(0, expected);
+  }
+
+  return 0;
+}
+
+function getActionName(record: UnknownRecord, fallback: string): string {
   return (
-    asNumber(entry.round) ??
-    asNumber(entry.round_index) ??
-    asNumber(entry.roundIndex) ??
-    asNumber(entry.turn) ??
-    asNumber(entry.turn_index) ??
-    fallbackIndex + 1
+    getFirstString(record, [
+      "skill",
+      "skillName",
+      "skill_name",
+      "action",
+      "actionName",
+      "action_name",
+      "name",
+      "source",
+      "sourceSkill",
+      "source_skill",
+    ]) ?? fallback
   );
 }
 
-function getSkillName(entry: UnknownRecord): string {
-  return (
-    asString(entry.skill) ??
-    asString(entry.skill_key) ??
-    asString(entry.skillKey) ??
-    asString(entry.name) ??
-    asString(entry.action) ??
-    asString(entry.action_name) ??
-    "Unknown action"
-  );
+function getArray(record: UnknownRecord, keys: string[]): unknown[] | null {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (Array.isArray(value)) return value;
+  }
+
+  return null;
 }
 
-function getSkillDamage(entry: UnknownRecord): number {
-  return normalizeDamage(
-    entry.damage ??
-      entry.dmg ??
-      entry.dmg_avg ??
-      entry.dmg_heuristic ??
-      entry.expected_damage ??
-      entry.expectedDamage ??
-      entry.total_damage ??
-      entry.totalDamage
-  );
+function collectNestedArrays(
+  value: unknown,
+  candidateKeys: string[],
+  depth = 0
+): unknown[] {
+  if (depth > 5) return [];
+
+  if (Array.isArray(value)) return value;
+
+  if (!isRecord(value)) return [];
+
+  for (const key of candidateKeys) {
+    const nested = value[key];
+
+    if (Array.isArray(nested)) return nested;
+
+    const nestedResult = collectNestedArrays(nested, candidateKeys, depth + 1);
+    if (nestedResult.length > 0) return nestedResult;
+  }
+
+  return [];
 }
 
-function toContribution(entry: UnknownRecord): DprContribution {
-  const abilityName = getSkillName(entry);
-  const abilityId =
-    asString(entry.abilityId) ??
-    asString(entry.ability_id) ??
-    asString(entry.skillID) ??
-    asString(entry.skill_id) ??
-    slugifyAbilityId(abilityName);
+function normalizeRoundObject(
+  value: unknown,
+  fallbackRound: number
+): NormalizedRound | null {
+  if (!isRecord(value)) return null;
+
+  const actions =
+    getArray(value, ["actions", "skills", "events", "history", "rotation"]) ??
+    [];
+
+  const normalizedActions: Array<{
+    name: string;
+    damage: number;
+    raw: UnknownRecord;
+  }> = [];
+
+  actions.forEach((action, index) => {
+    if (!isRecord(action)) return;
+
+    normalizedActions.push({
+      name: getActionName(action, `Action ${index + 1}`),
+      damage: roundNumber(getDamageValue(action)),
+      raw: action,
+    });
+  });
+
+  const directDamage = getDamageValue(value);
+  const actionDamage = normalizedActions.reduce(
+    (sum, action) => sum + action.damage,
+    0
+  );
+
+  const round = getRoundNumber(value, fallbackRound);
+  const damage = roundNumber(directDamage > 0 ? directDamage : actionDamage);
 
   return {
-    abilityId,
-    abilityName,
-    damage: getSkillDamage(entry),
-  };
+    round,
+    label: `Round ${round}`,
+    damage,
+    actions: normalizedActions,
+    raw: value,
+  } as NormalizedRound;
 }
 
-function mergeContributions(contributions: DprContribution[]): DprContribution[] {
-  const merged = new Map<string, DprContribution>();
+function groupEventsByRound(events: unknown[]): NormalizedRound[] {
+  const grouped = new Map<
+    number,
+    Array<{
+      name: string;
+      damage: number;
+      raw: unknown;
+    }>
+  >();
 
-  contributions.forEach((contribution) => {
-    if (contribution.damage <= 0) return;
+  events.forEach((event, index) => {
+    if (!isRecord(event)) return;
 
-    const key = contribution.abilityId || contribution.abilityName;
+    const damage = getDamageValue(event);
+    const round = getRoundNumber(event, 1);
+    const name = getActionName(event, `Event ${index + 1}`);
 
-    const previous = merged.get(key);
-
-    if (!previous) {
-      merged.set(key, contribution);
-      return;
+    if (!grouped.has(round)) {
+      grouped.set(round, []);
     }
 
-    merged.set(key, {
-      ...previous,
-      damage: previous.damage + contribution.damage,
+    grouped.get(round)?.push({
+      name,
+      damage: roundNumber(damage),
+      raw: event,
     });
   });
 
-  return [...merged.values()]
-    .sort((a, b) => b.damage - a.damage)
-    .slice(0, 3);
-}
-
-function extractCandidateArrays(response: unknown): unknown[][] {
-  if (Array.isArray(response)) return [response];
-
-  if (!isRecord(response)) return [];
-
-  const directKeys = [
-    "history",
-    "rotation",
-    "actions",
-    "events",
-    "steps",
-    "log",
-    "timeline",
-    "rounds",
-  ];
-
-  const arrays: unknown[][] = [];
-
-  directKeys.forEach((key) => {
-    const value = response[key];
-
-    if (Array.isArray(value)) arrays.push(value);
-  });
-
-  Object.values(response).forEach((value) => {
-    if (!isRecord(value)) return;
-
-    directKeys.forEach((key) => {
-      const nestedValue = value[key];
-
-      if (Array.isArray(nestedValue)) arrays.push(nestedValue);
-    });
-  });
-
-  return arrays;
-}
-
-function looksLikeActionEntry(value: unknown): value is UnknownRecord {
-  if (!isRecord(value)) return false;
-
-  return Boolean(
-    value.skill ||
-      value.skill_key ||
-      value.skillKey ||
-      value.action ||
-      value.action_name ||
-      value.damage ||
-      value.dmg ||
-      value.dmg_avg ||
-      value.dmg_heuristic ||
-      value.expected_damage ||
-      value.expectedDamage
-  );
-}
-
-function mapRoundObjects(roundObjects: UnknownRecord[]): DprRound[] {
-  return roundObjects
-    .map((roundObject, index) => {
-      const round = getRoundNumber(roundObject, index);
-
-      const nestedContributions =
-        Array.isArray(roundObject.contributions)
-          ? roundObject.contributions.filter(looksLikeActionEntry)
-          : Array.isArray(roundObject.actions)
-            ? roundObject.actions.filter(looksLikeActionEntry)
-            : Array.isArray(roundObject.skills)
-              ? roundObject.skills.filter(looksLikeActionEntry)
-              : [];
-
-      const contributions =
-        nestedContributions.length > 0
-          ? mergeContributions(nestedContributions.map(toContribution))
-          : mergeContributions([toContribution(roundObject)]);
-
-      const calculatedDamage = contributions.reduce(
-        (sum, contribution) => sum + contribution.damage,
-        0
-      );
-
-      const explicitDamage = normalizeDamage(
-        roundObject.damage ??
-          roundObject.total_damage ??
-          roundObject.totalDamage ??
-          roundObject.dmg ??
-          roundObject.dmg_avg
-      );
-
-      return {
-        round,
-        damage: explicitDamage > 0 ? explicitDamage : calculatedDamage,
-        contributions,
-      };
-    })
-    .filter((round) => round.round > 0);
-}
-
-function mapActionHistory(actionEntries: UnknownRecord[]): DprRound[] {
-  const grouped = new Map<number, DprContribution[]>();
-
-  actionEntries.forEach((entry, index) => {
-    const round = getRoundNumber(entry, index);
-
-    if (!grouped.has(round)) grouped.set(round, []);
-
-    grouped.get(round)?.push(toContribution(entry));
-  });
-
-  return [...grouped.entries()]
+  return Array.from(grouped.entries())
     .sort(([a], [b]) => a - b)
-    .map(([round, contributions]) => {
-      const mergedContributions = mergeContributions(contributions);
-      const damage = mergedContributions.reduce(
-        (sum, contribution) => sum + contribution.damage,
-        0
+    .map(([round, actions]) => {
+      const damage = roundNumber(
+        actions.reduce((sum, action) => sum + action.damage, 0)
       );
 
       return {
         round,
+        label: `Round ${round}`,
         damage,
-        contributions: mergedContributions,
-      };
+        actions,
+        raw: actions.map((action) => action.raw),
+      } as NormalizedRound;
     });
+}
+
+function getCandidateRoundArrays(response: unknown): unknown[][] {
+  const candidates: unknown[][] = [];
+
+  if (Array.isArray(response)) {
+    candidates.push(response);
+  }
+
+  if (isRecord(response)) {
+    const directRounds = getArray(response, [
+      "rounds",
+      "dprRounds",
+      "dpr_rounds",
+      "roundResults",
+      "round_results",
+      "turns",
+      "turnResults",
+      "turn_results",
+    ]);
+
+    if (directRounds) candidates.push(directRounds);
+
+    const resultRounds = collectNestedArrays(response.result, [
+      "rounds",
+      "dprRounds",
+      "roundResults",
+      "turns",
+    ]);
+
+    if (resultRounds.length > 0) candidates.push(resultRounds);
+
+    const dataRounds = collectNestedArrays(response.data, [
+      "rounds",
+      "dprRounds",
+      "roundResults",
+      "turns",
+    ]);
+
+    if (dataRounds.length > 0) candidates.push(dataRounds);
+  }
+
+  return candidates;
+}
+
+function getCandidateHistoryArrays(response: unknown): unknown[][] {
+  const candidates: unknown[][] = [];
+
+  if (isRecord(response)) {
+    const directHistory = getArray(response, [
+      "history",
+      "events",
+      "combatLog",
+      "combat_log",
+      "simulationHistory",
+      "simulation_history",
+    ]);
+
+    if (directHistory) candidates.push(directHistory);
+
+    const resultHistory = collectNestedArrays(response.result, [
+      "history",
+      "events",
+      "combatLog",
+      "simulationHistory",
+    ]);
+
+    if (resultHistory.length > 0) candidates.push(resultHistory);
+
+    const dataHistory = collectNestedArrays(response.data, [
+      "history",
+      "events",
+      "combatLog",
+      "simulationHistory",
+    ]);
+
+    if (dataHistory.length > 0) candidates.push(dataHistory);
+  }
+
+  return candidates;
+}
+
+export function getSimulatorBuildNameForSnapshot(snapshot: BuildLike): string {
+  const selectedClass = snapshot.selectedClass?.trim();
+
+  if (!selectedClass) {
+    throw new Error("Select a class before evaluating the build.");
+  }
+
+  const buildName = STANDARD_BUILD_NAME_BY_CLASS[selectedClass];
+
+  if (!buildName) {
+    throw new Error(
+      `No standard simulator build is configured for class "${selectedClass}".`
+    );
+  }
+
+  return buildName;
 }
 
 export function mapBg3SimulationToDprRounds(response: unknown): DprRound[] {
-  const candidateArrays = extractCandidateArrays(response);
+  const roundArrays = getCandidateRoundArrays(response);
 
-  for (const candidate of candidateArrays) {
-    const recordItems = candidate.filter(isRecord);
+  for (const candidate of roundArrays) {
+    const rounds = candidate
+      .map((round, index) => normalizeRoundObject(round, index + 1))
+      .filter((round): round is NormalizedRound => round !== null)
+      .filter((round) => round.damage > 0 || (round.actions?.length ?? 0) > 0)
+      .sort((a, b) => a.round - b.round);
 
-    if (recordItems.length === 0) continue;
+    if (rounds.length > 0) return rounds;
+  }
 
-    const roundLikeItems = recordItems.filter(
-      (item) =>
-        Array.isArray(item.contributions) ||
-        Array.isArray(item.actions) ||
-        Array.isArray(item.skills) ||
-        item.round !== undefined ||
-        item.round_index !== undefined ||
-        item.roundIndex !== undefined
+  const historyArrays = getCandidateHistoryArrays(response);
+
+  for (const candidate of historyArrays) {
+    const rounds = groupEventsByRound(candidate).filter(
+      (round) => round.damage > 0 || (round.actions?.length ?? 0) > 0
     );
 
-    if (roundLikeItems.length > 0) {
-      const rounds = mapRoundObjects(roundLikeItems);
+    if (rounds.length > 0) return rounds;
+  }
 
-      if (rounds.some((round) => round.damage > 0)) {
-        return normalizeTenRounds(rounds);
-      }
-    }
+  if (isRecord(response)) {
+    const totalDamage = getDamageValue(response);
 
-    const actionEntries = recordItems.filter(looksLikeActionEntry);
-
-    if (actionEntries.length > 0) {
-      const rounds = mapActionHistory(actionEntries);
-
-      if (rounds.some((round) => round.damage > 0)) {
-        return normalizeTenRounds(rounds);
-      }
+    if (totalDamage > 0) {
+      return [
+        {
+          round: 1,
+          label: "Result",
+          damage: roundNumber(totalDamage),
+          raw: response,
+        } as NormalizedRound,
+      ];
     }
   }
 
-  return normalizeTenRounds([]);
-}
-export function normalizeTenRounds(rounds: DprRound[]): DprRound[] {
-  const byRound = new Map<number, DprRound>();
+  console.warn("Could not map BG3 simulator response to DPR rounds:", response);
 
-  rounds.forEach((round) => {
-    const existing = byRound.get(round.round);
-
-    if (!existing) {
-      byRound.set(round.round, {
-        ...round,
-        damage: round.damage ?? 0,
-        contributions: round.contributions ?? [],
-      });
-      return;
-    }
-
-    const contributions = mergeContributions([
-      ...(existing.contributions ?? []),
-      ...(round.contributions ?? []),
-    ]);
-
-    byRound.set(round.round, {
-      round: round.round,
-      damage: (existing.damage ?? 0) + (round.damage ?? 0),
-      contributions,
-    });
-  });
-
-  return Array.from({ length: 10 }, (_, index) => {
-    const roundNumber = index + 1;
-
-    return (
-      byRound.get(roundNumber) ?? {
-        round: roundNumber,
-        damage: 0,
-        contributions: [],
-      }
-    );
-  });
+  return [];
 }
 
 export function getAverageDpr(rounds: DprRound[]): number {
   if (rounds.length === 0) return 0;
 
-  return (
-    rounds.reduce((sum, round) => sum + round.damage, 0) / rounds.length
-  );
-}
+  const totalDamage = rounds.reduce((sum, round) => {
+    const damage =
+      typeof round.damage === "number" && Number.isFinite(round.damage)
+        ? round.damage
+        : 0;
 
-export function getTotalDprDamage(rounds: DprRound[]): number {
-  return rounds.reduce((sum, round) => sum + round.damage, 0);
-}
+    return sum + damage;
+  }, 0);
 
-export function getSimulatorBuildNameForSnapshot(
-  snapshot: BuildEditorSnapshot
-): string {
-  if (snapshot.selectedClass && STANDARD_BUILD_BY_CLASS[snapshot.selectedClass]) {
-    return STANDARD_BUILD_BY_CLASS[snapshot.selectedClass]!;
-  }
-
-  return "BG3_Monk_Level12_StdEquip (gorKjan.5019)";
+  return roundNumber(totalDamage / rounds.length);
 }
