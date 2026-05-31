@@ -1,4 +1,5 @@
-﻿import type {
+﻿import type { AbilityDamageProfile } from "../bg3Spells";
+import type {
   ClassName,
   RangerFavouredEnemy,
   RangerNaturalExplorer,
@@ -58,7 +59,7 @@ export type BG3ClassFeature = {
   sourceType: "class-feature";
   kind: ClassFeatureKind;
   description?: string;
-
+  damage?: AbilityDamageProfile;
   availability: ClassFeatureAvailability[];
   isFixed: boolean;
   isInformational?: boolean;

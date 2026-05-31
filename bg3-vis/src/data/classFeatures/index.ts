@@ -19,6 +19,11 @@ import {
   raceFeatureIconFileById,
 } from "../raceFeatures";
 
+import {
+  enrichClassFeature,
+  extraClassFeatures,
+} from "./classFeatureEnrichment";
+
 export type {
   BG3ClassFeature,
   ClassFeatureActiveGroup,
@@ -46,13 +51,14 @@ export const classFeatureModules: ClassFeatureModule[] = [
   wizardClassModule,
 ];
 
-const classOnlyFeatures: BG3ClassFeature[] = classFeatureModules.flatMap(
-  (module) => module.features
-);
+const classOnlyFeatures: BG3ClassFeature[] = [
+  ...classFeatureModules.flatMap((module) => module.features),
+  ...extraClassFeatures,
+].map(enrichClassFeature);
 
 export const bg3ClassFeatures: BG3ClassFeature[] = [
   ...classOnlyFeatures,
-  ...bg3RaceFeatures,
+  ...bg3RaceFeatures.map(enrichClassFeature),
 ];
 
 export const classFeatureIconFileById: Record<string, string> = Object.assign(

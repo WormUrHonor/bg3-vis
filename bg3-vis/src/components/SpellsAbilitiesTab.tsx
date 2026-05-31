@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,6 +18,7 @@ import {
   getDamageProfileAverage,
   getDamageProfileMax,
   getDamageProfileMin,
+  type AbilityDamageProfile,
   type AbilityRole,
   type BG3Spell,
 } from "../data/bg3Spells";
@@ -103,11 +105,26 @@ type FeatureDisplayGroup = {
   features: BG3ClassFeature[];
 };
 
-type FloatingTooltipState = {
-  id: string;
+type TooltipAnchorRect = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+type FloatingTooltipPlacement = "top" | "bottom";
+
+type FloatingTooltipPosition = {
   x: number;
   y: number;
-  placement: "top" | "bottom";
+  placement: FloatingTooltipPlacement;
+};
+
+type FloatingTooltipState = FloatingTooltipPosition & {
+  id: string;
+  anchorRect: TooltipAnchorRect;
   content: ReactNode;
 };
 
@@ -426,31 +443,72 @@ function renderChoiceCountPill(
   );
 }
 
-function getFloatingTooltipPosition(rect: DOMRect): {
-  x: number;
-  y: number;
-  placement: "top" | "bottom";
-} {
+function getTooltipAnchorRect(rect: DOMRect): TooltipAnchorRect {
+  return {
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function getFloatingTooltipPosition(
+  rect: TooltipAnchorRect,
+  tooltipSize?: { width: number; height: number }
+): FloatingTooltipPosition {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const clampedX = Math.min(
-    Math.max(rect.left + rect.width / 2, TOOLTIP_MARGIN + TOOLTIP_WIDTH / 2),
-    viewportWidth - TOOLTIP_MARGIN - TOOLTIP_WIDTH / 2
+  const measuredWidth = tooltipSize?.width ?? TOOLTIP_WIDTH;
+  const measuredHeight = tooltipSize?.height ?? 220;
+  const tooltipWidth = Math.min(
+    measuredWidth,
+    Math.max(0, viewportWidth - TOOLTIP_MARGIN * 2)
+  );
+  const tooltipHeight = Math.min(
+    measuredHeight,
+    Math.max(0, viewportHeight - TOOLTIP_MARGIN * 2)
   );
 
-  const hasEnoughSpaceAbove = rect.top > 230;
-  const y = hasEnoughSpaceAbove
-    ? Math.max(TOOLTIP_MARGIN, rect.top - TOOLTIP_VERTICAL_GAP)
-    : Math.min(
-        viewportHeight - TOOLTIP_MARGIN,
-        rect.bottom + TOOLTIP_VERTICAL_GAP
-      );
+  const halfTooltipWidth = tooltipWidth / 2;
+  const minX = TOOLTIP_MARGIN + halfTooltipWidth;
+  const maxX = Math.max(
+    minX,
+    viewportWidth - TOOLTIP_MARGIN - halfTooltipWidth
+  );
+
+  const x = Math.min(
+    Math.max(rect.left + rect.width / 2, minX),
+    maxX
+  );
+
+  const spaceAbove = rect.top - TOOLTIP_VERTICAL_GAP - TOOLTIP_MARGIN;
+  const spaceBelow =
+    viewportHeight - rect.bottom - TOOLTIP_VERTICAL_GAP - TOOLTIP_MARGIN;
+  const fitsAbove = spaceAbove >= tooltipHeight;
+  const fitsBelow = spaceBelow >= tooltipHeight;
+
+  const placement: FloatingTooltipPlacement =
+    fitsBelow || (!fitsAbove && spaceBelow >= spaceAbove) ? "bottom" : "top";
+
+  const preferredY =
+    placement === "bottom"
+      ? rect.bottom + TOOLTIP_VERTICAL_GAP
+      : rect.top - TOOLTIP_VERTICAL_GAP - tooltipHeight;
+
+  const maxY = Math.max(
+    TOOLTIP_MARGIN,
+    viewportHeight - TOOLTIP_MARGIN - tooltipHeight
+  );
+
+  const y = Math.min(Math.max(preferredY, TOOLTIP_MARGIN), maxY);
 
   return {
-    x: clampedX,
+    x,
     y,
-    placement: hasEnoughSpaceAbove ? "top" : "bottom",
+    placement,
   };
 }
 
@@ -460,25 +518,74 @@ function FloatingSpellTooltip({
   tooltip: FloatingTooltipState | null;
 }) {
   const [mounted, setMounted] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const [measuredPosition, setMeasuredPosition] =
+    useState<FloatingTooltipPosition | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useLayoutEffect(() => {
+  if (!tooltip) {
+    setMeasuredPosition(null);
+    return;
+  }
+
+  const activeTooltip = tooltip;
+
+  function updateMeasuredPosition() {
+    const tooltipElement = tooltipRef.current;
+    const tooltipRect = tooltipElement?.getBoundingClientRect();
+    const nextPosition = getFloatingTooltipPosition(
+      activeTooltip.anchorRect,
+      tooltipRect
+        ? { width: tooltipRect.width, height: tooltipRect.height }
+        : undefined
+    );
+
+      setMeasuredPosition((currentPosition) => {
+        if (
+          currentPosition &&
+          Math.abs(currentPosition.x - nextPosition.x) < 0.5 &&
+          Math.abs(currentPosition.y - nextPosition.y) < 0.5 &&
+          currentPosition.placement === nextPosition.placement
+        ) {
+          return currentPosition;
+        }
+
+        return nextPosition;
+      });
+    }
+
+    updateMeasuredPosition();
+    window.addEventListener("resize", updateMeasuredPosition);
+    window.addEventListener("scroll", updateMeasuredPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateMeasuredPosition);
+      window.removeEventListener("scroll", updateMeasuredPosition, true);
+    };
+  }, [tooltip]);
+
   if (!mounted || !tooltip) return null;
+
+  const renderedPosition = measuredPosition ?? tooltip;
 
   return createPortal(
     <div
+      ref={tooltipRef}
       className={[
         "spell-floating-tooltip",
-        tooltip.placement === "bottom"
+        renderedPosition.placement === "bottom"
           ? "spell-floating-tooltip--bottom"
           : "spell-floating-tooltip--top",
       ].join(" ")}
       style={{
-        left: tooltip.x,
-        top: tooltip.y,
+        left: renderedPosition.x,
+        top: renderedPosition.y,
         width: TOOLTIP_WIDTH,
+        maxHeight: `calc(100vh - ${TOOLTIP_MARGIN * 2}px)`,
       }}
       role="tooltip"
       data-study-region="spell-floating-tooltip"
@@ -767,6 +874,28 @@ function createSpellSummaryForLogging(
     actionCosts: spell.costs.actions,
     resourceCosts: spell.costs.resources,
     requiresConcentration: spell.costs.requiresConcentration,
+    damageProfile: spell.damage
+  ? {
+      hasDamage: spell.damage.hasDamage,
+      damageKind: spell.damage.damageKind,
+      delivery: spell.damage.delivery,
+      scaling: spell.damage.scaling,
+      saveBehaviour: spell.damage.saveBehaviour,
+      saveAbility: spell.damage.saveAbility ?? null,
+      attackRoll: spell.damage.attackRoll ?? false,
+      canCrit: spell.damage.canCrit ?? false,
+      repeats: spell.damage.repeats ?? false,
+      repeatDurationTurns: spell.damage.repeatDurationTurns ?? null,
+      targetCount: spell.damage.targetCount ?? null,
+      aoe: spell.damage.aoe ?? false,
+      aoeMeters: spell.damage.aoeMeters ?? null,
+      rolls: spell.damage.rolls,
+      min: getDamageProfileMin(spell.damage),
+      average: getDamageProfileAverage(spell.damage),
+      max: getDamageProfileMax(spell.damage),
+      notes: spell.damage.notes ?? null,
+    }
+  : null,
     tags: spell.tags ?? [],
     choiceRuleId: args.choiceRule?.id ?? null,
     choiceRuleLabel: args.choiceRule?.displayGroupLabel ?? null,
@@ -806,6 +935,28 @@ function createFeatureSummaryForLogging(
     actionCosts: feature.costs.actions,
     resourceCosts: feature.costs.resources,
     requiresConcentration: feature.costs.requiresConcentration,
+    damageProfile: feature.damage
+  ? {
+      hasDamage: feature.damage.hasDamage,
+      damageKind: feature.damage.damageKind,
+      delivery: feature.damage.delivery,
+      scaling: feature.damage.scaling,
+      saveBehaviour: feature.damage.saveBehaviour,
+      saveAbility: feature.damage.saveAbility ?? null,
+      attackRoll: feature.damage.attackRoll ?? false,
+      canCrit: feature.damage.canCrit ?? false,
+      repeats: feature.damage.repeats ?? false,
+      repeatDurationTurns: feature.damage.repeatDurationTurns ?? null,
+      targetCount: feature.damage.targetCount ?? null,
+      aoe: feature.damage.aoe ?? false,
+      aoeMeters: feature.damage.aoeMeters ?? null,
+      rolls: feature.damage.rolls,
+      min: getDamageProfileMin(feature.damage),
+      average: getDamageProfileAverage(feature.damage),
+      max: getDamageProfileMax(feature.damage),
+      notes: feature.damage.notes ?? null,
+    }
+  : null,
     choiceGroupId: feature.choiceGroupId ?? null,
     choiceGroupLabel: feature.choiceGroupLabel ?? null,
     choiceGroupMax: feature.choiceGroupMax ?? null,
@@ -836,10 +987,9 @@ function formatDamageAverage(value: number): string {
   if (!Number.isFinite(value)) return "0";
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
-
-function renderSpellDamageTooltipSection(spell: BG3Spell) {
-  const profile = spell.damage;
-
+function renderAbilityDamageTooltipSection(
+  profile?: AbilityDamageProfile
+) {
   if (!profile || !profile.hasDamage) return null;
 
   const damageText = formatDamageProfile(profile);
@@ -879,6 +1029,16 @@ function renderSpellDamageTooltipSection(spell: BG3Spell) {
         </span>
       ) : null}
 
+      {profile.attackRoll ? <span>Uses an attack roll</span> : null}
+      {profile.canCrit ? <span>Can critically hit</span> : null}
+
+      {profile.aoe ? (
+        <span>
+          <b>Area:</b>{" "}
+          {profile.aoeMeters ? `${profile.aoeMeters}m` : "area effect"}
+        </span>
+      ) : null}
+
       {profile.repeats ? (
         <span>
           <b>Repeats:</b>{" "}
@@ -893,6 +1053,10 @@ function renderSpellDamageTooltipSection(spell: BG3Spell) {
       ) : null}
     </span>
   );
+}
+
+function renderSpellDamageTooltipSection(spell: BG3Spell) {
+  return renderAbilityDamageTooltipSection(spell.damage);
 }
 
 function SpellsAbilitiesTab({
@@ -1186,7 +1350,8 @@ function SpellsAbilitiesTab({
     payload: Record<string, unknown>
   ) {
     const rect = event.currentTarget.getBoundingClientRect();
-    const position = getFloatingTooltipPosition(rect);
+    const anchorRect = getTooltipAnchorRect(rect);
+    const position = getFloatingTooltipPosition(anchorRect);
     const nowMs = Date.now();
 
     tooltipOpenedAtRef.current = nowMs;
@@ -1216,6 +1381,7 @@ function SpellsAbilitiesTab({
     setFloatingTooltip({
       id,
       content,
+      anchorRect,
       ...position,
     });
   }
@@ -1275,7 +1441,7 @@ function SpellsAbilitiesTab({
         {feature.description && (
           <span className="spell-description">{feature.description}</span>
         )}
-
+        {renderAbilityDamageTooltipSection(feature.damage)}
         <span>
           <b>Type:</b> {feature.kind.replaceAll("-", " ")}
         </span>

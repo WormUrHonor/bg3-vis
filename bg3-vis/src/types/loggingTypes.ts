@@ -28,8 +28,11 @@ export type StudyTaskPhase =
 export type StudyEventType =
   | "study_started"
   | "study_ended"
+  | "survey_pre_task_submitted"
+  | "survey_post_task_submitted"
   | "logs_cleared"
   | "logs_exported"
+  | "survey_answers_exported"
   | "system_metadata_captured"
   | "heatmap_pointer_move"
   | "heatmap_pointer_down"
@@ -68,6 +71,7 @@ export type StudyEventType =
   | "linked_highlight_exposed"
   | "highlighted_item_selected"
   | "highlighted_item_tooltip_opened"
+  | "highlighted_item_tooltip_closed"
   | "nonhighlighted_item_selected_under_focus"
   | "visualization_focus_changed"
   | "visualization_focus_cleared"
@@ -316,31 +320,64 @@ export type StudyLoggerEndPayload = {
   exportedByParticipant?: boolean;
   [key: string]: unknown;
 };
-
 export type VisualizedItemForLogging = {
   id?: string;
   itemId?: string;
   abilityId?: string;
   spellId?: string;
+  featureId?: string;
   name?: string;
   itemName?: string;
   abilityName?: string;
   label?: string;
+
   role?: string;
   roles?: string[];
   roleGroup?: string;
+
   damageType?: string;
   damageTypes?: string[];
-  range?: string;
+  damageProfile?: {
+    hasDamage?: boolean;
+    damageKind?: string;
+    delivery?: string;
+    scaling?: string;
+    saveBehaviour?: string;
+    saveAbility?: string | null;
+    attackRoll?: boolean;
+    canCrit?: boolean;
+    repeats?: boolean;
+    repeatDurationTurns?: number | null;
+    targetCount?: number | null;
+    aoe?: boolean;
+    aoeMeters?: number | null;
+    min?: number;
+    average?: number;
+    max?: number;
+    rolls?: unknown[];
+    notes?: string | null;
+    [key: string]: unknown;
+  } | null;
+
+  range?: string | { category?: string; label?: string; meters?: number };
   rangeBand?: string;
   rangeCategory?: string;
+
   resource?: string;
   resources?: string[];
   actionCost?: string;
   cost?: string;
+  costs?: {
+    actions?: string[];
+    resources?: string[];
+    requiresConcentration?: boolean;
+    [key: string]: unknown;
+  };
+
   concentration?: boolean;
   requiresConcentration?: boolean;
   tags?: string[];
+
   [key: string]: unknown;
 };
 

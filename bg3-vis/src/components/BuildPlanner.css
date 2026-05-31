@@ -3596,3 +3596,38 @@ select {
 .spell-tooltip-muted {
   color: rgba(203, 189, 167, 0.72);
 }
+.spell-floating-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(420px, calc(100vw - 28px));
+  max-width: calc(100vw - 28px);
+  height: auto;
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(216, 178, 104, 0.13), transparent 42%),
+    rgba(22, 17, 13, 0.985);
+  border: 1px solid rgba(216, 178, 104, 0.58);
+  color: #f2e7d2;
+  text-align: left;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(0, 0, 0, 0.36),
+    inset 0 0 16px rgba(255, 225, 160, 0.04);
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  transform: translateX(-50%);
+}
+
+.spell-floating-tooltip--top,
+.spell-floating-tooltip--bottom {
+  transform: translateX(-50%);
+}
