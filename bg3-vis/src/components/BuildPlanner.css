@@ -3918,3 +3918,27 @@ select {
     font-size: 1.08rem;
   }
 }
+.saved-party-slot--current {
+  border-color: rgba(216, 178, 104, 0.62);
+  background:
+    radial-gradient(circle at 12% 20%, rgba(216, 178, 104, 0.14), transparent 42%),
+    rgba(34, 25, 19, 0.72);
+}
+
+.saved-party-slot-meta {
+  margin: 3px 0 0;
+  color: rgba(242, 231, 210, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.saved-party-slot-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.saved-party-slot-actions button {
+  min-width: 48px;
+}

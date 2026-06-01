@@ -20,6 +20,8 @@ type SavedBuildsPanelProps = {
   onLoad: (buildId: string) => void;
   onLoadIntoPartySlot: (buildId: string, slotIndex: number) => void;
   onClearPartySlot: (slotIndex: number) => void;
+  onClearCurrentBuild: () => void;
+  onFocusCurrentBuild: () => void;
   onDelete: (buildId: string) => void;
 
   activeView?: string | null;
@@ -32,6 +34,9 @@ type SavedBuildsPanelProps = {
 };
 
 const SAVED_BUILD_HOVER_DWELL_MS = 600;
+const CURRENT_EDITABLE_PARTY_INDEX = 3;
+const CURRENT_EDITABLE_PARTY_NUMBER = 4;
+const CURRENT_EDITABLE_PARTY_LABEL = "Member 4";
 
 function getSnapshotSubtitle(snapshot: BuildEditorSnapshot) {
   const classLabel =
@@ -98,6 +103,35 @@ function getSavedBuildTitle(savedBuild: SavedBuild) {
     "Untitled Build"
   );
 }
+function snapshotHasContent(snapshot: BuildEditorSnapshot) {
+  return Boolean(
+    snapshot.buildName ||
+      snapshot.characterName ||
+      snapshot.selectedRace ||
+      snapshot.selectedSubrace ||
+      snapshot.selectedBackground ||
+      snapshot.selectedClass ||
+      snapshot.selectedSubclass ||
+      snapshot.selectedSpellIds.length > 0 ||
+      snapshot.selectedClassFeatureIds.length > 0 ||
+      snapshot.activeClassFeatureIds.length > 0 ||
+      snapshot.selectedClassSkills.length > 0 ||
+      snapshot.featSelections.length > 0
+  );
+}
+
+function createCurrentBuildSummary(snapshot: BuildEditorSnapshot) {
+  return {
+    partyMemberIndex: CURRENT_EDITABLE_PARTY_INDEX,
+    partyMemberNumber: CURRENT_EDITABLE_PARTY_NUMBER,
+    partyMemberLabel: CURRENT_EDITABLE_PARTY_LABEL,
+    label: getDefaultSavedBuildLabel(snapshot),
+    subtitle: getSnapshotSubtitle(snapshot),
+    isFilled: snapshotHasContent(snapshot),
+    snapshotHash: createStableHash(snapshot, "build"),
+    snapshotSummary: createBuildSnapshotSummary(snapshot),
+  };
+}
 
 function createSavedBuildSummary(savedBuild: SavedBuild | null) {
   if (!savedBuild) return null;
@@ -145,6 +179,8 @@ export default function SavedBuildsPanel({
   onLoad,
   onLoadIntoPartySlot,
   onClearPartySlot,
+  onClearCurrentBuild,
+  onFocusCurrentBuild,
   onDelete,
   activeView = "saved-builds-panel",
   activeBuildId = null,
@@ -175,7 +211,10 @@ export default function SavedBuildsPanel({
     () => createPartySlotsSummary(partySlots),
     [partySlots]
   );
-
+  const currentBuildSummary = useMemo(
+    () => createCurrentBuildSummary(currentSnapshot),
+    [currentSnapshot]
+  );
   const filteredSavedBuilds = useMemo(() => {
     const normalizedQuery = normalizeSearchValue(searchQuery);
 
@@ -228,6 +267,8 @@ export default function SavedBuildsPanel({
       currentSnapshotSummary,
       partySlotsSummary,
       partySnapshotHash,
+            displayedPartyMemberCount: partySlots.length + 1,
+      currentBuildSummary,
     };
   }
 
@@ -422,7 +463,72 @@ logFrictionEvent(
 
     onClearPartySlot(slotIndex);
   }
+  function handleFocusCurrentBuild() {
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "current_editable_party_member_focus_clicked",
+      taskPhase: "party_review",
+      activeView,
+      activeBuildId,
+      activeBuildLabel: currentBuildLabel,
+      activePartyMemberIndex: CURRENT_EDITABLE_PARTY_INDEX,
+      activePartyMemberLabel: CURRENT_EDITABLE_PARTY_LABEL,
+      activeFocusSource,
+      partySnapshotHash,
+      payload: {
+        ...createPanelStatePayload(),
+        action: "focus_current_editable_party_member",
+        memberIndex: CURRENT_EDITABLE_PARTY_INDEX,
+        memberNumber: CURRENT_EDITABLE_PARTY_NUMBER,
+        memberLabel: CURRENT_EDITABLE_PARTY_LABEL,
+        currentBuildSummary,
+      },
+    });
 
+    onFocusCurrentBuild();
+  }
+
+  function handleClearCurrentBuild() {
+    if (!currentBuildSummary.isFilled) {
+      logInvalidPanelAction(
+        "current-editable-build-clear",
+        "clear-current-editable-party-member",
+        "current_editable_build_already_empty",
+        {
+          memberIndex: CURRENT_EDITABLE_PARTY_INDEX,
+          memberNumber: CURRENT_EDITABLE_PARTY_NUMBER,
+          memberLabel: CURRENT_EDITABLE_PARTY_LABEL,
+          currentBuildSummary,
+        }
+      );
+
+      return;
+    }
+
+    logStudyEvent({
+      eventCategory: "party",
+      eventType: "current_editable_party_member_clear_clicked",
+      taskPhase: "party_review",
+      activeView,
+      activeBuildId,
+      activeBuildLabel: currentBuildLabel,
+      activePartyMemberIndex: CURRENT_EDITABLE_PARTY_INDEX,
+      activePartyMemberLabel: CURRENT_EDITABLE_PARTY_LABEL,
+      activeFocusSource,
+      partySnapshotHash,
+      payload: {
+        ...createPanelStatePayload(),
+        action: "clear_current_editable_party_member",
+        memberIndex: CURRENT_EDITABLE_PARTY_INDEX,
+        memberNumber: CURRENT_EDITABLE_PARTY_NUMBER,
+        memberLabel: CURRENT_EDITABLE_PARTY_LABEL,
+        clearedCurrentBuildSummary: currentBuildSummary,
+        note: "Clears the focused editable build. Saved builds and members 1–3 are preserved.",
+      },
+    });
+
+    onClearCurrentBuild();
+  }
   function handleCardHoverStart(savedBuild: SavedBuild) {
     hoveredBuildIdRef.current = savedBuild.id;
     hoveredBuildStartedAtRef.current = Date.now();
@@ -517,41 +623,88 @@ logFrictionEvent(
         <span>Saved as</span>
         <strong>{currentBuildLabel}</strong>
       </div>
+<section
+  className="saved-party-slots"
+  aria-label="Current party members"
+  data-study-region="saved-party-slots"
+>
+  {partySlots.map((slot, index) => (
+    <article
+      className="saved-party-slot"
+      key={`party-slot-${index}`}
+      data-study-region="saved-party-slot"
+      data-study-id={`saved-party-slot-${index + 1}`}
+    >
+      <div>
+        <span>Member {index + 1}</span>
+        <strong>{slot ? slot.label : "Empty slot"}</strong>
+      </div>
 
-      <section
-        className="saved-party-slots"
-        aria-label="Current party slots"
-        data-study-region="saved-party-slots"
+      <button
+        type="button"
+        onClick={() => handleClearPartySlot(index)}
+        aria-disabled={!slot}
+        className={!slot ? "saved-builds-button--blocked" : ""}
+        data-study-id={`clear-party-slot-${index + 1}`}
+        title={
+          slot
+            ? `Clear ${slot.label} from member ${index + 1}.`
+            : `Member ${index + 1} is already empty.`
+        }
       >
-        {partySlots.map((slot, index) => (
-          <article
-            className="saved-party-slot"
-            key={`party-slot-${index}`}
-            data-study-region="saved-party-slot"
-            data-study-id={`saved-party-slot-${index + 1}`}
-          >
-            <div>
-              <span>Party {index + 1}</span>
-              <strong>{slot ? slot.label : "Empty slot"}</strong>
-            </div>
+        Clear
+      </button>
+    </article>
+  ))}
 
-            <button
-              type="button"
-              onClick={() => handleClearPartySlot(index)}
-              aria-disabled={!slot}
-              className={!slot ? "saved-builds-button--blocked" : ""}
-              data-study-id={`clear-party-slot-${index + 1}`}
-              title={
-                slot
-                  ? `Clear ${slot.label} from party slot ${index + 1}.`
-                  : `Party slot ${index + 1} is already empty.`
-              }
-            >
-              Clear
-            </button>
-          </article>
-        ))}
-      </section>
+  <article
+    className="saved-party-slot saved-party-slot--current"
+    data-study-region="saved-party-slot-current-editor"
+    data-study-id="saved-party-slot-4-current-editor"
+  >
+    <div>
+      <span>Member 4 · focused build</span>
+      <strong>
+        {currentBuildSummary.isFilled
+          ? currentBuildSummary.label
+          : "Empty focused build"}
+      </strong>
+      <p className="saved-party-slot-meta">
+        This is the editable build shown in the large Data Circle.
+      </p>
+    </div>
+
+    <div className="saved-party-slot-actions">
+      <button
+        type="button"
+        onClick={handleFocusCurrentBuild}
+        data-study-id="focus-current-editable-party-member"
+        title="Focus the editable fourth party member."
+      >
+        Focus
+      </button>
+
+      <button
+        type="button"
+        onClick={handleClearCurrentBuild}
+        aria-disabled={!currentBuildSummary.isFilled}
+        className={
+          !currentBuildSummary.isFilled
+            ? "saved-builds-button--blocked"
+            : ""
+        }
+        data-study-id="clear-current-editable-party-member"
+        title={
+          currentBuildSummary.isFilled
+            ? "Clear the focused editable build. Saved builds and members 1–3 are preserved."
+            : "The focused editable build is already empty."
+        }
+      >
+        Clear
+      </button>
+    </div>
+  </article>
+</section>
 
       <label
         className="saved-builds-search"
@@ -644,7 +797,7 @@ logFrictionEvent(
                 className="saved-build-party-actions"
                 data-study-region="saved-build-party-actions"
               >
-                <span>Send to party</span>
+                <span>Send to members 1–3</span>
 
                 {[0, 1, 2].map((slotIndex) => (
                   <button

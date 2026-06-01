@@ -2714,7 +2714,7 @@ aria-disabled={!slot || isAggregateFocused}
                   }
                 />
 
-                <SavedBuildsPanel
+<SavedBuildsPanel
   currentSnapshot={currentEditorSnapshot}
   savedBuilds={savedBuilds}
   partySlots={partySlots}
@@ -2723,6 +2723,8 @@ aria-disabled={!slot || isAggregateFocused}
   onLoad={handleLoadSavedBuild}
   onLoadIntoPartySlot={handleLoadSavedBuildIntoPartySlot}
   onClearPartySlot={handleClearPartySlot}
+  onClearCurrentBuild={handleCreateNewBlankBuild}
+  onFocusCurrentBuild={handleFocusCurrentEditor}
   onDelete={handleDeleteSavedBuild}
   activeView="saved-builds-panel"
   activeBuildId={focusedSavedBuild?.id ?? null}
