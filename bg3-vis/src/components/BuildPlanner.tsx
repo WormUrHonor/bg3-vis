@@ -162,10 +162,12 @@ type RecentAggregateFocusContext = {
   partyGaps: unknown[];
   redundancyScore: number;
 };
-const USE_BG3_LOCAL_MOCK_BUILD_JSON = true;
+const USE_BG3_LOCAL_MOCK_BUILD_JSON = false;
 
 const BG3_LOCAL_MOCK_BUILD_JSON_PATH =
   "bg3-simulator-test/BG3_Warlock_Level12_StdEquip (gorKjan.5019).json";
+  const BG3_REMOTE_TEST_BUILD_NAME =
+  "BG3_Monk_Level12_StdEquip (gorKjan.5019)";
 
 async function loadBg3LocalMockBuildJson(): Promise<unknown> {
   const url = encodeURI(
@@ -1559,9 +1561,9 @@ async function handleEvaluateBuild() {
 
   const usingLocalMockBuildJson = USE_BG3_LOCAL_MOCK_BUILD_JSON;
 
-  const simulatorBuildName = usingLocalMockBuildJson
-    ? "BG3_Warlock_Level12_StdEquip (local buildJson mock)"
-    : getSimulatorBuildNameForSnapshot(currentEditorSnapshot);
+const simulatorBuildName = usingLocalMockBuildJson
+  ? "BG3_Warlock_Level12_StdEquip (local buildJson mock)"
+  : BG3_REMOTE_TEST_BUILD_NAME;
 
   const requestedAtMs = Date.now();
   const buildSnapshotHash = createStableHash(currentEditorSnapshot, "build");

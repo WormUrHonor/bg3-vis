@@ -24,17 +24,48 @@ export type Bg3RotationSimulationRequest = {
 
 export type Bg3SimulatorResponse = unknown;
 
-const DEFAULT_BG3_SIMULATOR_BASE_URL =
-  "https://gw2wingman.nevermindcreations.de";
+const REQUEST_TIMEOUT_MS = 120_000;
 
 const BG3_SIMULATOR_BASE_URL =
-  import.meta.env.VITE_BG3_SIMULATOR_BASE_URL ??
-  DEFAULT_BG3_SIMULATOR_BASE_URL;
-
-const REQUEST_TIMEOUT_MS = 45_000;
+  import.meta.env.VITE_BG3_SIMULATOR_BASE_URL?.replace(/\/+$/, "") ?? "";
 
 function getEndpointUrl(path: string): string {
-  return `${BG3_SIMULATOR_BASE_URL}${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${BG3_SIMULATOR_BASE_URL}${normalizedPath}`;
+}
+
+async function readResponseText(response: Response): Promise<string> {
+  try {
+    return await response.text();
+  } catch {
+    return "";
+  }
+}
+
+function makeFetchError(error: unknown, url: string): Error {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return new Error(
+      `The BG3 simulator request timed out after ${
+        REQUEST_TIMEOUT_MS / 1000
+      }s. Request URL: ${url}`
+    );
+  }
+
+  if (error instanceof TypeError) {
+    return new Error(
+      [
+        `Could not reach the BG3 simulator API. Request URL: ${url}`,
+        "For npm run dev, the request URL should start with /api/bg3 and be proxied by Vite.",
+        "For GitHub Pages, direct browser calls still need CORS or a deployed proxy.",
+      ].join(" ")
+    );
+  }
+
+  if (error instanceof Error) {
+    return new Error(`${error.message} Request URL: ${url}`);
+  }
+
+  return new Error(`Could not reach the BG3 simulator API. Request URL: ${url}`);
 }
 
 async function postJson<TRequest extends object, TResponse = unknown>(
@@ -43,6 +74,7 @@ async function postJson<TRequest extends object, TResponse = unknown>(
 ): Promise<TResponse> {
   const url = getEndpointUrl(path);
   const controller = new AbortController();
+
   const timeoutId = window.setTimeout(() => {
     controller.abort();
   }, REQUEST_TIMEOUT_MS);
@@ -54,48 +86,41 @@ async function postJson<TRequest extends object, TResponse = unknown>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json",
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(
-        `The BG3 simulator request timed out after ${
-          REQUEST_TIMEOUT_MS / 1000
-        }s.`
-      );
-    }
-
-    throw new Error(
-      "Could not reach the BG3 simulator API. If this is a CORS error, the simulator server needs to allow requests from this page."
-    );
+    throw makeFetchError(error, url);
   } finally {
     window.clearTimeout(timeoutId);
   }
 
-  const responseText = await response.text();
+  const responseText = await readResponseText(response);
 
   if (!response.ok) {
     throw new Error(
       `BG3 simulator API request failed with ${response.status} ${
         response.statusText
-      }.${responseText ? ` Response: ${responseText.slice(0, 800)}` : ""}`
+      }. Request URL: ${url}.${
+        responseText ? ` Response: ${responseText.slice(0, 1200)}` : ""
+      }`
     );
   }
 
   if (!responseText.trim()) {
-    throw new Error("The BG3 simulator API returned an empty response.");
+    throw new Error(
+      `The BG3 simulator API returned an empty response. Request URL: ${url}`
+    );
   }
 
   try {
     return JSON.parse(responseText) as TResponse;
   } catch {
     throw new Error(
-      `The BG3 simulator API did not return valid JSON. Response: ${responseText.slice(
+      `The BG3 simulator API did not return valid JSON. Request URL: ${url}. Response: ${responseText.slice(
         0,
-        800
+        1200
       )}`
     );
   }

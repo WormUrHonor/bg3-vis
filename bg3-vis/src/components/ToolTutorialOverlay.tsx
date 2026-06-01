@@ -646,25 +646,33 @@ export default function ToolTutorialOverlay({
     });
   }
 
-  function closeTutorial(reason: "finished" | "dismissed") {
-    if (reason === "finished" && isRequiredStep && !hasAcknowledgedStudyLogging) {
-      logTutorialEvent("tutorial_required_acknowledgement_missing", {
-        attemptedCloseReason: reason,
-      });
-      return;
-    }
-
-    window.localStorage.setItem("bg3-tool-tutorial-seen", "true");
-    setIsOpen(false);
-    setHighlightRects([]);
-    setIsTransitioning(false);
-
-    logTutorialEvent("tutorial_closed", {
-      closeReason: reason,
-      completedTutorial: reason === "finished",
-      acknowledgedStudyLogging: hasAcknowledgedStudyLogging,
+function closeTutorial(reason: "finished" | "dismissed") {
+  if (reason === "finished" && isRequiredStep && !hasAcknowledgedStudyLogging) {
+    logTutorialEvent("tutorial_required_acknowledgement_missing", {
+      attemptedCloseReason: reason,
     });
+    return;
   }
+
+  window.localStorage.setItem("bg3-tool-tutorial-seen", "true");
+
+  if (reason === "finished") {
+    onRequestEditableFocus?.();
+    onRequestTab?.("character");
+  }
+
+  setIsOpen(false);
+  setHighlightRects([]);
+  setTargetElement(null);
+  setIsTransitioning(false);
+
+  logTutorialEvent("tutorial_closed", {
+    closeReason: reason,
+    completedTutorial: reason === "finished",
+    acknowledgedStudyLogging: hasAcknowledgedStudyLogging,
+    finalRequestedTab: reason === "finished" ? "character" : null,
+  });
+}
 
   function goNext() {
     if (isLastStep) {

@@ -274,9 +274,10 @@ export default function DataCircle({
 
   const hasDprData = resolvedDprRounds.length > 0;
 
-  const activeFocus: DataCircleFocus =
-    hoverFocus ?? (selectedFocuses.length > 0 ? selectedFocuses : null);
+const selectedPersistentFocus: DataCircleFocus =
+  selectedFocuses.length > 0 ? selectedFocuses : null;
 
+const activeFocus: DataCircleFocus = selectedPersistentFocus ?? hoverFocus;
   useEffect(() => {
     hoverFocusRef.current = hoverFocus;
   }, [hoverFocus]);
@@ -284,11 +285,6 @@ export default function DataCircle({
   useEffect(() => {
     selectedFocusesRef.current = selectedFocuses;
   }, [selectedFocuses]);
-
-  useEffect(() => {
-    if (variant !== "main") return;
-    setLinkedFocusRef.current?.(activeFocus);
-  }, [activeFocus, variant]);
 
   const visualizedItemsKey = useMemo(
     () =>
@@ -299,18 +295,39 @@ export default function DataCircle({
     [visualizedItems]
   );
 
-  useEffect(() => {
-    hoverFocusRef.current = null;
-    selectedFocusesRef.current = [];
+useEffect(() => {
+  setSelectedFocuses((currentSelectedFocuses) => {
+    const nextSelectedFocuses = currentSelectedFocuses.filter((focusItem) => {
+      if (focusItem.type !== "ability") return true;
 
-    setHoverFocus(null);
-    setSelectedFocuses([]);
-    setIsSelectionReviewActive(false);
+      return visualizedItems.some((item) => item.id === focusItem.abilityId);
+    });
 
-    if (variant === "main") {
-      setLinkedFocusRef.current?.(null);
+    const changed =
+      nextSelectedFocuses.length !== currentSelectedFocuses.length ||
+      nextSelectedFocuses.some(
+        (focusItem, index) => focusItem !== currentSelectedFocuses[index]
+      );
+
+    selectedFocusesRef.current = nextSelectedFocuses;
+
+    if (nextSelectedFocuses.length === 0) {
+      setIsSelectionReviewActive(false);
     }
-  }, [visualizedItemsKey, showDprLayer, variant]);
+
+    return changed ? nextSelectedFocuses : currentSelectedFocuses;
+  });
+}, [visualizedItemsKey, visualizedItems]);
+useEffect(() => {
+  if (variant !== "main") return;
+
+  const linkedFocus =
+    selectedFocuses.length > 0
+      ? selectedFocuses
+      : hoverFocus;
+
+  setLinkedFocusRef.current?.(linkedFocus);
+}, [selectedFocuses, hoverFocus, variant]);
 
   const buildLabel = buildName.trim() || "Untitled Build";
   const characterLabel = characterName.trim();
