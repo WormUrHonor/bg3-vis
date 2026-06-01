@@ -656,54 +656,55 @@ logFrictionEvent(
       </button>
     </article>
   ))}
+<article
+  className="saved-party-slot saved-party-slot--current"
+  data-study-region="saved-party-slot-current-editor"
+  data-study-id="saved-party-slot-4-current-editor"
+>
+  <div className="saved-party-slot-content">
+    <span className="saved-party-slot-kicker">Member 4 · Focused build</span>
 
-  <article
-    className="saved-party-slot saved-party-slot--current"
-    data-study-region="saved-party-slot-current-editor"
-    data-study-id="saved-party-slot-4-current-editor"
-  >
-    <div>
-      <span>Member 4 · focused build</span>
-      <strong>
-        {currentBuildSummary.isFilled
-          ? currentBuildSummary.label
-          : "Empty focused build"}
-      </strong>
-      <p className="saved-party-slot-meta">
-        This is the editable build shown in the large Data Circle.
-      </p>
-    </div>
+    <strong className="saved-party-slot-title">
+      {currentBuildSummary.isFilled
+        ? currentBuildSummary.label
+        : "Empty focused build"}
+    </strong>
 
-    <div className="saved-party-slot-actions">
-      <button
-        type="button"
-        onClick={handleFocusCurrentBuild}
-        data-study-id="focus-current-editable-party-member"
-        title="Focus the editable fourth party member."
-      >
-        Focus
-      </button>
+    <p className="saved-party-slot-meta">
+      This is the editable build shown in the large Data Circle.
+    </p>
+  </div>
 
-      <button
-        type="button"
-        onClick={handleClearCurrentBuild}
-        aria-disabled={!currentBuildSummary.isFilled}
-        className={
-          !currentBuildSummary.isFilled
-            ? "saved-builds-button--blocked"
-            : ""
-        }
-        data-study-id="clear-current-editable-party-member"
-        title={
-          currentBuildSummary.isFilled
-            ? "Clear the focused editable build. Saved builds and members 1–3 are preserved."
-            : "The focused editable build is already empty."
-        }
-      >
-        Clear
-      </button>
-    </div>
-  </article>
+  <div className="saved-party-slot-actions">
+    <button
+      type="button"
+      onClick={handleFocusCurrentBuild}
+      data-study-id="focus-current-editable-party-member"
+      title="Focus the editable fourth party member."
+    >
+      Focus
+    </button>
+
+    <button
+      type="button"
+      onClick={handleClearCurrentBuild}
+      aria-disabled={!currentBuildSummary.isFilled}
+      className={
+        !currentBuildSummary.isFilled
+          ? "saved-builds-button--blocked"
+          : ""
+      }
+      data-study-id="clear-current-editable-party-member"
+      title={
+        currentBuildSummary.isFilled
+          ? "Clear the focused editable build. Saved builds and members 1–3 are preserved."
+          : "The focused editable build is already empty."
+      }
+    >
+      Clear
+    </button>
+  </div>
+</article>
 </section>
 
       <label
