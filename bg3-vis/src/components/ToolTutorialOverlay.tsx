@@ -244,9 +244,9 @@ const tutorialSteps: TutorialStep[] = [
     does:
       "The study log only records the party-building task correctly if it is started before the participant begins building.",
     action:
-      "Before starting the task, enter the participant ID and click Start. When the party is finished, click End & export and send the downloaded JSONL file to the researcher.",
+      "Before starting the task, enter the participant ID and click Start. When the party is finished, click End & export and send the downloaded ZIP file to the researcher.",
     note:
-      "This is the final tutorial step so participants see it immediately before starting the actual task.",
+      "Thank very much for paricipating in the study! :) <3",
     requiredMessage:
       "Do not begin building before clicking Start. When finished, click End & export and send the downloaded JSONL file to the researcher.",
     requiredAcknowledgementLabel:
