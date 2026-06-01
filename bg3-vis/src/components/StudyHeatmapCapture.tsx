@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { logHeatmapPointerEvent } from "../logic/studyLogger";
+import { logHeatmapPointerEvent, logStudyEvent } from "../logic/studyLogger";
 import type {
   HeatmapPointerEventType,
   HeatmapPointerPayload,
@@ -19,7 +19,7 @@ type StudyHeatmapCaptureProps = {
   sampleIntervalMs?: number;
   hoverDwellThresholdMs?: number;
   scrollSampleIntervalMs?: number;
-  scrollDeltaThresholdPx?: number;
+  scrollDeltaThresholdNorm?: number;
 };
 
 type HeatmapLoggingContext = {
@@ -41,8 +41,31 @@ type HoverState = {
 
 type ScrollState = {
   lastLoggedAtMs: number;
-  lastScrollX: number;
-  lastScrollY: number;
+  lastScrollXNorm: number;
+  lastScrollYNorm: number;
+};
+
+type DisplayProfile = {
+  viewportWidth: number;
+  viewportHeight: number;
+  documentWidth: number;
+  documentHeight: number;
+  screenWidth: number;
+  screenHeight: number;
+  devicePixelRatio: number;
+  viewportAspectRatio: number;
+  screenAspectRatio: number;
+  viewportOrientation: "horizontal" | "vertical" | "square-ish";
+  screenOrientation: "horizontal" | "vertical" | "square-ish";
+  viewportCategory:
+    | "mobile-narrow"
+    | "tablet-or-small-laptop"
+    | "desktop"
+    | "large-desktop";
+  pointerAccuracy: "coarse" | "fine" | "unknown";
+  hoverCapability: "hover" | "no-hover" | "unknown";
+  maxTouchPoints: number;
+  mobileLike: boolean;
 };
 
 function round(value: number): number {
@@ -68,6 +91,96 @@ function getDocumentHeight(): number {
     document.body.scrollHeight,
     document.documentElement.clientHeight
   );
+}
+
+function getNormScrollX(documentWidth: number, viewportWidth: number): number {
+  const maxScrollableX = Math.max(1, documentWidth - viewportWidth);
+  return round(clamp01(window.scrollX / maxScrollableX));
+}
+
+function getNormScrollY(documentHeight: number, viewportHeight: number): number {
+  const maxScrollableY = Math.max(1, documentHeight - viewportHeight);
+  return round(clamp01(window.scrollY / maxScrollableY));
+}
+
+function getOrientation(
+  width: number,
+  height: number
+): "horizontal" | "vertical" | "square-ish" {
+  const ratio = width / Math.max(1, height);
+
+  if (ratio > 1.18) return "horizontal";
+  if (ratio < 0.85) return "vertical";
+  return "square-ish";
+}
+
+function getViewportCategory(
+  viewportWidth: number
+): DisplayProfile["viewportCategory"] {
+  if (viewportWidth < 768) return "mobile-narrow";
+  if (viewportWidth < 1200) return "tablet-or-small-laptop";
+  if (viewportWidth < 1800) return "desktop";
+  return "large-desktop";
+}
+
+function getMediaQueryValue(query: string): boolean | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return null;
+  }
+
+  return window.matchMedia(query).matches;
+}
+
+function getDisplayProfile(): DisplayProfile {
+  const viewportWidth = window.innerWidth || 1;
+  const viewportHeight = window.innerHeight || 1;
+  const documentWidth = getDocumentWidth() || 1;
+  const documentHeight = getDocumentHeight() || 1;
+  const screenWidth = window.screen.width || viewportWidth;
+  const screenHeight = window.screen.height || viewportHeight;
+
+  const coarsePointer = getMediaQueryValue("(pointer: coarse)");
+  const finePointer = getMediaQueryValue("(pointer: fine)");
+  const canHover = getMediaQueryValue("(hover: hover)");
+  const noHover = getMediaQueryValue("(hover: none)");
+  const maxTouchPoints = window.navigator.maxTouchPoints ?? 0;
+
+  const pointerAccuracy =
+    coarsePointer === true
+      ? "coarse"
+      : finePointer === true
+        ? "fine"
+        : "unknown";
+
+  const hoverCapability =
+    canHover === true ? "hover" : noHover === true ? "no-hover" : "unknown";
+
+  const viewportCategory = getViewportCategory(viewportWidth);
+
+  const mobileLike =
+    viewportCategory === "mobile-narrow" ||
+    maxTouchPoints > 0 ||
+    coarsePointer === true ||
+    noHover === true;
+
+  return {
+    viewportWidth,
+    viewportHeight,
+    documentWidth,
+    documentHeight,
+    screenWidth,
+    screenHeight,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    viewportAspectRatio: round(viewportWidth / Math.max(1, viewportHeight)),
+    screenAspectRatio: round(screenWidth / Math.max(1, screenHeight)),
+    viewportOrientation: getOrientation(viewportWidth, viewportHeight),
+    screenOrientation: getOrientation(screenWidth, screenHeight),
+    viewportCategory,
+    pointerAccuracy,
+    hoverCapability,
+    maxTouchPoints,
+    mobileLike,
+  };
 }
 
 function cleanText(text: string | null | undefined): string | null {
@@ -184,72 +297,74 @@ function buildPointerPayload(
   const viewportHeight = window.innerHeight || 1;
   const documentWidth = getDocumentWidth() || 1;
   const documentHeight = getDocumentHeight() || 1;
-  const pageX = event.pageX;
-  const pageY = event.pageY;
 
   return {
     target: getTargetForLogging(targetElement),
     pointerType: event.pointerType || "unknown",
     button: event.button,
-    viewportX: Math.round(event.clientX),
-    viewportY: Math.round(event.clientY),
-    pageX: Math.round(pageX),
-    pageY: Math.round(pageY),
+
     viewportWidth,
     viewportHeight,
     documentWidth,
     documentHeight,
-    scrollX: Math.round(window.scrollX),
-    scrollY: Math.round(window.scrollY),
+    viewportAspectRatio: round(viewportWidth / Math.max(1, viewportHeight)),
+    viewportOrientation: getOrientation(viewportWidth, viewportHeight),
+    viewportCategory: getViewportCategory(viewportWidth),
+
     viewportXNorm: round(clamp01(event.clientX / viewportWidth)),
     viewportYNorm: round(clamp01(event.clientY / viewportHeight)),
-    documentXNorm: round(clamp01(pageX / documentWidth)),
-    documentYNorm: round(clamp01(pageY / documentHeight)),
+    documentXNorm: round(clamp01(event.pageX / documentWidth)),
+    documentYNorm: round(clamp01(event.pageY / documentHeight)),
+    scrollXNorm: getNormScrollX(documentWidth, viewportWidth),
+    scrollYNorm: getNormScrollY(documentHeight, viewportHeight),
+
     sampleIntervalMs,
     dwellDurationMs,
   };
 }
 
 function buildScrollPayload(
-  previousScrollX: number,
-  previousScrollY: number,
+  previousScrollXNorm: number,
+  previousScrollYNorm: number,
   sampleIntervalMs: number
 ): HeatmapPointerPayload & {
-  scrollDeltaX: number;
-  scrollDeltaY: number;
-  previousScrollX: number;
-  previousScrollY: number;
+  scrollDeltaXNorm: number;
+  scrollDeltaYNorm: number;
+  previousScrollXNorm: number;
+  previousScrollYNorm: number;
 } {
   const viewportWidth = window.innerWidth || 1;
   const viewportHeight = window.innerHeight || 1;
   const documentWidth = getDocumentWidth() || 1;
   const documentHeight = getDocumentHeight() || 1;
-  const scrollX = Math.round(window.scrollX);
-  const scrollY = Math.round(window.scrollY);
+  const scrollXNorm = getNormScrollX(documentWidth, viewportWidth);
+  const scrollYNorm = getNormScrollY(documentHeight, viewportHeight);
 
   return {
     target: getWindowTargetForLogging(),
     pointerType: "scroll",
     button: -1,
-    viewportX: 0,
-    viewportY: 0,
-    pageX: scrollX,
-    pageY: scrollY,
+
     viewportWidth,
     viewportHeight,
     documentWidth,
     documentHeight,
-    scrollX,
-    scrollY,
+    viewportAspectRatio: round(viewportWidth / Math.max(1, viewportHeight)),
+    viewportOrientation: getOrientation(viewportWidth, viewportHeight),
+    viewportCategory: getViewportCategory(viewportWidth),
+
     viewportXNorm: 0,
     viewportYNorm: 0,
-    documentXNorm: round(clamp01(scrollX / documentWidth)),
-    documentYNorm: round(clamp01(scrollY / documentHeight)),
+    documentXNorm: scrollXNorm,
+    documentYNorm: scrollYNorm,
+    scrollXNorm,
+    scrollYNorm,
+
     sampleIntervalMs,
-    previousScrollX,
-    previousScrollY,
-    scrollDeltaX: scrollX - previousScrollX,
-    scrollDeltaY: scrollY - previousScrollY,
+    previousScrollXNorm,
+    previousScrollYNorm,
+    scrollDeltaXNorm: round(scrollXNorm - previousScrollXNorm),
+    scrollDeltaYNorm: round(scrollYNorm - previousScrollYNorm),
   };
 }
 
@@ -266,14 +381,21 @@ export default function StudyHeatmapCapture({
   sampleIntervalMs = 250,
   hoverDwellThresholdMs = 500,
   scrollSampleIntervalMs = 250,
-  scrollDeltaThresholdPx = 8,
+  scrollDeltaThresholdNorm = 0.01,
 }: StudyHeatmapCaptureProps) {
   const lastPointerMoveAtRef = useRef(0);
   const hoverStateRef = useRef<HoverState | null>(null);
+  const displayProfileLoggedRef = useRef(false);
   const scrollStateRef = useRef<ScrollState>({
     lastLoggedAtMs: 0,
-    lastScrollX: typeof window === "undefined" ? 0 : Math.round(window.scrollX),
-    lastScrollY: typeof window === "undefined" ? 0 : Math.round(window.scrollY),
+    lastScrollXNorm:
+      typeof window === "undefined"
+        ? 0
+        : getNormScrollX(getDocumentWidth(), window.innerWidth || 1),
+    lastScrollYNorm:
+      typeof window === "undefined"
+        ? 0
+        : getNormScrollY(getDocumentHeight(), window.innerHeight || 1),
   });
 
   useEffect(() => {
@@ -290,6 +412,26 @@ export default function StudyHeatmapCapture({
         activeVisualizationFocus,
         partySnapshotHash,
       };
+    }
+
+    if (!displayProfileLoggedRef.current) {
+      displayProfileLoggedRef.current = true;
+
+      logStudyEvent({
+        eventCategory: "heatmap",
+        eventType: "heatmap_display_profile_captured",
+        taskPhase: "initial_planning",
+        activeView,
+        activeBuildId,
+        activeBuildLabel,
+        activePartyMemberIndex,
+        activePartyMemberLabel,
+        activeFocusSource,
+        activeVisualizationFocus,
+        partySnapshotHash,
+        payload: getDisplayProfile(),
+        skipContextEnrichment: true,
+      });
     }
 
     function logPointer(
@@ -399,29 +541,41 @@ export default function StudyHeatmapCapture({
     function handleScroll() {
       const now = Date.now();
       const previousState = scrollStateRef.current;
-      const currentScrollX = Math.round(window.scrollX);
-      const currentScrollY = Math.round(window.scrollY);
-      const deltaX = Math.abs(currentScrollX - previousState.lastScrollX);
-      const deltaY = Math.abs(currentScrollY - previousState.lastScrollY);
+
+      const viewportWidth = window.innerWidth || 1;
+      const viewportHeight = window.innerHeight || 1;
+      const documentWidth = getDocumentWidth() || 1;
+      const documentHeight = getDocumentHeight() || 1;
+
+      const currentScrollXNorm = getNormScrollX(documentWidth, viewportWidth);
+      const currentScrollYNorm = getNormScrollY(documentHeight, viewportHeight);
+
+      const deltaXNorm = Math.abs(
+        currentScrollXNorm - previousState.lastScrollXNorm
+      );
+      const deltaYNorm = Math.abs(
+        currentScrollYNorm - previousState.lastScrollYNorm
+      );
       const elapsedMs = now - previousState.lastLoggedAtMs;
 
       if (
         elapsedMs < scrollSampleIntervalMs ||
-        (deltaX < scrollDeltaThresholdPx && deltaY < scrollDeltaThresholdPx)
+        (deltaXNorm < scrollDeltaThresholdNorm &&
+          deltaYNorm < scrollDeltaThresholdNorm)
       ) {
         return;
       }
 
       const payload = buildScrollPayload(
-        previousState.lastScrollX,
-        previousState.lastScrollY,
+        previousState.lastScrollXNorm,
+        previousState.lastScrollYNorm,
         scrollSampleIntervalMs
       );
 
       scrollStateRef.current = {
         lastLoggedAtMs: now,
-        lastScrollX: currentScrollX,
-        lastScrollY: currentScrollY,
+        lastScrollXNorm: currentScrollXNorm,
+        lastScrollYNorm: currentScrollYNorm,
       };
 
       logHeatmapPointerEvent(
@@ -489,7 +643,7 @@ export default function StudyHeatmapCapture({
     hoverDwellThresholdMs,
     sampleIntervalMs,
     scrollSampleIntervalMs,
-    scrollDeltaThresholdPx,
+    scrollDeltaThresholdNorm,
   ]);
 
   return null;

@@ -34,6 +34,7 @@ export type StudyEventType =
   | "logs_exported"
   | "survey_answers_exported"
   | "system_metadata_captured"
+  | "heatmap_display_profile_captured"
   | "heatmap_pointer_move"
   | "heatmap_pointer_down"
   | "heatmap_click"
@@ -131,28 +132,32 @@ export type HeatmapTargetForLogging = {
   isInteractive: boolean;
   disabled: boolean | null;
 };
-
 export type HeatmapPointerPayload = {
   target: HeatmapTargetForLogging;
   pointerType: string;
   button: number;
-  viewportX: number;
-  viewportY: number;
-  pageX: number;
-  pageY: number;
+
   viewportWidth: number;
   viewportHeight: number;
   documentWidth: number;
   documentHeight: number;
-  scrollX: number;
-  scrollY: number;
+  viewportAspectRatio?: number;
+  viewportOrientation?: "horizontal" | "vertical" | "square-ish";
+  viewportCategory?:
+    | "mobile-narrow"
+    | "tablet-or-small-laptop"
+    | "desktop"
+    | "large-desktop";
+
   viewportXNorm: number;
   viewportYNorm: number;
   documentXNorm: number;
   documentYNorm: number;
+  scrollXNorm?: number;
+  scrollYNorm?: number;
+
   sampleIntervalMs?: number;
   dwellDurationMs?: number;
-  hoverDurationMs?: number;
 };
 
 export type StudyEnvironmentMetadata = {
