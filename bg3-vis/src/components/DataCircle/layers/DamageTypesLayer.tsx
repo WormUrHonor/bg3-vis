@@ -56,6 +56,11 @@ type DamageDisplayPlan = {
   iconRadius: number;
 };
 
+type DamageTypeVisual = (typeof DAMAGE_TYPES)[number] & {
+  color: string;
+  glowColor: string;
+};
+
 const DAMAGE_RING_INNER_RADIUS = 292;
 const DAMAGE_RING_OUTER_RADIUS = 336;
 const DAMAGE_RING_LABEL_RADIUS = 314;
@@ -84,6 +89,50 @@ const DAMAGE_TYPE_ICONS: Partial<Record<DamageRingKey, string>> = {
   Weapon: weaponIcon,
   Variable: variableIcon,
 };
+
+const DAMAGE_TYPE_COLOR_BY_KEY: Record<DamageRingKey, string> = {
+  Necrotic: "#5BDC8E",
+  Lightning: "#0043B7",
+  Force: "#EC383B",
+  Fire: "#E66800",
+  Cold: "#52D1FF",
+  Acid: "#EAF20B",
+  Thunder: "#9C50FF",
+  Radiant: "#FFD23E",
+  Psychic: "#FF76E0",
+  Poison: "#94A849",
+
+  Bludgeoning: "#8F7A62",
+  Piercing: "#7D8790",
+  Slashing: "#8B6F6A",
+  Weapon: "#9A8764",
+  Variable: "#827B8D",
+};
+
+const DAMAGE_TYPE_GLOW_BY_KEY: Record<DamageRingKey, string> = {
+  Necrotic: "#9DFFD9",
+  Lightning: "#5F91FF",
+  Force: "#FF7477",
+  Fire: "#FFA24D",
+  Cold: "#A8EEFF",
+  Acid: "#F7FF69",
+  Thunder: "#C79AFF",
+  Radiant: "#FFE891",
+  Psychic: "#FFB8F0",
+  Poison: "#C5D96E",
+
+  Bludgeoning: "#BBA789",
+  Piercing: "#B3C0C9",
+  Slashing: "#B99B94",
+  Weapon: "#CDBB8B",
+  Variable: "#B8B0C6",
+};
+
+const DAMAGE_TYPE_VISUALS: DamageTypeVisual[] = DAMAGE_TYPES.map((type) => ({
+  ...type,
+  color: DAMAGE_TYPE_COLOR_BY_KEY[type.key] ?? type.color,
+  glowColor: DAMAGE_TYPE_GLOW_BY_KEY[type.key] ?? type.glowColor,
+}));
 
 function getFocusItems(focus: DataCircleFocus): DataCircleFocusItem[] {
   if (!focus) return [];
@@ -279,7 +328,7 @@ function getDamageDisplayPlan(
 }
 
 function renderDamageTextureMarks(
-  type: (typeof DAMAGE_TYPES)[number],
+  type: DamageTypeVisual,
   startAngle: number,
   endAngle: number,
   value: number,
@@ -305,7 +354,7 @@ function renderDamageTextureMarks(
           x2={outer.x}
           y2={outer.y}
           stroke={type.glowColor}
-          strokeOpacity={0.13 * opacityMultiplier}
+          strokeOpacity={0.18 * opacityMultiplier}
           strokeWidth="1"
           strokeLinecap="round"
         />
@@ -330,7 +379,7 @@ function renderDamageTextureMarks(
               r={2 + (index % 3) * 0.7}
               fill="none"
               stroke={type.glowColor}
-              strokeOpacity={0.31 * opacityMultiplier}
+              strokeOpacity={0.42 * opacityMultiplier}
               strokeWidth="1"
             />
           );
@@ -355,7 +404,7 @@ function renderDamageTextureMarks(
               points={`${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
               fill="none"
               stroke={type.glowColor}
-              strokeOpacity={0.38 * opacityMultiplier}
+              strokeOpacity={0.5 * opacityMultiplier}
               strokeWidth="1.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -383,7 +432,7 @@ function renderDamageTextureMarks(
             <g
               key={`${type.key}-spark-${index}`}
               transform={`translate(${point.x} ${point.y}) rotate(${angle})`}
-              opacity={0.38 * opacityMultiplier}
+              opacity={0.48 * opacityMultiplier}
             >
               <line
                 x1="-3.4"
@@ -426,7 +475,7 @@ function renderDamageTextureMarks(
               d={`M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`}
               fill="none"
               stroke={type.glowColor}
-              strokeOpacity={0.32 * opacityMultiplier}
+              strokeOpacity={0.48 * opacityMultiplier}
               strokeWidth="1.1"
               strokeLinecap="round"
             />
@@ -460,9 +509,9 @@ function renderDamageTextureMarks(
               cy={point.y}
               r="2.4"
               fill={type.glowColor}
-              fillOpacity={0.2 * opacityMultiplier}
+              fillOpacity={0.3 * opacityMultiplier}
               stroke={type.glowColor}
-              strokeOpacity={0.24 * opacityMultiplier}
+              strokeOpacity={0.36 * opacityMultiplier}
               strokeWidth="1"
             />
           );
@@ -487,7 +536,7 @@ function renderDamageTextureMarks(
             x2={outer.x}
             y2={outer.y}
             stroke={type.glowColor}
-            strokeOpacity={0.26 * opacityMultiplier}
+            strokeOpacity={0.38 * opacityMultiplier}
             strokeWidth="1.15"
             strokeLinecap="round"
           />
@@ -498,7 +547,7 @@ function renderDamageTextureMarks(
 }
 
 function renderDamageIcons(
-  type: (typeof DAMAGE_TYPES)[number],
+  type: DamageTypeVisual,
   displayPlan: DamageDisplayPlan,
   clipPathId: string,
   opacity = 0.97
@@ -530,7 +579,7 @@ function renderDamageIcons(
               cy="0"
               r={displayPlan.iconSize * 0.6}
               fill={type.glowColor}
-              fillOpacity="0.045"
+              fillOpacity="0.09"
             />
 
             <circle
@@ -539,7 +588,7 @@ function renderDamageIcons(
               r={displayPlan.iconSize * 0.5}
               fill="rgba(8,6,10,0.34)"
               stroke={type.glowColor}
-              strokeOpacity="0.14"
+              strokeOpacity="0.25"
               strokeWidth="0.65"
             />
 
@@ -588,7 +637,7 @@ export function DamageTypesLayer({
         cy={CY}
         r={340}
         fill="none"
-        stroke="rgba(230,188,112,0.18)"
+        stroke="rgba(230,188,112,0.2)"
         strokeWidth="1.1"
       />
 
@@ -615,7 +664,7 @@ export function DamageTypesLayer({
         (() => {
           let currentAngle = -90;
 
-          return DAMAGE_TYPES.map((type) => {
+          return DAMAGE_TYPE_VISUALS.map((type) => {
             const value = damageTypeCounts[type.key];
 
             if (value <= 0) {
@@ -651,9 +700,9 @@ export function DamageTypesLayer({
             const isSelected = isDamageTypeSelected(type.key, selectedFocuses);
 
             const groupOpacity = activeFocus && !isRelated ? 0.28 : 1;
-            const focusBoost = activeFocus && isRelated ? 1.18 : 1;
-            const selectionBoost = isSelected && showSelectionMarks ? 1.16 : 1;
-            const reviewBoost = isSelected && showSelectionMarks ? 1.35 : 1;
+            const focusBoost = activeFocus && isRelated ? 1.24 : 1;
+            const selectionBoost = isSelected && showSelectionMarks ? 1.26 : 1;
+            const reviewBoost = isSelected && showSelectionMarks ? 1.44 : 1;
 
             const textureOpacityMultiplier =
               activeFocus && !isRelated ? 0.38 : focusBoost;
@@ -666,30 +715,30 @@ export function DamageTypesLayer({
 
             return (
               <g
-  key={type.key}
-  opacity={groupOpacity}
-  style={{ cursor: "pointer" }}
-  data-study-region="data-circle-damage-type-layer"
-  data-study-element="damage-type-segment"
-  data-study-id={`data-circle-damage-type-${type.key}`}
-  data-damage-type={type.key}
-  data-damage-label={type.label}
-  data-damage-count={value}
-  data-damage-sweep={sweep}
-  data-label-mode={displayPlan.labelMode}
-  data-selected={isSelected ? "true" : "false"}
-  data-related={isRelated ? "true" : "false"}
-  onMouseEnter={() =>
-    setFocus({ type: "damageType", damageType: type.key })
-  }
-  onClick={(event) => {
-    event.stopPropagation();
-    onToggleSelection?.({
-      type: "damageType",
-      damageType: type.key,
-    });
-  }}
->
+                key={type.key}
+                opacity={groupOpacity}
+                style={{ cursor: "pointer" }}
+                data-study-region="data-circle-damage-type-layer"
+                data-study-element="damage-type-segment"
+                data-study-id={`data-circle-damage-type-${type.key}`}
+                data-damage-type={type.key}
+                data-damage-label={type.label}
+                data-damage-count={value}
+                data-damage-sweep={sweep}
+                data-label-mode={displayPlan.labelMode}
+                data-selected={isSelected ? "true" : "false"}
+                data-related={isRelated ? "true" : "false"}
+                onMouseEnter={() =>
+                  setFocus({ type: "damageType", damageType: type.key })
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleSelection?.({
+                    type: "damageType",
+                    damageType: type.key,
+                  });
+                }}
+              >
                 <defs>
                   <clipPath id={clipPathId}>
                     <path
@@ -717,9 +766,9 @@ export function DamageTypesLayer({
                         visualEndAngle + 0.45
                       )}
                       fill={type.glowColor}
-                      fillOpacity="0.24"
+                      fillOpacity="0.34"
                       stroke={type.glowColor}
-                      strokeOpacity="0.72"
+                      strokeOpacity="0.84"
                       strokeWidth="1.5"
                       filter="url(#elementalBloom)"
                       pointerEvents="none"
@@ -735,7 +784,7 @@ export function DamageTypesLayer({
                       )}
                       fill="none"
                       stroke="rgba(255,248,220,0.98)"
-                      strokeOpacity="0.88"
+                      strokeOpacity="0.9"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       pointerEvents="none"
@@ -753,7 +802,7 @@ export function DamageTypesLayer({
                   )}
                   fill="none"
                   stroke={type.glowColor}
-                  strokeOpacity={0.11 * focusBoost * reviewBoost}
+                  strokeOpacity={0.18 * focusBoost * reviewBoost}
                   strokeWidth="56"
                   strokeLinecap="butt"
                   filter="url(#elementalBloom)"
@@ -769,7 +818,7 @@ export function DamageTypesLayer({
                     visualEndAngle
                   )}
                   fill={type.color}
-                  fillOpacity={0.22 * focusBoost * selectionBoost}
+                  fillOpacity={0.36 * focusBoost * selectionBoost}
                   stroke={
                     isSelected && showSelectionMarks
                       ? "rgba(255,250,232,0.98)"
@@ -777,15 +826,15 @@ export function DamageTypesLayer({
                   }
                   strokeOpacity={
                     isSelected && showSelectionMarks
-                      ? 0.95
-                      : 0.3 * focusBoost
+                      ? 0.98
+                      : 0.5 * focusBoost
                   }
                   strokeWidth={
                     isSelected && showSelectionMarks
                       ? 2.35
                       : activeFocus && isRelated
-                        ? 1.7
-                        : 1.1
+                        ? 1.8
+                        : 1.15
                   }
                 />
 
@@ -798,7 +847,7 @@ export function DamageTypesLayer({
                     visualStartAngle + 0.7,
                     visualEndAngle - 0.7
                   )}
-                  fill="rgba(7,5,8,0.36)"
+                  fill="rgba(7,5,8,0.2)"
                   stroke="rgba(255,242,213,0.08)"
                   strokeWidth="0.7"
                 />
@@ -819,8 +868,8 @@ export function DamageTypesLayer({
                   }
                   strokeOpacity={
                     isSelected && showSelectionMarks
-                      ? 0.86
-                      : 0.2 * focusBoost
+                      ? 0.9
+                      : 0.34 * focusBoost
                   }
                   strokeWidth={
                     isSelected && showSelectionMarks
@@ -842,7 +891,7 @@ export function DamageTypesLayer({
                   )}
                   fill="none"
                   stroke={type.glowColor}
-                  strokeOpacity={0.09 * focusBoost}
+                  strokeOpacity={0.17 * focusBoost}
                   strokeWidth="1.05"
                   strokeDasharray="2 8"
                   strokeLinecap="round"
