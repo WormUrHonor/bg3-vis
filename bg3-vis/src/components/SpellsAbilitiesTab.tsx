@@ -1890,9 +1890,7 @@ function renderSpellTooltipContent(
             className="panel-intro compact-intro"
             data-study-id="spells-abilities-intro"
           >
-            Select available spells, cantrips, class actions, passives, and
-            subclass-specific choices. Fixed features are shown as already
-            granted, while toggles can be set active for the visualisation.
+            Select spells, class actions, passives, and subclass choices. Some features are granted automatically, while optional toggles can be switched on for the visualisation.
           </p>
         </div>
 

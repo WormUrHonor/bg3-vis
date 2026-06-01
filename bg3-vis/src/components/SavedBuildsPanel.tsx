@@ -671,7 +671,7 @@ logFrictionEvent(
     </strong>
 
     <p className="saved-party-slot-meta">
-      This is the editable build shown in the large Data Circle.
+      This is the editable build shown in the Focus Circle.
     </p>
   </div>
 
