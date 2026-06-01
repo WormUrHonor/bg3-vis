@@ -22,10 +22,6 @@ import type {
   BuildEditLoggingPayload,
 } from "../types/loggingTypes";
 
-const STUDY_LOG_STORAGE_KEY = "bg3-study-jsonl-logs-v3";
-const STUDY_SESSION_STORAGE_KEY = "bg3-study-session-v3";
-const STUDY_SEQUENCE_STORAGE_KEY = "bg3-study-sequence-v3";
-
 export const FOCUS_CONTEXT_WINDOW_MS = 20_000;
 export const GAP_CONTEXT_WINDOW_MS = 30_000;
 export const EVALUATION_CONTEXT_WINDOW_MS = 60_000;
@@ -33,6 +29,10 @@ export const EVALUATION_CONTEXT_WINDOW_MS = 60_000;
 const DEFAULT_PROTOTYPE_VERSION = "bg3-party-planner-study";
 const DEFAULT_APP_VERSION = "local";
 const DEFAULT_DATA_MODEL_VERSION = "local";
+
+let memoryStudyLogs: StudyLogEvent[] = [];
+let memoryStudySession: StudySession | null = null;
+let memorySequenceNumber = 0;
 
 let activeFocusContext: FocusContextForLogging | null = null;
 let activePartyGapContext: PartyGapContextForLogging | null = null;
@@ -67,57 +67,13 @@ function normalizeParticipantId(rawParticipantId: string): string {
   return rawParticipantId.trim().replace(/\s+/g, "_");
 }
 
-function readStorage(key: string): string | null {
-  if (!hasWindow()) return null;
-
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string): void {
-  if (!hasWindow()) return;
-
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // localStorage can fail in private modes or when quota is exceeded.
-  }
-}
-
-function removeStorage(key: string): void {
-  if (!hasWindow()) return;
-
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // no-op
-  }
-}
-
-function readJson<T>(key: string): T | null {
-  const value = readStorage(key);
-  if (!value) return null;
-
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return null;
-  }
-}
-
 function getSequenceNumber(): number {
-  const raw = readStorage(STUDY_SEQUENCE_STORAGE_KEY);
-  const parsed = raw ? Number(raw) : 0;
-  const next = Number.isFinite(parsed) ? parsed + 1 : 1;
-  writeStorage(STUDY_SEQUENCE_STORAGE_KEY, String(next));
-  return next;
+  memorySequenceNumber += 1;
+  return memorySequenceNumber;
 }
 
 function resetSequenceNumber(): void {
-  writeStorage(STUDY_SEQUENCE_STORAGE_KEY, "0");
+  memorySequenceNumber = 0;
 }
 
 function getEnvironmentMetadata(): StudySession["environment"] {
@@ -137,7 +93,7 @@ function getEnvironmentMetadata(): StudySession["environment"] {
 
   return {
     userAgent: window.navigator.userAgent,
-    language: window.navigator.language,
+    language: "",
     platform: window.navigator.platform,
     timezoneOffsetMinutes: new Date().getTimezoneOffset(),
     screenWidth: window.screen.width,
@@ -149,19 +105,16 @@ function getEnvironmentMetadata(): StudySession["environment"] {
 }
 
 function appendJsonlEvent(event: StudyLogEvent): void {
-  const current = readStorage(STUDY_LOG_STORAGE_KEY);
-  const nextLine = JSON.stringify(event);
-  writeStorage(
-    STUDY_LOG_STORAGE_KEY,
-    current && current.length > 0 ? `${current}\n${nextLine}` : nextLine
-  );
+  memoryStudyLogs.push(event);
 }
 
 function getCurrentSessionOrThrow(): StudySession {
   const session = loadStudySession();
 
   if (!session || session.status !== "running") {
-    throw new Error("Study logging is not running. Enter a participant ID and click Start first.");
+    throw new Error(
+      "Study logging is not running. Enter a participant ID and click Start first."
+    );
   }
 
   return session;
@@ -170,6 +123,10 @@ function getCurrentSessionOrThrow(): StudySession {
 function getCurrentSession(): StudySession | null {
   const session = loadStudySession();
   return session && session.status === "running" ? session : null;
+}
+
+function getCurrentOrEndedSession(): StudySession | null {
+  return loadStudySession();
 }
 
 function shouldEnrichEvent(eventType: StudyEventType): boolean {
@@ -215,13 +172,17 @@ function isGapResponseEvent(eventType: StudyEventType): boolean {
 }
 
 function isEvaluationResponseEvent(eventType: StudyEventType): boolean {
-  return ["build_edit", "build_semantic_delta", "party_slot_assigned", "party_slot_cleared"].includes(
-    eventType
-  );
+  return [
+    "build_edit",
+    "build_semantic_delta",
+    "party_slot_assigned",
+    "party_slot_cleared",
+  ].includes(eventType);
 }
 
 function inferAttentionFlags(eventType: StudyEventType, payload: unknown) {
   const text = JSON.stringify(payload ?? {}).toLowerCase();
+
   const dprAttentionRelevant =
     eventType === "data_circle_dpr_layout_changed" ||
     text.includes("dpr") ||
@@ -272,7 +233,8 @@ function buildDerivedContext(
     timestampMs - activeFocusContext.timestampMs <= FOCUS_CONTEXT_WINDOW_MS
   ) {
     derived.focusContext = activeFocusContext;
-    derived.focusToActionLatencyMs = timestampMs - activeFocusContext.timestampMs;
+    derived.focusToActionLatencyMs =
+      timestampMs - activeFocusContext.timestampMs;
   }
 
   if (
@@ -281,62 +243,94 @@ function buildDerivedContext(
     timestampMs - activePartyGapContext.timestampMs <= GAP_CONTEXT_WINDOW_MS
   ) {
     derived.gapContext = activePartyGapContext;
-    derived.gapToActionLatencyMs = timestampMs - activePartyGapContext.timestampMs;
+    derived.gapToActionLatencyMs =
+      timestampMs - activePartyGapContext.timestampMs;
   }
 
   if (
     activeEvaluationContext &&
     isEvaluationResponseEvent(eventType) &&
-    timestampMs - activeEvaluationContext.timestampMs <= EVALUATION_CONTEXT_WINDOW_MS
+    timestampMs - activeEvaluationContext.timestampMs <=
+      EVALUATION_CONTEXT_WINDOW_MS
   ) {
     derived.evaluationContext = activeEvaluationContext;
-    derived.evaluationToActionLatencyMs = timestampMs - activeEvaluationContext.timestampMs;
+    derived.evaluationToActionLatencyMs =
+      timestampMs - activeEvaluationContext.timestampMs;
   }
 
   return Object.keys(derived).length > 0 ? derived : undefined;
 }
 
-function inferTaskPhase(inputPhase: StudyTaskPhase | undefined, eventType: StudyEventType): StudyTaskPhase {
+function inferTaskPhase(
+  inputPhase: StudyTaskPhase | undefined,
+  eventType: StudyEventType
+): StudyTaskPhase {
   if (inputPhase) return inputPhase;
 
   if (eventType === "study_started") return "initial_planning";
   if (eventType === "study_ended") return "submission";
-  if (eventType.startsWith("evaluation_") || eventType.startsWith("simulator_")) return "evaluation";
-  if (eventType.startsWith("party_") || eventType === "aggregate_focused") return "party_review";
-  if (eventType.includes("edit") || eventType.includes("delta")) return "revision";
-  if (eventType.includes("focus") || eventType.includes("heatmap")) return "exploration";
+  if (eventType.startsWith("evaluation_") || eventType.startsWith("simulator_")) {
+    return "evaluation";
+  }
+  if (eventType.startsWith("party_") || eventType === "aggregate_focused") {
+    return "party_review";
+  }
+  if (eventType.includes("edit") || eventType.includes("delta")) {
+    return "revision";
+  }
+  if (eventType.includes("focus") || eventType.includes("heatmap")) {
+    return "exploration";
+  }
 
   return "exploration";
 }
 
+function createManualStudyEvent(input: {
+  eventCategory: StudyLogEvent["eventCategory"];
+  eventType: StudyEventType;
+  taskPhase: StudyTaskPhase;
+  activeView?: string | null;
+  payload?: unknown;
+}): StudyLogEvent {
+  const timestampMs = safeNow();
+  const session = getCurrentOrEndedSession();
+
+  return {
+    eventId: safeRandomId("event"),
+    sequenceNumber: getSequenceNumber(),
+    timestamp: safeIso(timestampMs),
+    timestampMs,
+    elapsedStudyMs: session
+      ? Math.max(0, timestampMs - session.startedAtMs)
+      : 0,
+    participantId: session?.participantId ?? "",
+    sessionId: session?.sessionId ?? session?.participantId ?? "",
+    studyDesign: session?.studyDesign ?? "single_condition_single_task_party_building",
+    prototypeVersion: session?.prototypeVersion ?? DEFAULT_PROTOTYPE_VERSION,
+    appVersion: session?.appVersion ?? DEFAULT_APP_VERSION,
+    dataModelVersion: session?.dataModelVersion ?? DEFAULT_DATA_MODEL_VERSION,
+    taskPhase: input.taskPhase,
+    eventCategory: input.eventCategory,
+    eventType: input.eventType,
+    activeView: input.activeView ?? null,
+    payload: sanitizeForLogging(input.payload),
+  };
+}
+
 export function loadStudySession(): StudySession | null {
-  return readJson<StudySession>(STUDY_SESSION_STORAGE_KEY);
+  return memoryStudySession;
 }
 
 export function loadStudyLogs(): StudyLogEvent[] {
-  const jsonl = readStorage(STUDY_LOG_STORAGE_KEY);
-  if (!jsonl) return [];
-
-  return jsonl
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line) as StudyLogEvent;
-      } catch {
-        return null;
-      }
-    })
-    .filter((event): event is StudyLogEvent => event !== null);
+  return [...memoryStudyLogs];
 }
 
 export function loadStudyLogsJsonl(): string {
-  return readStorage(STUDY_LOG_STORAGE_KEY) ?? "";
+  return memoryStudyLogs.map((event) => JSON.stringify(event)).join("\n");
 }
 
 export function isStudySessionActive(): boolean {
-  return loadStudySession()?.status === "running";
+  return memoryStudySession?.status === "running";
 }
 
 export function startStudySession(
@@ -370,7 +364,8 @@ export function startStudySession(
   };
 
   resetSequenceNumber();
-  writeStorage(STUDY_SESSION_STORAGE_KEY, JSON.stringify(session));
+  memoryStudyLogs = [];
+  memoryStudySession = session;
 
   logStudyEvent({
     eventCategory: "study",
@@ -396,16 +391,11 @@ export function startStudySession(
   return session;
 }
 
-export function endStudySession(payload: StudyLoggerEndPayload = {}): StudySession {
+export function endStudySession(
+  payload: StudyLoggerEndPayload = {}
+): StudySession {
   const session = getCurrentSessionOrThrow();
   const nowMs = safeNow();
-
-  const endedSession: StudySession = {
-    ...session,
-    status: "ended",
-    endedAt: safeIso(nowMs),
-    endedAtMs: nowMs,
-  };
 
   logStudyEvent({
     eventCategory: "study",
@@ -419,11 +409,21 @@ export function endStudySession(payload: StudyLoggerEndPayload = {}): StudySessi
     skipContextEnrichment: true,
   });
 
-  writeStorage(STUDY_SESSION_STORAGE_KEY, JSON.stringify(endedSession));
+  const endedSession: StudySession = {
+    ...session,
+    status: "ended",
+    endedAt: safeIso(nowMs),
+    endedAtMs: nowMs,
+  };
+
+  memoryStudySession = endedSession;
+
   return endedSession;
 }
 
-export function endAndExportStudySession(payload: StudyLoggerEndPayload = {}): void {
+export function endAndExportStudySession(
+  payload: StudyLoggerEndPayload = {}
+): void {
   const endedSession = endStudySession({
     ...payload,
     exportedByParticipant: true,
@@ -432,8 +432,10 @@ export function endAndExportStudySession(payload: StudyLoggerEndPayload = {}): v
   exportStudyLogsAsJsonl(endedSession.participantId);
 }
 
-export function clearStudyLogs(options: { clearSession?: boolean; silent?: boolean } = {}): void {
-  removeStorage(STUDY_LOG_STORAGE_KEY);
+export function clearStudyLogs(
+  options: { clearSession?: boolean; silent?: boolean } = {}
+): void {
+  memoryStudyLogs = [];
   resetSequenceNumber();
 
   activeFocusContext = null;
@@ -445,38 +447,27 @@ export function clearStudyLogs(options: { clearSession?: boolean; silent?: boole
   activeHoverFocus = null;
 
   if (options.clearSession ?? false) {
-    removeStorage(STUDY_SESSION_STORAGE_KEY);
+    memoryStudySession = null;
   }
 
   if (!options.silent && hasWindow()) {
-    const participantId = loadStudySession()?.participantId ?? "";
-    const sessionId = loadStudySession()?.sessionId ?? participantId;
-
-    const event: StudyLogEvent = {
-      eventId: safeRandomId("event"),
-      sequenceNumber: getSequenceNumber(),
-      timestamp: safeIso(),
-      timestampMs: safeNow(),
-      elapsedStudyMs: 0,
-      participantId,
-      sessionId,
-      studyDesign: "single_condition_single_task_party_building",
-      prototypeVersion: DEFAULT_PROTOTYPE_VERSION,
-      appVersion: DEFAULT_APP_VERSION,
-      dataModelVersion: DEFAULT_DATA_MODEL_VERSION,
-      taskPhase: "not_started",
-      eventCategory: "study",
-      eventType: "logs_cleared",
-      payload: {
-        clearSession: options.clearSession ?? false,
-      },
-    };
-
-    appendJsonlEvent(event);
+    appendJsonlEvent(
+      createManualStudyEvent({
+        eventCategory: "study",
+        eventType: "logs_cleared",
+        taskPhase: "not_started",
+        activeView: "study-logging-panel",
+        payload: {
+          clearSession: options.clearSession ?? false,
+        },
+      })
+    );
   }
 }
 
-export function logStudyEvent(input: StudyLoggerEventInput): StudyLogEvent | null {
+export function logStudyEvent(
+  input: StudyLoggerEventInput
+): StudyLogEvent | null {
   const session = getCurrentSession();
 
   if (!session) {
@@ -510,7 +501,12 @@ export function logStudyEvent(input: StudyLoggerEventInput): StudyLogEvent | nul
     activeFocusSource: input.activeFocusSource ?? null,
     activeVisualizationFocus: input.activeVisualizationFocus ?? null,
     partySnapshotHash: input.partySnapshotHash ?? null,
-    derived: buildDerivedContext(input.eventType, input.payload, timestampMs, input.skipContextEnrichment),
+    derived: buildDerivedContext(
+      input.eventType,
+      input.payload,
+      timestampMs,
+      input.skipContextEnrichment
+    ),
     payload: sanitizeForLogging(input.payload),
   };
 
@@ -523,9 +519,8 @@ export function exportStudyLogsAsJsonl(participantId?: string): void {
 
   const session = loadStudySession();
   const id = participantId || session?.participantId || "unknown-participant";
-  const currentJsonl = loadStudyLogsJsonl();
 
-  if (!currentJsonl.trim()) {
+  if (memoryStudyLogs.length === 0) {
     throw new Error("There are no study logs to export.");
   }
 
@@ -533,20 +528,25 @@ export function exportStudyLogsAsJsonl(participantId?: string): void {
   const timestamp = safeIso().replace(/[:.]/g, "-");
   const filename = `bg3-study-log-${safeId}-${timestamp}.jsonl`;
 
-  logStudyEvent({
-    eventCategory: "export",
-    eventType: "logs_exported",
-    taskPhase: "submission",
-    activeView: "study-logging-panel",
-    payload: {
-      filename,
-      eventCountIncludingExportEvent: loadStudyLogs().length + 1,
-    },
-    skipContextEnrichment: true,
-  });
+  appendJsonlEvent(
+    createManualStudyEvent({
+      eventCategory: "export",
+      eventType: "logs_exported",
+      taskPhase: "submission",
+      activeView: "study-logging-panel",
+      payload: {
+        filename,
+        eventCountIncludingExportEvent: memoryStudyLogs.length + 1,
+      },
+    })
+  );
 
   const jsonl = loadStudyLogsJsonl();
-  const blob = new Blob([jsonl], { type: "application/x-ndjson;charset=utf-8" });
+
+  const blob = new Blob([jsonl], {
+    type: "application/x-ndjson;charset=utf-8",
+  });
+
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -809,14 +809,14 @@ export function logLinkedHighlightExposed(
     highlightedItemIds?: string[];
     [key: string]: unknown;
   },
-  context: StudyLoggerEventInput extends infer _ ? {
+  context: {
     activeView?: string | null;
     activeBuildId?: string | null;
     activeBuildLabel?: string | null;
     activePartyMemberIndex?: number | null;
     activePartyMemberLabel?: string | null;
     partySnapshotHash?: string | null;
-  } : never = {}
+  } = {}
 ): void {
   logStudyEvent({
     eventCategory: "visualization",
@@ -871,7 +871,10 @@ export function logBuildEdit(
     logBuildSemanticDelta(
       {
         editType: payload.editType,
-        delta: createVisualProfileDelta(payload.visualProfileBefore, payload.visualProfileAfter),
+        delta: createVisualProfileDelta(
+          payload.visualProfileBefore,
+          payload.visualProfileAfter
+        ),
         visualProfileBefore: payload.visualProfileBefore,
         visualProfileAfter: payload.visualProfileAfter,
       },
@@ -1227,7 +1230,10 @@ export function createVisualProfileSummary(
     addMany(roleCounts, item.roles ?? item.role ?? item.roleGroup);
     addMany(damageTypeCounts, item.damageTypes ?? item.damageType);
     addMany(rangeBandCounts, item.rangeBand ?? item.rangeCategory ?? item.range);
-    addMany(resourceCounts, item.resources ?? item.resource ?? item.actionCost ?? item.cost);
+    addMany(
+      resourceCounts,
+      item.resources ?? item.resource ?? item.actionCost ?? item.cost
+    );
   }
 
   const roles = Object.keys(roleCounts).sort();
@@ -1252,12 +1258,20 @@ export function createVisualProfileSummary(
   const mobilityCount = countRoleIncludes(["mobility", "position"]);
   const areaDamageCount = countRoleIncludes(["area"]);
   const singleTargetDamageCount = countRoleIncludes(["single"]);
-  const longRangeCount = Object.entries(rangeBandCounts).reduce((sum, [key, value]) => {
-    const lowered = key.toLowerCase();
-    return lowered.includes("long") || lowered.includes("far") ? sum + value : sum;
-  }, 0);
+
+  const longRangeCount = Object.entries(rangeBandCounts).reduce(
+    (sum, [key, value]) => {
+      const lowered = key.toLowerCase();
+      return lowered.includes("long") || lowered.includes("far")
+        ? sum + value
+        : sum;
+    },
+    0
+  );
+
   const concentrationCount = items.filter(
-    (item) => item.concentration === true || item.requiresConcentration === true
+    (item) =>
+      item.concentration === true || item.requiresConcentration === true
   ).length;
 
   return {
@@ -1296,28 +1310,50 @@ export function createVisualProfileDelta(
     rangeBandsRemoved: arrayDifference(before.rangeBands, after.rangeBands),
     resourcesAdded: arrayDifference(after.resources, before.resources),
     resourcesRemoved: arrayDifference(before.resources, after.resources),
-    concentrationCountDelta: numberDelta(before.concentrationCount, after.concentrationCount),
-    selectedAbilityCountDelta: numberDelta(before.selectedAbilityCount, after.selectedAbilityCount),
-    damageAbilityCountDelta: numberDelta(before.damageAbilityCount, after.damageAbilityCount),
-    utilityAbilityCountDelta: numberDelta(before.utilityAbilityCount, after.utilityAbilityCount),
+    concentrationCountDelta: numberDelta(
+      before.concentrationCount,
+      after.concentrationCount
+    ),
+    selectedAbilityCountDelta: numberDelta(
+      before.selectedAbilityCount,
+      after.selectedAbilityCount
+    ),
+    damageAbilityCountDelta: numberDelta(
+      before.damageAbilityCount,
+      after.damageAbilityCount
+    ),
+    utilityAbilityCountDelta: numberDelta(
+      before.utilityAbilityCount,
+      after.utilityAbilityCount
+    ),
     healingCountDelta: numberDelta(before.healingCount, after.healingCount),
     controlCountDelta: numberDelta(before.controlCount, after.controlCount),
     supportCountDelta: numberDelta(before.supportCount, after.supportCount),
     mobilityCountDelta: numberDelta(before.mobilityCount, after.mobilityCount),
     longRangeCountDelta: numberDelta(before.longRangeCount, after.longRangeCount),
-    areaDamageCountDelta: numberDelta(before.areaDamageCount, after.areaDamageCount),
-    singleTargetDamageCountDelta: numberDelta(before.singleTargetDamageCount, after.singleTargetDamageCount),
+    areaDamageCountDelta: numberDelta(
+      before.areaDamageCount,
+      after.areaDamageCount
+    ),
+    singleTargetDamageCountDelta: numberDelta(
+      before.singleTargetDamageCount,
+      after.singleTargetDamageCount
+    ),
   };
 }
 
 function arrayDifference(a: string[] = [], b: string[] = []): string[] {
   const bSet = new Set(b);
-  return Array.from(new Set(a)).filter((item) => !bSet.has(item)).sort();
+  return Array.from(new Set(a))
+    .filter((item) => !bSet.has(item))
+    .sort();
 }
 
 function numberDelta(before: unknown, after: unknown): number {
-  const beforeNumber = typeof before === "number" && Number.isFinite(before) ? before : 0;
-  const afterNumber = typeof after === "number" && Number.isFinite(after) ? after : 0;
+  const beforeNumber =
+    typeof before === "number" && Number.isFinite(before) ? before : 0;
+  const afterNumber =
+    typeof after === "number" && Number.isFinite(after) ? after : 0;
   return afterNumber - beforeNumber;
 }
 
@@ -1332,10 +1368,18 @@ export function createStableHash(value: unknown, prefix = "hash"): string {
     h2 = Math.imul(h2 ^ ch, 1597334677);
   }
 
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  h1 =
+    Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^
+    Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 =
+    Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^
+    Math.imul(h1 ^ (h1 >>> 13), 3266489909);
 
-  const hash = (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  const hash = (
+    4294967296 * (2097151 & h2) +
+    (h1 >>> 0)
+  ).toString(36);
+
   return `${prefix}-${hash}`;
 }
 
@@ -1350,6 +1394,7 @@ function sortForStableStringify(value: unknown): unknown {
 
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
+
     return Object.keys(record)
       .sort()
       .reduce<Record<string, unknown>>((acc, key) => {
@@ -1379,7 +1424,9 @@ export function createBuildSnapshotSummary(
     selectedClass: record.selectedClass ?? null,
     selectedSubclass: record.selectedSubclass ?? null,
     selectedLevel: record.selectedLevel ?? null,
-    selectedSpellCount: Array.isArray(record.selectedSpellIds) ? record.selectedSpellIds.length : 0,
+    selectedSpellCount: Array.isArray(record.selectedSpellIds)
+      ? record.selectedSpellIds.length
+      : 0,
     selectedClassFeatureCount: Array.isArray(record.selectedClassFeatureIds)
       ? record.selectedClassFeatureIds.length
       : 0,
@@ -1389,7 +1436,9 @@ export function createBuildSnapshotSummary(
     selectedClassSkillsCount: Array.isArray(record.selectedClassSkills)
       ? record.selectedClassSkills.length
       : 0,
-    featSelectionCount: Array.isArray(record.featSelections) ? record.featSelections.length : 0,
+    featSelectionCount: Array.isArray(record.featSelections)
+      ? record.featSelections.length
+      : 0,
     snapshotHash: createStableHash(snapshot, "build"),
   };
 }
@@ -1401,18 +1450,26 @@ function extractSnapshotFromSlot(slot: unknown): unknown {
   return record.snapshot ?? slot;
 }
 
-export function createPartySnapshotSummary(input: unknown): PartySnapshotSummaryForLogging {
-  const record = input && typeof input === "object" && !Array.isArray(input)
-    ? (input as Record<string, unknown>)
-    : { partySlots: input };
+export function createPartySnapshotSummary(
+  input: unknown
+): PartySnapshotSummaryForLogging {
+  const record =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? (input as Record<string, unknown>)
+      : { partySlots: input };
 
   const partySlots = Array.isArray(record.partySlots) ? record.partySlots : [];
   const focusedBuild = record.focusedBuild ?? null;
-  const focusedBuildId = typeof record.focusedBuildId === "string" ? record.focusedBuildId : null;
-  const focusedBuildLabel = typeof record.focusedBuildLabel === "string" ? record.focusedBuildLabel : null;
+  const focusedBuildId =
+    typeof record.focusedBuildId === "string" ? record.focusedBuildId : null;
+  const focusedBuildLabel =
+    typeof record.focusedBuildLabel === "string"
+      ? record.focusedBuildLabel
+      : null;
 
   const slotHashes = partySlots.map((slot, index) => {
-    const slotRecord = slot && typeof slot === "object" ? (slot as Record<string, unknown>) : null;
+    const slotRecord =
+      slot && typeof slot === "object" ? (slot as Record<string, unknown>) : null;
     const snapshot = extractSnapshotFromSlot(slot);
 
     return {
@@ -1495,13 +1552,48 @@ export function createPartyCoverageForLogging(input: {
   const gaps: PartyGapForLogging[] = [];
 
   const candidateGaps = [
-    createGap("role", "healing", "No clear healing option", partyVisualProfile.healingCount),
-    createGap("role", "control", "No clear control option", partyVisualProfile.controlCount),
-    createGap("role", "support", "No clear support/buff option", partyVisualProfile.supportCount),
-    createGap("role", "mobility", "No clear mobility/positioning option", partyVisualProfile.mobilityCount),
-    createGap("role", "area-damage", "No clear area damage option", partyVisualProfile.areaDamageCount),
-    createGap("role", "single-target-damage", "No clear single-target damage option", partyVisualProfile.singleTargetDamageCount),
-    createGap("range", "long-range", "No clear long-range option", partyVisualProfile.longRangeCount),
+    createGap(
+      "role",
+      "healing",
+      "No clear healing option",
+      partyVisualProfile.healingCount
+    ),
+    createGap(
+      "role",
+      "control",
+      "No clear control option",
+      partyVisualProfile.controlCount
+    ),
+    createGap(
+      "role",
+      "support",
+      "No clear support/buff option",
+      partyVisualProfile.supportCount
+    ),
+    createGap(
+      "role",
+      "mobility",
+      "No clear mobility/positioning option",
+      partyVisualProfile.mobilityCount
+    ),
+    createGap(
+      "role",
+      "area-damage",
+      "No clear area damage option",
+      partyVisualProfile.areaDamageCount
+    ),
+    createGap(
+      "role",
+      "single-target-damage",
+      "No clear single-target damage option",
+      partyVisualProfile.singleTargetDamageCount
+    ),
+    createGap(
+      "range",
+      "long-range",
+      "No clear long-range option",
+      partyVisualProfile.longRangeCount
+    ),
   ];
 
   for (const gap of candidateGaps) {
@@ -1509,11 +1601,14 @@ export function createPartyCoverageForLogging(input: {
   }
 
   const totalRoleAssignments = countRecordValues(partyVisualProfile.roleCounts);
+
   const roleRedundancy = Object.values(partyVisualProfile.roleCounts).reduce(
     (sum, count) => sum + Math.max(0, count - 1),
     0
   );
-  const redundancyScore = totalRoleAssignments > 0 ? roleRedundancy / totalRoleAssignments : 0;
+
+  const redundancyScore =
+    totalRoleAssignments > 0 ? roleRedundancy / totalRoleAssignments : 0;
 
   return {
     partySnapshotSummary,
@@ -1528,8 +1623,13 @@ function diffSnapshots(
   previousSnapshot: Record<string, unknown>,
   nextSnapshot: Record<string, unknown>
 ): Record<string, { previousValue: unknown; nextValue: unknown }> {
-  const keys = new Set([...Object.keys(previousSnapshot), ...Object.keys(nextSnapshot)]);
-  const diff: Record<string, { previousValue: unknown; nextValue: unknown }> = {};
+  const keys = new Set([
+    ...Object.keys(previousSnapshot),
+    ...Object.keys(nextSnapshot),
+  ]);
+
+  const diff: Record<string, { previousValue: unknown; nextValue: unknown }> =
+    {};
 
   for (const key of keys) {
     const previousValue = previousSnapshot[key];
@@ -1553,9 +1653,14 @@ export function createBuildEditLoggingPayload(input: {
   nextItems?: VisualizedItemForLogging[];
   extraPayload?: Record<string, unknown>;
 }): BuildEditLoggingPayload {
-  const visualProfileBefore = createVisualProfileSummary(input.previousItems ?? []);
+  const visualProfileBefore = createVisualProfileSummary(
+    input.previousItems ?? []
+  );
   const visualProfileAfter = createVisualProfileSummary(input.nextItems ?? []);
-  const visualProfileDelta = createVisualProfileDelta(visualProfileBefore, visualProfileAfter);
+  const visualProfileDelta = createVisualProfileDelta(
+    visualProfileBefore,
+    visualProfileAfter
+  );
 
   return {
     field: input.field,
@@ -1601,7 +1706,11 @@ function sanitizeForLogging(value: unknown): unknown {
         lowerKey.includes("free") ||
         lowerKey.includes("description")
       ) {
-        const text = typeof nestedValue === "string" ? nestedValue : JSON.stringify(nestedValue ?? "");
+        const text =
+          typeof nestedValue === "string"
+            ? nestedValue
+            : JSON.stringify(nestedValue ?? "");
+
         sanitized[key] = {
           kind: "redacted_free_text",
           isEmpty: text.trim().length === 0,
