@@ -3942,3 +3942,65 @@ select {
 .saved-party-slot-actions button {
   min-width: 48px;
 }
+.saved-party-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.saved-party-slot-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.saved-party-slot-kicker {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(216, 178, 104, 0.78);
+}
+
+.saved-party-slot-title {
+  display: block;
+  width: 100%;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  color: rgba(255, 245, 228, 0.96);
+  word-break: break-word;
+}
+
+.saved-party-slot-meta {
+  display: block;
+  margin: 0;
+  width: 100%;
+  color: rgba(242, 231, 210, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.saved-party-slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.saved-party-slot-actions button {
+  min-width: 56px;
+}
+
+.saved-party-slot--current {
+  border-color: rgba(216, 178, 104, 0.62);
+  background:
+    radial-gradient(circle at 12% 20%, rgba(216, 178, 104, 0.14), transparent 42%),
+    rgba(34, 25, 19, 0.72);
+}
