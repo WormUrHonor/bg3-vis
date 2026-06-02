@@ -2519,8 +2519,8 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
     {simulatorStatus === "loading"
       ? "Running Simulator..."
       : hasEvaluatedBuild
-        ? "Re-evaluate Build"
-        : "Evaluate Build"}
+        ? "Re-simulate Build"
+        : "Simulate Build"}
   </button>
 </div>
             </header>
@@ -3041,7 +3041,7 @@ aria-disabled={!slot || isAggregateFocused}
   fixedClassFeatureIds={fixedClassFeatureIds}
   selectedClassFeatureIds={selectedClassFeatureIds}
   activeClassFeatureIds={activeClassFeatureIds}
-  showDprLayer={hasEvaluatedBuild}
+  showDprLayer={true}
   dprRounds={simulatorDprRounds}
   averageDpr={simulatorAverageDpr}
   dprStatus={simulatorStatus}

@@ -110,15 +110,15 @@ const tutorialSteps: TutorialStep[] = [
     note: "Selected and active abilities are used in the Data Circle.",
   },
   {
-    title: "Evaluate Build",
+    title: "Simulate Build",
     targetSelector: '[data-study-id="evaluate-build-button"]',
     placementHint: "bottom",
     requestEditableFocus: true,
     does:
-      "Evaluate Build runs the simulator for the current editable build.",
+      "Simulate Build runs an external simulator for the current editable build.",
     action:
       "Use it when you want estimated damage-per-round information.",
-    note: "This is optional. The tool still works without evaluation.",
+    note: "This is optional. The tool still works without simulation.",
   },
   {
     title: "Read the Data Circle",
@@ -128,32 +128,42 @@ const tutorialSteps: TutorialStep[] = [
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
     does: "The large Data Circle summarises the focused build.",
-    action:
-      "Use the rings to inspect range, roles, damage types, resources, and evaluated DPR.",
-    layerLegend: [
-      {
-        label: "Range",
-        description: "Self, melee, mid-range, long-range.",
-      },
-      {
-        label: "Roles",
-        description:
-          "Damage, control, support, defence, healing, mobility.",
-      },
-      {
-        label: "Damage",
-        description: "Available damage type coverage.",
-      },
-      {
-        label: "Resources",
-        description:
-          "Actions, slots, concentration, rests, class resources.",
-      },
-      {
-        label: "DPR",
-        description: "Damage per round after evaluation.",
-      },
-    ],
+action:
+  "",
+layerLegend: [
+  {
+    label: "Combat Range Profile",
+    description:
+      "Shows whether abilities are self, melee, mid-range, or long-range.",
+  },
+  {
+    label: "Ability Role Distribution",
+    description:
+      "Shows what the build can do: damage, control, support, defence, healing, or mobility.",
+  },
+  {
+    label: "Damage Type Profile",
+    description:
+      "Shows which damage types the build can access, such as fire, force, radiant, or weapon damage.",
+  },
+    {
+    label: "Damage Preview",
+    description:
+      "Shows the possible damage of each ability. The average and the minimum-to-maximum range",
+  },
+  
+  {
+    label: "Rotation and DPR Simulation",
+    description:
+      "After simulation, the outermost circle shows the optimal rotation and the damage-per-round.",
+  },
+    {
+    label: "Icons",
+    description:
+      "Icons mark the individual spells, actions, and features represented in the circle.",
+  },
+
+],
   },
   {
     title: "Inspect circle segments",
@@ -347,7 +357,7 @@ function estimateCardHeight(step: TutorialStep) {
   let height = 214;
 
   if (step.note) height += 34;
-  if (step.layerLegend) height += 126;
+  if (step.layerLegend) height += Math.min(250, step.layerLegend.length * 38);
   if (step.requiredMessage) height += 132;
 
   return Math.min(height, window.innerHeight - 32);

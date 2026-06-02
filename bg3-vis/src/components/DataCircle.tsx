@@ -7,6 +7,15 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { getClassFeatureById } from "../data/bg3ClassFeatures";
+import {
+  formatDamageRoll,
+  getSpellById,
+  type AbilityDamageProfile,
+  type DamageRoll,
+} from "../data/bg3Spells";
+import { getClassFeatureIcon } from "../logic/classFeatureIconLogic";
+import { getSpellIcon } from "../logic/spellIconLogic";
 import type { ClassName } from "../types/buildPlannerTypes";
 import { DataCircleDefs } from "./DataCircle/DataCircleDefs";
 import {
@@ -33,6 +42,10 @@ import { FocusExplanationLayer } from "./DataCircle/layers/FocusExplanationLayer
 import { RangeProfileLayer } from "./DataCircle/layers/RangeProfileLayer";
 import { RoleDistributionLayer } from "./DataCircle/layers/RoleDistributionLayer";
 import { SectionTitleLayer } from "./DataCircle/layers/SectionTitleLayer";
+import {
+  SpellDamagePreviewLayer,
+  type SpellDamagePreviewItem,
+} from "./DataCircle/layers/SpellDamagePreviewLayer";
 import {
   logStudyEvent,
   logVisualizationFocusCleared,
@@ -150,24 +163,108 @@ function getFocusLayer(focus: DataCircleFocusItem): string {
   switch (focus.type) {
     case "ability":
       return "ability";
+
     case "role":
     case "roleGroup":
       return "roles-utility";
+
     case "damageType":
       return "damage-types";
+
     case "range":
       return "range";
+
     case "round":
       return "dpr";
+
     default:
       return "unknown";
   }
+}
+
+function isRealDamageRoll(damageRoll: DamageRoll): boolean {
+  return !["Healing", "Temporary Hit Points"].includes(
+    String(damageRoll.damageType)
+  );
+}
+
+function getDamageRollMin(damageRoll: DamageRoll): number {
+  const diceMin =
+    damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+      ? damageRoll.diceCount
+      : 0;
+
+  return diceMin + (damageRoll.flatBonus ?? 0);
+}
+
+function getDamageRollAverageLocal(damageRoll: DamageRoll): number {
+  const diceAverage =
+    damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+      ? damageRoll.diceCount * ((damageRoll.diceSize + 1) / 2)
+      : 0;
+
+  return diceAverage + (damageRoll.flatBonus ?? 0);
+}
+
+function getDamageRollMax(damageRoll: DamageRoll): number {
+  const diceMax =
+    damageRoll.diceCount > 0 && damageRoll.diceSize > 0
+      ? damageRoll.diceCount * damageRoll.diceSize
+      : 0;
+
+  return diceMax + (damageRoll.flatBonus ?? 0);
+}
+
+function getDamageOnlyPreviewStats(profile?: AbilityDamageProfile) {
+  if (!profile || !profile.hasDamage) return null;
+
+  const damageRolls = profile.rolls.filter(isRealDamageRoll);
+
+  if (damageRolls.length <= 0) return null;
+
+  const min = damageRolls.reduce(
+    (sum, damageRoll) => sum + getDamageRollMin(damageRoll),
+    0
+  );
+
+  const average = damageRolls.reduce(
+    (sum, damageRoll) => sum + getDamageRollAverageLocal(damageRoll),
+    0
+  );
+
+  const max = damageRolls.reduce(
+    (sum, damageRoll) => sum + getDamageRollMax(damageRoll),
+    0
+  );
+
+  return {
+    min,
+    average,
+    max,
+    rollText: damageRolls.map(formatDamageRoll).join(" + "),
+  };
+}
+
+function formatDamagePreviewResolution(profile?: AbilityDamageProfile) {
+  if (!profile || profile.saveBehaviour === "none") return null;
+
+  const saveBehaviour = profile.saveBehaviour.replaceAll("-", " ");
+
+  return profile.saveAbility
+    ? `${saveBehaviour} (${profile.saveAbility})`
+    : saveBehaviour;
+}
+
+function formatDamagePreviewDelivery(profile?: AbilityDamageProfile) {
+  if (!profile || profile.delivery === "none") return null;
+  return profile.delivery.replaceAll("-", " ");
 }
 
 function getAverageFromRounds(rounds: DprRound[]): number {
   if (rounds.length <= 0) return 0;
   return rounds.reduce((sum, round) => sum + round.damage, 0) / rounds.length;
 }
+
 function isPassiveVisualizedItem(item: VisualizedBuildItem): boolean {
   const record = item as unknown as Record<string, unknown>;
 
@@ -194,6 +291,7 @@ function isPassiveVisualizedItem(item: VisualizedBuildItem): boolean {
     tags.includes("passive")
   );
 }
+
 export default function DataCircle({
   buildName,
   characterName,
@@ -238,9 +336,11 @@ export default function DataCircle({
   const hoverFocusRef = useRef<DataCircleFocus>(null);
   const selectedFocusesRef = useRef<DataCircleFocusItem[]>([]);
   const setLinkedFocusRef = useRef(setLinkedFocus);
+
   useEffect(() => {
     setLinkedFocusRef.current = setLinkedFocus;
   }, [setLinkedFocus]);
+
   const isCompact = variant !== "main";
 
   const resolvedVisualizedItems = useMemo(
@@ -274,10 +374,65 @@ export default function DataCircle({
 
   const hasDprData = resolvedDprRounds.length > 0;
 
-const selectedPersistentFocus: DataCircleFocus =
-  selectedFocuses.length > 0 ? selectedFocuses : null;
+  const spellDamagePreviewItems = useMemo<SpellDamagePreviewItem[]>(() => {
+    return visualizedItems
+      .map((item): SpellDamagePreviewItem | null => {
+        const spell = getSpellById(item.id);
 
-const activeFocus: DataCircleFocus = selectedPersistentFocus ?? hoverFocus;
+        if (spell) {
+          const stats = getDamageOnlyPreviewStats(spell.damage);
+
+          if (!stats || stats.average <= 0) return null;
+
+          return {
+            id: spell.id,
+            name: spell.name,
+            min: stats.min,
+            average: stats.average,
+            max: stats.max,
+            rollText: stats.rollText,
+            damageTypes: spell.damageTypes,
+            saveLabel: formatDamagePreviewResolution(spell.damage),
+            deliveryLabel: formatDamagePreviewDelivery(spell.damage),
+            iconHref: getSpellIcon(spell),
+          };
+        }
+
+        const feature = getClassFeatureById(item.id);
+
+        if (feature) {
+          const stats = getDamageOnlyPreviewStats(feature.damage);
+
+          if (!stats || stats.average <= 0) return null;
+
+          return {
+            id: feature.id,
+            name: feature.name,
+            min: stats.min,
+            average: stats.average,
+            max: stats.max,
+            rollText: stats.rollText,
+            damageTypes: feature.damageTypes ?? [],
+            saveLabel: formatDamagePreviewResolution(feature.damage),
+            deliveryLabel: formatDamagePreviewDelivery(feature.damage),
+            iconHref: getClassFeatureIcon(feature),
+          };
+        }
+
+        return null;
+      })
+      .filter((item): item is SpellDamagePreviewItem => Boolean(item))
+      .sort((first, second) => second.average - first.average)
+      .slice(0, 14);
+  }, [visualizedItems]);
+
+  const hasSpellDamagePreviewData = spellDamagePreviewItems.length > 0;
+
+  const selectedPersistentFocus: DataCircleFocus =
+    selectedFocuses.length > 0 ? selectedFocuses : null;
+
+  const activeFocus: DataCircleFocus = selectedPersistentFocus ?? hoverFocus;
+
   useEffect(() => {
     hoverFocusRef.current = hoverFocus;
   }, [hoverFocus]);
@@ -295,47 +450,58 @@ const activeFocus: DataCircleFocus = selectedPersistentFocus ?? hoverFocus;
     [visualizedItems]
   );
 
-useEffect(() => {
-  setSelectedFocuses((currentSelectedFocuses) => {
-    const nextSelectedFocuses = currentSelectedFocuses.filter((focusItem) => {
-      if (focusItem.type !== "ability") return true;
+  useEffect(() => {
+    setSelectedFocuses((currentSelectedFocuses) => {
+      const nextSelectedFocuses = currentSelectedFocuses.filter((focusItem) => {
+        if (focusItem.type !== "ability") return true;
 
-      return visualizedItems.some((item) => item.id === focusItem.abilityId);
+        return visualizedItems.some((item) => item.id === focusItem.abilityId);
+      });
+
+      const changed =
+        nextSelectedFocuses.length !== currentSelectedFocuses.length ||
+        nextSelectedFocuses.some(
+          (focusItem, index) => focusItem !== currentSelectedFocuses[index]
+        );
+
+      selectedFocusesRef.current = nextSelectedFocuses;
+
+      if (nextSelectedFocuses.length === 0) {
+        setIsSelectionReviewActive(false);
+      }
+
+      return changed ? nextSelectedFocuses : currentSelectedFocuses;
     });
+  }, [visualizedItemsKey, visualizedItems]);
 
-    const changed =
-      nextSelectedFocuses.length !== currentSelectedFocuses.length ||
-      nextSelectedFocuses.some(
-        (focusItem, index) => focusItem !== currentSelectedFocuses[index]
-      );
+  useEffect(() => {
+    if (variant !== "main") return;
 
-    selectedFocusesRef.current = nextSelectedFocuses;
+    const linkedFocus =
+      selectedFocuses.length > 0 ? selectedFocuses : hoverFocus;
 
-    if (nextSelectedFocuses.length === 0) {
-      setIsSelectionReviewActive(false);
-    }
-
-    return changed ? nextSelectedFocuses : currentSelectedFocuses;
-  });
-}, [visualizedItemsKey, visualizedItems]);
-useEffect(() => {
-  if (variant !== "main") return;
-
-  const linkedFocus =
-    selectedFocuses.length > 0
-      ? selectedFocuses
-      : hoverFocus;
-
-  setLinkedFocusRef.current?.(linkedFocus);
-}, [selectedFocuses, hoverFocus, variant]);
+    setLinkedFocusRef.current?.(linkedFocus);
+  }, [selectedFocuses, hoverFocus, variant]);
 
   const buildLabel = buildName.trim() || "Untitled Build";
   const characterLabel = characterName.trim();
   const archetypeLabel = selectedSubclass || selectedClass || "Unassigned";
   const abilityCount = visualizedItems.length;
 
-  const shouldShowDprControls = !isCompact && showDprLayer;
-  const shouldShowFullDprLayer = !isCompact && showDprLayer && hasDprData;
+const shouldShowDprByRoundLayer =
+  !isCompact && showDprLayer && hasDprData;
+
+const shouldShowSpellDamagePreview =
+  !isCompact &&
+  showDprLayer &&
+  !hasDprData &&
+  hasSpellDamagePreviewData;
+
+const shouldShowDprControls =
+  !isCompact &&
+  showDprLayer &&
+  (hasDprData || dprStatus === "loading" || dprStatus === "error");
+
   const shouldShowCompactDprNumber = isCompact && hasDprData;
 
   const rangeCounts = useMemo(
@@ -419,6 +585,7 @@ useEffect(() => {
     }
 
     const previousItems = getFocusItems(previousFocus);
+
     if (previousItems.length === 1) {
       logVisualizationFocusEnded(
         makeFocusForLogging(previousItems[0], "hover"),
@@ -427,6 +594,7 @@ useEffect(() => {
     }
 
     const nextItems = getFocusItems(nextFocus);
+
     if (nextItems.length === 1) {
       logVisualizationFocusStarted(
         makeFocusForLogging(nextItems[0], "hover"),
@@ -478,6 +646,7 @@ useEffect(() => {
     selectedFocusesRef.current = nextSelectedFocuses;
     setSelectedFocuses(nextSelectedFocuses);
     setIsSelectionReviewActive(nextSelectedFocuses.length > 0);
+
     logVisualizationFocusSelected(
       {
         ...makeFocusForLogging(nextFocus, "click"),
@@ -526,15 +695,15 @@ useEffect(() => {
           data-study-id={`data-circle-dpr-controls-${svgInstanceId}`}
         >
           <div className="data-circle-dpr-toggle" aria-label="DPR bar layout">
-            <span className="data-circle-dpr-toggle-label">
-              {dprStatus === "loading"
-                ? "Running simulator"
-                : dprStatus === "error"
-                  ? "Simulator unavailable"
-                  : hasDprData
-                    ? "DPR layout"
-                    : "No DPR data yet"}
-            </span>
+<span className="data-circle-dpr-toggle-label">
+  {dprStatus === "loading"
+    ? "Running simulator"
+    : dprStatus === "error"
+      ? "Simulator unavailable"
+      : hasDprData
+        ? "DPR layout"
+        : "Damage preview"}
+</span>
 
             <button
               type="button"
@@ -611,7 +780,7 @@ useEffect(() => {
 
           <BackgroundLayer svgInstanceId={svgInstanceId} />
 
-          {shouldShowFullDprLayer ? (
+          {shouldShowDprByRoundLayer ? (
             <DprByRoundLayer
               rounds={resolvedDprRounds}
               averageDpr={resolvedAverageDpr}
@@ -620,8 +789,24 @@ useEffect(() => {
               relationshipIndex={relationshipIndex}
               onToggleSelection={toggleSelectedFocus}
               selectedFocuses={selectedFocuses}
-              showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
+              showSelectionMarks={
+                selectedFocuses.length > 0 || isSelectionReviewActive
+              }
               barMode={dprBarMode}
+            />
+          ) : null}
+
+          {shouldShowSpellDamagePreview ? (
+            <SpellDamagePreviewLayer
+              items={spellDamagePreviewItems}
+              focus={activeFocus}
+              setFocus={setHoverFocusWithLogging}
+              relationshipIndex={relationshipIndex}
+              onToggleSelection={toggleSelectedFocus}
+              selectedFocuses={selectedFocuses}
+              showSelectionMarks={
+                selectedFocuses.length > 0 || isSelectionReviewActive
+              }
             />
           ) : null}
 
@@ -634,7 +819,9 @@ useEffect(() => {
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
-            showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
+            showSelectionMarks={
+              selectedFocuses.length > 0 || isSelectionReviewActive
+            }
           />
 
           <RoleDistributionLayer
@@ -645,7 +832,9 @@ useEffect(() => {
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
-            showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
+            showSelectionMarks={
+              selectedFocuses.length > 0 || isSelectionReviewActive
+            }
           />
 
           <RangeProfileLayer
@@ -658,16 +847,22 @@ useEffect(() => {
             relationshipIndex={relationshipIndex}
             onToggleSelection={toggleSelectedFocus}
             selectedFocuses={selectedFocuses}
-            showSelectionMarks={selectedFocuses.length > 0 || isSelectionReviewActive}
+            showSelectionMarks={
+              selectedFocuses.length > 0 || isSelectionReviewActive
+            }
           />
 
           {!isCompact ? (
-<SectionTitleLayer
-  svgInstanceId={svgInstanceId}
-  outerTitle={
-    shouldShowFullDprLayer ? "DPR BY ROUND" : "BUILD PROFILE"
-  }
-/>
+            <SectionTitleLayer
+              svgInstanceId={svgInstanceId}
+              outerTitle={
+                shouldShowDprByRoundLayer
+                  ? "DPR BY ROUND"
+                  : shouldShowSpellDamagePreview
+                    ? "DAMAGE PREVIEW"
+                    : "BUILD PROFILE"
+              }
+            />
           ) : null}
 
           {!isCompact && hoverFocus ? (
@@ -683,11 +878,11 @@ useEffect(() => {
               displayLevel={selectedLevel}
               spellCount={abilityCount}
               averageDpr={
-                shouldShowFullDprLayer || shouldShowCompactDprNumber
+                shouldShowDprByRoundLayer || shouldShowCompactDprNumber
                   ? resolvedAverageDpr
                   : undefined
               }
-              totalDamage={shouldShowFullDprLayer ? totalDamage : undefined}
+              totalDamage={shouldShowDprByRoundLayer ? totalDamage : undefined}
               compactMode={isCompact}
             />
           )}
