@@ -48,6 +48,17 @@ type TutorialStep = {
 };
 
 const tutorialSteps: TutorialStep[] = [
+    {
+    title: "How to participate in the study",
+    targetSelector: '[data-study-region="workspace-page"]',
+    placementHint: "center",
+    does: 
+    "Read the tutorial carefully. For this study you must create a party of 4 charachters, one MUST be a level 12 wizard. The study takes approximately 30-45 minutes, there is no time limit.",
+       action:
+      "Complete the tutorial -> click start at the bottom of the current build window -> complete pre-task survey -> create a party of four -> assign party members to the bottom three slots and keep the fourth in the large focus circle -> click end & export -> complete the post task survey -> send the downloaded ZIP file to the researcher.",
+   
+    note: "If you have any questions about the study, please contact the researcher at +31644437745 or via email at sinkovichana@gmail.com I will respond immedietly and am happy to help! :)",
+  },
   {
     title: "Build a party of four",
     targetSelector: '[data-study-region="workspace-page"]',
@@ -127,7 +138,7 @@ const tutorialSteps: TutorialStep[] = [
     placementHint: "left",
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
-    does: "The large Data Circle summarises the focused build.",
+    does: "The large Data Circle summarises the focused build profile.",
 action:
   "",
 layerLegend: [
@@ -151,7 +162,6 @@ layerLegend: [
     description:
       "Shows the possible damage of each ability. The average and the minimum-to-maximum range",
   },
-  
   {
     label: "Rotation and DPR Simulation",
     description:

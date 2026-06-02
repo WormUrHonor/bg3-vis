@@ -164,7 +164,6 @@ export type HeatmapPointerPayload = {
 
 export type StudyEnvironmentMetadata = {
   userAgent: string;
-  language: string;
   platform: string;
   timezoneOffsetMinutes: number;
   screenWidth: number;

@@ -80,7 +80,6 @@ function getEnvironmentMetadata(): StudySession["environment"] {
   if (!hasWindow()) {
     return {
       userAgent: "",
-      language: "",
       platform: "",
       timezoneOffsetMinutes: 0,
       screenWidth: 0,
@@ -93,7 +92,6 @@ function getEnvironmentMetadata(): StudySession["environment"] {
 
   return {
     userAgent: window.navigator.userAgent,
-    language: "",
     platform: window.navigator.platform,
     timezoneOffsetMinutes: new Date().getTimezoneOffset(),
     screenWidth: window.screen.width,
