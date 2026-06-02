@@ -24,7 +24,10 @@ export type Bg3RotationSimulationRequest = {
 
 export type Bg3SimulatorResponse = unknown;
 
-const REQUEST_TIMEOUT_MS = 120_000;
+export const BG3_SIMULATOR_UNAVAILABLE_MESSAGE =
+  "The simulator is currently unavailable because the server is busy. Please try again later.";
+
+const REQUEST_TIMEOUT_MS = 20_000;
 
 const BG3_SIMULATOR_BASE_URL =
   import.meta.env.VITE_BG3_SIMULATOR_BASE_URL?.replace(/\/+$/, "") ?? "";
@@ -42,30 +45,20 @@ async function readResponseText(response: Response): Promise<string> {
   }
 }
 
-function makeFetchError(error: unknown, url: string): Error {
+function makeSimulatorUnavailableError(): Error {
+  return new Error(BG3_SIMULATOR_UNAVAILABLE_MESSAGE);
+}
+
+function makeFetchError(error: unknown): Error {
   if (error instanceof DOMException && error.name === "AbortError") {
-    return new Error(
-      `The BG3 simulator request timed out after ${
-        REQUEST_TIMEOUT_MS / 1000
-      }s. Request URL: ${url}`
-    );
+    return makeSimulatorUnavailableError();
   }
 
   if (error instanceof TypeError) {
-    return new Error(
-      [
-        `Could not reach the BG3 simulator API. Request URL: ${url}`,
-        "For npm run dev, the request URL should start with /api/bg3 and be proxied by Vite.",
-        "For GitHub Pages, direct browser calls still need CORS or a deployed proxy.",
-      ].join(" ")
-    );
+    return makeSimulatorUnavailableError();
   }
 
-  if (error instanceof Error) {
-    return new Error(`${error.message} Request URL: ${url}`);
-  }
-
-  return new Error(`Could not reach the BG3 simulator API. Request URL: ${url}`);
+  return makeSimulatorUnavailableError();
 }
 
 async function postJson<TRequest extends object, TResponse = unknown>(
@@ -91,7 +84,7 @@ async function postJson<TRequest extends object, TResponse = unknown>(
       signal: controller.signal,
     });
   } catch (error) {
-    throw makeFetchError(error, url);
+    throw makeFetchError(error);
   } finally {
     window.clearTimeout(timeoutId);
   }
@@ -99,30 +92,17 @@ async function postJson<TRequest extends object, TResponse = unknown>(
   const responseText = await readResponseText(response);
 
   if (!response.ok) {
-    throw new Error(
-      `BG3 simulator API request failed with ${response.status} ${
-        response.statusText
-      }. Request URL: ${url}.${
-        responseText ? ` Response: ${responseText.slice(0, 1200)}` : ""
-      }`
-    );
+    throw makeSimulatorUnavailableError();
   }
 
   if (!responseText.trim()) {
-    throw new Error(
-      `The BG3 simulator API returned an empty response. Request URL: ${url}`
-    );
+    throw makeSimulatorUnavailableError();
   }
 
   try {
     return JSON.parse(responseText) as TResponse;
   } catch {
-    throw new Error(
-      `The BG3 simulator API did not return valid JSON. Request URL: ${url}. Response: ${responseText.slice(
-        0,
-        1200
-      )}`
-    );
+    throw makeSimulatorUnavailableError();
   }
 }
 

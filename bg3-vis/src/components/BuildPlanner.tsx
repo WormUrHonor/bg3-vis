@@ -16,6 +16,7 @@ import {
   mapBg3SimulationToDprRounds,
 } from "../logic/bg3SimulatorDprMapping";
 import {
+  BG3_SIMULATOR_UNAVAILABLE_MESSAGE,
   runBg3PrioritySimulation,
   type Bg3SimulatorStatus,
 } from "../services/bg3SimulatorApi";
@@ -1754,9 +1755,19 @@ const simulatorBuildName = usingLocalMockBuildJson
       errorMessage: message,
     };
 
-    setSimulatorStatus("error");
-    setSimulatorError(message);
-    setSimulatorDprRounds([]);
+setSimulatorStatus("error");
+setSimulatorError(BG3_SIMULATOR_UNAVAILABLE_MESSAGE);
+setSimulatorDprRounds([]);
+
+window.setTimeout(() => {
+  setSimulatorStatus((currentStatus) =>
+    currentStatus === "error" ? "idle" : currentStatus
+  );
+
+  setSimulatorError((currentError) =>
+    currentError === BG3_SIMULATOR_UNAVAILABLE_MESSAGE ? null : currentError
+  );
+}, 3000);
 
     const failedPayload = {
       resultSource: "bg3_simulator_api",
