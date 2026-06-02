@@ -710,15 +710,7 @@ select {
       )
     );
 }
-/* -------------------------------------------------------------------------- */
-/* Floating spell / ability tooltip                                           */
-/* -------------------------------------------------------------------------- */
 
-/*
-  This tooltip is rendered into document.body by SpellsAbilitiesTab.
-  It is position: fixed, so it is not clipped by .main-panel, .section-block,
-  .workspace-half, or any other parent with overflow hidden/auto.
-*/
 .spell-floating-tooltip {
   position: fixed;
   z-index: 2147483647;
@@ -1047,30 +1039,6 @@ select {
   color: rgba(213, 241, 205, 0.98);
 }
 
-
-/* -------------------------------------------------------------------------- */
-/* Immersive visualisation layout with optional floating party dock            */
-/* -------------------------------------------------------------------------- */
-
-/*
-  Main editable values.
-
-  --party-circle-size:
-  Controls the actual size of each small party Data Circle.
-
-  --party-dock-height:
-  Controls how much vertical space the party dock takes from the main circle.
-
-  --party-orb-scale:
-  Zooms the SVG inside each small circle. Use this carefully.
-  1.00 = no zoom. 1.05 = slight zoom. 1.35 = strong zoom/cropping.
-
-  --party-node-gap:
-  Controls the horizontal gap between party slots.
-
-  --party-label-width:
-  Controls the width reserved for the vertical side labels.
-*/
 .visualisation-panel--with-party-dock {
   --party-circle-size: 150px;
   --party-dock-height: 162px;
@@ -1162,14 +1130,6 @@ select {
   width: min(100%, calc(50vw - 34px), calc(100vh - 42px));
 }
 
-/* -------------------------------------------------------------------------- */
-/* Party planner toggle                                                       */
-/* -------------------------------------------------------------------------- */
-
-/*
-  Toggle button for showing/hiding the party planner.
-  Move this if it overlaps the DPR controls.
-*/
 .party-dock-toggle {
   position: absolute;
   z-index: 12;
@@ -1206,15 +1166,6 @@ select {
   color: rgba(188, 224, 255, 0.78);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Floating party dock                                                        */
-/* -------------------------------------------------------------------------- */
-
-/*
-  The floating dock itself.
-  This sits over the bottom of the visualisation panel rather than taking a
-  separate boxed row.
-*/
 .party-dock {
   position: absolute;
   left: 12px;
@@ -1261,10 +1212,6 @@ select {
   pointer-events: none;
 }
 
-/*
-  Grid that distributes the four party nodes evenly.
-  Each node contains a vertical label and a small Data Circle.
-*/
 .party-dock-track {
   position: relative;
   z-index: 1;
@@ -1277,10 +1224,6 @@ select {
   align-items: center;
 }
 
-/*
-  Individual party node.
-  The label sits to the left of its circle using --party-label-width.
-*/
 .party-node {
   min-width: 0;
   min-height: 0;
@@ -1309,15 +1252,12 @@ select {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.72);
 }
 
-/* Aggregate label gets a colder colour to distinguish it from party members. */
+
 .party-node--aggregate .party-node-side-label {
   color: rgba(188, 224, 255, 0.72);
 }
 
-/*
-  Shell around the small Data Circle.
-  This is where the thin 1px ring/glow is created.
-*/
+
 .party-node-orb-shell {
   position: relative;
   width: var(--party-circle-size);
@@ -1326,11 +1266,6 @@ select {
   place-items: center;
 }
 
-/*
-  Thin ring around every party circle.
-  The old version used inset: -5px and a thick conic glow.
-  This version keeps it close to 1px.
-*/
 .party-node-orb-shell::before {
   content: "";
   position: absolute;
@@ -1393,15 +1328,7 @@ select {
   transform: translateY(-1px);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Compact DataCircle override for party dock                                 */
-/* -------------------------------------------------------------------------- */
 
-/*
-  Forces the full-size DataCircle component to behave like a thumbnail.
-  These !important rules are needed because the normal DataCircle CSS has
-  fixed/min-width behaviour.
-*/
 .party-node-circle .data-circle-panel {
   width: var(--party-circle-size) !important;
   height: var(--party-circle-size) !important;
@@ -1453,7 +1380,7 @@ select {
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.35));
 }
 
-/* Hide full-size DataCircle controls inside thumbnails. */
+
 .party-node-circle .data-circle-controls,
 .party-node-circle .data-circle-clear-selection-button,
 .party-node-circle .data-circle-curved-title,
@@ -1462,9 +1389,6 @@ select {
   display: none !important;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Responsive tuning                                                          */
-/* -------------------------------------------------------------------------- */
 
 @media (max-width: 1450px) {
   .visualisation-panel--with-party-dock {
@@ -1495,9 +1419,6 @@ select {
     letter-spacing: 0.06em;
   }
 }
-/* -------------------------------------------------------------------------- */
-/* Saved builds panel inside Current Build summary                            */
-/* -------------------------------------------------------------------------- */
 
 .saved-builds-panel {
   margin-top: 14px;
@@ -1699,9 +1620,6 @@ select {
   border-color: rgba(255, 142, 122, 0.46);
   background: rgba(130, 42, 34, 0.3);
 }
-/* -------------------------------------------------------------------------- */
-/* Saved build party assignment controls                                      */
-/* -------------------------------------------------------------------------- */
 
 .saved-party-slots {
   display: grid;
@@ -1793,10 +1711,6 @@ select {
   color: rgba(255, 248, 226, 0.96);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Empty party dock slot                                                      */
-/* -------------------------------------------------------------------------- */
-
 .party-node-empty {
   position: relative;
   z-index: 1;
@@ -1823,9 +1737,6 @@ select {
 .party-node--member-empty .party-node-side-label {
   color: rgba(229, 202, 152, 0.34);
 }
-/* -------------------------------------------------------------------------- */
-/* Focus selector for deciding what the large Data Circle displays             */
-/* -------------------------------------------------------------------------- */
 
 .focus-selector {
   margin-top: 12px;
@@ -1853,10 +1764,6 @@ select {
   font-size: 0.72rem;
   line-height: 1.15;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Big circle focus selector: 2-row compact layout                            */
-/* -------------------------------------------------------------------------- */
 
 .focus-selector-grid {
   display: grid;
@@ -1960,9 +1867,6 @@ select {
   line-height: 1.25;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Read-only planner state when the big circle previews aggregate/party build  */
-/* -------------------------------------------------------------------------- */
 
 .planner-half--readonly-focus .workspace-header h1,
 .planner-half--readonly-focus .workspace-header .eyebrow {
@@ -2012,11 +1916,6 @@ select {
     inset 0 0 10px rgba(0, 0, 0, 0.28),
     0 8px 18px rgba(0, 0, 0, 0.22);
 }
-
-/* -------------------------------------------------------------------------- */
-/* Party dock focus labels                                                     */
-/* -------------------------------------------------------------------------- */
-
 .party-node-side-label {
   border: 0;
   padding: 0;
@@ -2058,9 +1957,6 @@ select {
     inset 0 0 14px rgba(0, 0, 0, 0.72),
     0 0 0 1px rgba(151, 210, 255, 0.5);
 }
-/* -------------------------------------------------------------------------- */
-/* Compact left summary                                                       */
-/* -------------------------------------------------------------------------- */
 
 .summary-card--compact {
   padding: 12px;
@@ -2123,10 +2019,6 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Big circle focus selector                                                  */
-/* -------------------------------------------------------------------------- */
 
 .focus-selector {
   margin-top: 12px;
@@ -2217,10 +2109,6 @@ select {
 .focus-selector-update-button {
   display: none !important;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Saved builds compactness                                                   */
-/* -------------------------------------------------------------------------- */
 
 .saved-builds-panel {
   margin-top: 10px;
@@ -2513,9 +2401,6 @@ select {
   color: rgba(255, 248, 226, 0.96);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Build process spiral                                                       */
-/* -------------------------------------------------------------------------- */
 
 .planner-half--process-expanded {
   overflow: hidden;
@@ -2958,9 +2843,6 @@ select {
   font-size: 0.58rem;
   letter-spacing: 0.035em;
 }
-/* -------------------------------------------------------------------------- */
-/* Process visualisation topbar                                               */
-/* -------------------------------------------------------------------------- */
 
 .process-spiral-panel--expanded {
   display: grid;
@@ -3057,9 +2939,6 @@ select {
     color 160ms ease,
     transform 160ms ease;
 }
-/* -------------------------------------------------------------------------- */
-/* Compact process controls: two-line layout                                  */
-/* -------------------------------------------------------------------------- */
 
 .process-spiral-panel:not(.process-spiral-panel--expanded)
   .process-spiral-topbar-controls {
@@ -3202,9 +3081,6 @@ select {
   .process-spiral-zoom {
   grid-column: 1 / -1;
 }
-/* -------------------------------------------------------------------------- */
-/* Study logging panel                                                        */
-/* -------------------------------------------------------------------------- */
 
 .study-logging-panel {
   margin-top: 10px;
@@ -3631,15 +3507,6 @@ select {
 .spell-floating-tooltip--bottom {
   transform: translateX(-50%);
 }
-/* -------------------------------------------------------------------------- */
-/* Mobile / portrait editor layout fix                                        */
-/* -------------------------------------------------------------------------- */
-
-/*
-  On narrow portrait screens, keep Current Build and the editor panel side by side.
-  Instead of squeezing both panels into the phone width, the editor area becomes
-  horizontally scrollable. This keeps the build controls usable on tablets and phones.
-*/
 
 @media (max-width: 800px) {
   .planner-half {
@@ -3730,9 +3597,6 @@ select {
     font-size: 0.78rem;
   }
 }
-/* -------------------------------------------------------------------------- */
-/* Header tutorial button                                                     */
-/* -------------------------------------------------------------------------- */
 
 .workspace-header-actions {
   display: flex;
@@ -3829,9 +3693,6 @@ select {
     flex: 1 1 150px;
   }
 }
-/* -------------------------------------------------------------------------- */
-/* Compact planner header                                                     */
-/* -------------------------------------------------------------------------- */
 
 .workspace-header--compact {
   position: relative;
