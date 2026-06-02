@@ -227,6 +227,20 @@ function getStableSelector(element: Element): string | null {
   return element.tagName.toLowerCase();
 }
 
+function isMeaningfulHoverTarget(element: Element): boolean {
+  const studyTarget = element.closest(
+    "[data-study-region], [data-study-element], [data-study-id]"
+  );
+
+  if (studyTarget) return true;
+
+  const interactiveTarget = element.closest(
+    "button, a, input, select, textarea, summary, [role='button'], [tabindex]"
+  );
+
+  return Boolean(interactiveTarget);
+}
+
 function getTargetForLogging(element: Element): HeatmapTargetForLogging {
   const htmlElement = element as HTMLElement;
   const inputElement = element as HTMLInputElement;
@@ -379,7 +393,7 @@ export default function StudyHeatmapCapture({
   partySnapshotHash = null,
   enabled = true,
   sampleIntervalMs = 250,
-  hoverDwellThresholdMs = 500,
+  hoverDwellThresholdMs = 600,
   scrollSampleIntervalMs = 250,
   scrollDeltaThresholdNorm = 0.01,
 }: StudyHeatmapCaptureProps) {
@@ -414,10 +428,10 @@ export default function StudyHeatmapCapture({
       };
     }
 
-    if (!displayProfileLoggedRef.current) {
-      displayProfileLoggedRef.current = true;
+    function ensureDisplayProfileLogged() {
+      if (displayProfileLoggedRef.current) return;
 
-      logStudyEvent({
+      const displayProfileEvent = logStudyEvent({
         eventCategory: "heatmap",
         eventType: "heatmap_display_profile_captured",
         taskPhase: "initial_planning",
@@ -432,13 +446,21 @@ export default function StudyHeatmapCapture({
         payload: getDisplayProfile(),
         skipContextEnrichment: true,
       });
+
+      if (displayProfileEvent) {
+        displayProfileLoggedRef.current = true;
+      }
     }
+
+    ensureDisplayProfileLogged();
 
     function logPointer(
       eventType: HeatmapPointerEventType,
       event: PointerEvent,
       dwellDurationMs?: number
     ) {
+      ensureDisplayProfileLogged();
+
       logHeatmapPointerEvent(
         eventType,
         buildPointerPayload(event, sampleIntervalMs, dwellDurationMs),
@@ -460,6 +482,8 @@ export default function StudyHeatmapCapture({
     }
 
     function handleClick(event: MouseEvent) {
+      ensureDisplayProfileLogged();
+
       const pointerLikeEvent = event as unknown as PointerEvent;
 
       logHeatmapPointerEvent(
@@ -469,39 +493,58 @@ export default function StudyHeatmapCapture({
       );
     }
 
-    function endHover(event: PointerEvent) {
-      const hoverState = hoverStateRef.current;
-      if (!hoverState) return;
+    function logHoverDwellFromPayload(
+  payload: HeatmapPointerPayload,
+  startedAtMs: number
+) {
+  const duration = Date.now() - startedAtMs;
 
-      const duration = Date.now() - hoverState.startedAtMs;
-      const endPayload = buildPointerPayload(
-        event,
-        sampleIntervalMs,
-        duration
-      );
+  if (duration >= hoverDwellThresholdMs) {
+    ensureDisplayProfileLogged();
 
-      logHeatmapPointerEvent(
-        "heatmap_hover_end",
-        endPayload,
-        getHeatmapContext()
-      );
+    logHeatmapPointerEvent(
+      "heatmap_hover_dwell",
+      {
+        ...payload,
+        dwellDurationMs: duration,
+      },
+      getHeatmapContext()
+    );
+  }
+}
 
-      if (duration >= hoverDwellThresholdMs) {
-        logHeatmapPointerEvent(
-          "heatmap_hover_dwell",
-          {
-            ...endPayload,
-            dwellDurationMs: duration,
-          },
-          getHeatmapContext()
-        );
-      }
+function endHover(event: PointerEvent) {
+  const hoverState = hoverStateRef.current;
+  if (!hoverState) return;
 
-      hoverStateRef.current = null;
-    }
+  const duration = Date.now() - hoverState.startedAtMs;
+  const endPayload = buildPointerPayload(event, sampleIntervalMs, duration);
+
+  if (duration >= hoverDwellThresholdMs) {
+    ensureDisplayProfileLogged();
+
+    logHeatmapPointerEvent(
+      "heatmap_hover_dwell",
+      {
+        ...endPayload,
+        dwellDurationMs: duration,
+      },
+      getHeatmapContext()
+    );
+  }
+
+  hoverStateRef.current = null;
+}
 
     function handlePointerOver(event: PointerEvent) {
       if (!(event.target instanceof Element)) return;
+
+      if (!isMeaningfulHoverTarget(event.target)) {
+        if (hoverStateRef.current) {
+          endHover(event);
+        }
+        return;
+      }
 
       if (hoverStateRef.current?.target === event.target) return;
 
@@ -516,12 +559,6 @@ export default function StudyHeatmapCapture({
         startedAtMs: Date.now(),
         payload,
       };
-
-      logHeatmapPointerEvent(
-        "heatmap_hover_start",
-        payload,
-        getHeatmapContext()
-      );
     }
 
     function handlePointerOut(event: PointerEvent) {
@@ -539,6 +576,8 @@ export default function StudyHeatmapCapture({
     }
 
     function handleScroll() {
+      ensureDisplayProfileLogged();
+
       const now = Date.now();
       const previousState = scrollStateRef.current;
 
@@ -578,11 +617,7 @@ export default function StudyHeatmapCapture({
         lastScrollYNorm: currentScrollYNorm,
       };
 
-      logHeatmapPointerEvent(
-        "heatmap_scroll",
-        payload,
-        getHeatmapContext()
-      );
+      logHeatmapPointerEvent("heatmap_scroll", payload, getHeatmapContext());
     }
 
     window.addEventListener("pointermove", handlePointerMove, {
@@ -611,6 +646,15 @@ export default function StudyHeatmapCapture({
     });
 
     return () => {
+if (hoverStateRef.current) {
+  logHoverDwellFromPayload(
+    hoverStateRef.current.payload,
+    hoverStateRef.current.startedAtMs
+  );
+
+  hoverStateRef.current = null;
+}
+
       window.removeEventListener("pointermove", handlePointerMove, {
         capture: true,
       });

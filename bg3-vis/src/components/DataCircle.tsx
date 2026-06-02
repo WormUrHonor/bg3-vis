@@ -332,11 +332,11 @@ export default function DataCircle({
   );
   const [isSelectionReviewActive, setIsSelectionReviewActive] = useState(false);
   const [dprBarMode, setDprBarMode] = useState<DprBarMode>("stacked");
-
 const hoverFocusRef = useRef<DataCircleFocus>(null);
 const selectedFocusesRef = useRef<DataCircleFocusItem[]>([]);
 const setLinkedFocusRef = useRef(setLinkedFocus);
 const previousDamagePreviewLogKeyRef = useRef<string | null>(null);
+const previousDprReplacementLogKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setLinkedFocusRef.current = setLinkedFocus;
@@ -565,92 +565,12 @@ const shouldShowDprControls =
       activePartyMemberLabel,
       partySnapshotHash,
     };
-  }
-function getDamagePreviewLoggingPayload() {
+  }const damagePreviewLogPayload = useMemo(() => {
   const totalAverageDamage = spellDamagePreviewItems.reduce(
     (sum, item) => sum + item.average,
     0
   );
-useEffect(() => {
-  if (!shouldShowSpellDamagePreview) {
-    previousDamagePreviewLogKeyRef.current = null;
-    return;
-  }
 
-  const logKey = stableStringify({
-    buildLabel,
-    characterLabel,
-    selectedClass,
-    selectedSubclass,
-    selectedLevel,
-    itemIds: spellDamagePreviewItems.map((item) => item.id),
-    averages: spellDamagePreviewItems.map((item) => item.average),
-    ranges: spellDamagePreviewItems.map((item) => [item.min, item.max]),
-  });
-
-  if (previousDamagePreviewLogKeyRef.current === logKey) return;
-
-  previousDamagePreviewLogKeyRef.current = logKey;
-
-  logStudyEvent({
-    eventCategory: "visualization",
-    eventType: "data_circle_damage_preview_updated",
-    activeView: `data-circle-${variant}`,
-    activeBuildLabel: buildLabel,
-    activePartyMemberIndex,
-    activePartyMemberLabel,
-    partySnapshotHash,
-    payload: getDamagePreviewLoggingPayload(),
-  });
-}, [
-  shouldShowSpellDamagePreview,
-  buildLabel,
-  characterLabel,
-  selectedClass,
-  selectedSubclass,
-  selectedLevel,
-  spellDamagePreviewItems,
-  variant,
-  activePartyMemberIndex,
-  activePartyMemberLabel,
-  partySnapshotHash,
-  dprStatus,
-  hasDprData,
-]);
-useEffect(() => {
-  if (!shouldShowDprByRoundLayer) return;
-
-  logStudyEvent({
-    eventCategory: "visualization",
-    eventType: "data_circle_simulator_dpr_replaced_damage_preview",
-    activeView: `data-circle-${variant}`,
-    activeBuildLabel: buildLabel,
-    activePartyMemberIndex,
-    activePartyMemberLabel,
-    partySnapshotHash,
-    payload: {
-      layer: "dpr-by-round",
-      previousFallbackLayer: "damage-preview",
-      simulatorStatus: dprStatus,
-      roundCount: resolvedDprRounds.length,
-      averageDpr: resolvedAverageDpr,
-      totalDamage,
-      barMode: dprBarMode,
-    },
-  });
-}, [
-  shouldShowDprByRoundLayer,
-  variant,
-  buildLabel,
-  activePartyMemberIndex,
-  activePartyMemberLabel,
-  partySnapshotHash,
-  dprStatus,
-  resolvedDprRounds.length,
-  resolvedAverageDpr,
-  totalDamage,
-  dprBarMode,
-]);
   const totalMaxDamage = spellDamagePreviewItems.reduce(
     (sum, item) => sum + item.max,
     0
@@ -660,8 +580,10 @@ useEffect(() => {
 
   return {
     layer: "damage-preview",
-    reason: "local_damage_forecast_fallback",
-    replacesSimulatorDpr: !hasDprData,
+    layerState: "local_damage_forecast",
+    visibleBecause: hasDprData
+      ? "hidden_by_simulator_dpr"
+      : "simulator_dpr_not_available",
     simulatorStatus: dprStatus,
     itemCount: spellDamagePreviewItems.length,
     totalAverageDamage,
@@ -675,6 +597,8 @@ useEffect(() => {
           max: highestAverageItem.max,
           rollText: highestAverageItem.rollText,
           damageTypes: highestAverageItem.damageTypes,
+          saveLabel: highestAverageItem.saveLabel,
+          deliveryLabel: highestAverageItem.deliveryLabel,
         }
       : null,
     items: spellDamagePreviewItems.map((item, index) => ({
@@ -690,7 +614,124 @@ useEffect(() => {
       deliveryLabel: item.deliveryLabel,
     })),
   };
-}
+}, [spellDamagePreviewItems, hasDprData, dprStatus]);
+
+const damagePreviewLogKey = useMemo(
+  () =>
+    stableStringify({
+      buildLabel,
+      characterLabel,
+      selectedClass,
+      selectedSubclass,
+      selectedLevel,
+      visible: shouldShowSpellDamagePreview,
+      items: spellDamagePreviewItems.map((item) => ({
+        id: item.id,
+        average: item.average,
+        min: item.min,
+        max: item.max,
+        rollText: item.rollText,
+      })),
+    }),
+  [
+    buildLabel,
+    characterLabel,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    shouldShowSpellDamagePreview,
+    spellDamagePreviewItems,
+  ]
+);
+
+useEffect(() => {
+  if (!shouldShowSpellDamagePreview) {
+    previousDamagePreviewLogKeyRef.current = null;
+    return;
+  }
+
+  if (previousDamagePreviewLogKeyRef.current === damagePreviewLogKey) return;
+
+  previousDamagePreviewLogKeyRef.current = damagePreviewLogKey;
+
+  logStudyEvent({
+    eventCategory: "visualization",
+    eventType: "data_circle_damage_preview_updated",
+    activeView: `data-circle-${variant}`,
+    activeBuildLabel: buildLabel,
+    activePartyMemberIndex,
+    activePartyMemberLabel,
+    partySnapshotHash,
+    payload: damagePreviewLogPayload,
+  });
+}, [
+  shouldShowSpellDamagePreview,
+  damagePreviewLogKey,
+  damagePreviewLogPayload,
+  variant,
+  buildLabel,
+  activePartyMemberIndex,
+  activePartyMemberLabel,
+  partySnapshotHash,
+]);
+
+useEffect(() => {
+  if (!shouldShowDprByRoundLayer) {
+    previousDprReplacementLogKeyRef.current = null;
+    return;
+  }
+
+  const dprReplacementLogKey = stableStringify({
+    buildLabel,
+    characterLabel,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    roundCount: resolvedDprRounds.length,
+    averageDpr: resolvedAverageDpr,
+    totalDamage,
+    dprBarMode,
+  });
+
+  if (previousDprReplacementLogKeyRef.current === dprReplacementLogKey) return;
+
+  previousDprReplacementLogKeyRef.current = dprReplacementLogKey;
+
+  logStudyEvent({
+    eventCategory: "visualization",
+    eventType: "data_circle_simulator_dpr_replaced_damage_preview",
+    activeView: `data-circle-${variant}`,
+    activeBuildLabel: buildLabel,
+    activePartyMemberIndex,
+    activePartyMemberLabel,
+    partySnapshotHash,
+    payload: {
+      layer: "dpr-by-round",
+      previousLayer: "damage-preview",
+      simulatorStatus: dprStatus,
+      roundCount: resolvedDprRounds.length,
+      averageDpr: resolvedAverageDpr,
+      totalDamage,
+      barMode: dprBarMode,
+    },
+  });
+}, [
+  shouldShowDprByRoundLayer,
+  buildLabel,
+  characterLabel,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  resolvedDprRounds.length,
+  resolvedAverageDpr,
+  totalDamage,
+  dprBarMode,
+  variant,
+  activePartyMemberIndex,
+  activePartyMemberLabel,
+  partySnapshotHash,
+  dprStatus,
+]);
   const setHoverFocusWithLogging: Dispatch<SetStateAction<DataCircleFocus>> = (
     nextFocusOrUpdater
   ) => {

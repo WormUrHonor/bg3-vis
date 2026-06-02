@@ -38,7 +38,8 @@ let activeFocusContext: FocusContextForLogging | null = null;
 let activePartyGapContext: PartyGapContextForLogging | null = null;
 let activeEvaluationContext: EvaluationContextForLogging | null = null;
 let evaluationIndex = 0;
-
+let lastLoggedPartyCoverageKey: string | null = null;
+const loggedPartyGapKeys = new Set<string>();
 let activeHoverFocusKey: string | null = null;
 let activeHoverFocusStartedAtMs: number | null = null;
 let activeHoverFocus: DataCircleFocusForLogging | null = null;
@@ -443,6 +444,8 @@ export function clearStudyLogs(
   activeHoverFocusKey = null;
   activeHoverFocusStartedAtMs = null;
   activeHoverFocus = null;
+lastLoggedPartyCoverageKey = null;
+loggedPartyGapKeys.clear();
 
   if (options.clearSession ?? false) {
     memoryStudySession = null;
@@ -961,7 +964,6 @@ export function logPartySnapshot(
     payload,
   });
 }
-
 export function logPartyCoverageUpdated(
   payload: {
     partySnapshotSummary?: unknown;
@@ -977,6 +979,16 @@ export function logPartyCoverageUpdated(
     activePartyMemberLabel?: string | null;
   } = {}
 ): void {
+  const coverageKey = stableStringify({
+    partySnapshotHash: payload.partySnapshotHash ?? null,
+    partyRedundancyScore: payload.partyRedundancyScore ?? null,
+    partyGaps: payload.partyGaps ?? null,
+  });
+
+  if (lastLoggedPartyCoverageKey === coverageKey) return;
+
+  lastLoggedPartyCoverageKey = coverageKey;
+
   logStudyEvent({
     eventCategory: "party",
     eventType: "party_coverage_updated",
@@ -988,7 +1000,6 @@ export function logPartyCoverageUpdated(
     payload,
   });
 }
-
 export function logPartyGapDetected(
   payload: {
     gapType: string;
@@ -1001,9 +1012,20 @@ export function logPartyGapDetected(
     [key: string]: unknown;
   },
   context: {
-    activeView?: string | null;
+    activeView?: string;
   } = {}
 ): void {
+  const gapDeduplicationKey = stableStringify({
+    partySnapshotHash: payload.partySnapshotHash ?? null,
+    gapType: payload.gapType,
+    gapKey: payload.gapKey,
+    severity: payload.severity ?? null,
+  });
+
+  if (loggedPartyGapKeys.has(gapDeduplicationKey)) return;
+
+  loggedPartyGapKeys.add(gapDeduplicationKey);
+
   const event = logStudyEvent({
     eventCategory: "party",
     eventType: "party_gap_detected",

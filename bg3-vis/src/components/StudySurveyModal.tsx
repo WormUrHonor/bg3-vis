@@ -136,24 +136,6 @@ const stopReasonOptions: ScaleChoice[] = [
   { value: "other", label: "Other" },
 ];
 
-const conceptCountOptions: ScaleChoice[] = [
-  { value: "1", label: "1" },
-  { value: "2", label: "2" },
-  { value: "3", label: "3" },
-  { value: "4", label: "4" },
-  { value: "5_or_more", label: "5 or more" },
-  { value: "not_sure", label: "Not sure" },
-];
-
-const revisedMembersOptions: ScaleChoice[] = [
-  { value: "0", label: "0" },
-  { value: "1", label: "1" },
-  { value: "2", label: "2" },
-  { value: "3", label: "3" },
-  { value: "4", label: "4" },
-  { value: "not_sure", label: "Not sure" },
-];
-
 const familiarityRows: MatrixRow[] = [
   { id: "bg3", label: "Baldur’s Gate 3" },
   {
@@ -193,7 +175,7 @@ const preUnderstandingRows: MatrixRow[] = [
   },
   {
     id: "goal_party_of_four",
-    label: "I understand that the goal is to create a party of four characters.",
+    label: "I understand that the goal is to create a party of four characters, and that one must be a level 12 wizard.",
   },
   {
     id: "aggregate_whole_party",
@@ -202,36 +184,72 @@ const preUnderstandingRows: MatrixRow[] = [
 ];
 
 const workloadRows: MatrixRow[] = [
-  { id: "mental_demand", label: "How mentally demanding was the task?" },
-  { id: "time_pressure", label: "How much time pressure did you feel?" },
-  { id: "effort", label: "How much effort did you need to complete the task?" },
+  {
+    id: "mental_demand",
+    label: "How mentally demanding was the task?",
+  },
+  {
+    id: "temporal_demand",
+    label: "How hurried or rushed was the pace of the task?",
+  },
+  {
+    id: "performance",
+    label: "How successful were you in accomplishing what you were asked to do?",
+  },
+  {
+    id: "effort",
+    label: "How hard did you have to work to accomplish your level of performance?",
+  },
   {
     id: "frustration",
-    label: "How frustrated did you feel during the task?",
-  },
-  {
-    id: "unsuccessful",
-    label: "How unsuccessful did you feel while completing the task?",
+    label:
+      "How insecure, discouraged, irritated, stressed, and annoyed were you?",
   },
 ];
-
 const usabilityRows: MatrixRow[] = [
-  { id: "easy_to_use", label: "The tool was easy to use." },
   {
-    id: "features_supported_task",
-    label: "The tool’s features supported what I needed to do.",
+    id: "sus_01_use_frequently",
+    label: "I think that I would like to use this system outside of the study.",
   },
   {
-    id: "parts_worked_together",
-    label: "The different parts of the tool worked together clearly.",
+    id: "sus_02_unnecessarily_complex",
+    label: "I found the system unnecessarily complex.",
   },
   {
-    id: "found_information",
-    label: "I could find the information I needed without too much effort.",
+    id: "sus_03_easy_to_use",
+    label: "I thought the system was easy to use.",
   },
   {
-    id: "tutorial_enough",
-    label: "The tutorial gave me enough information to use the tool.",
+    id: "sus_04_need_technical_support",
+    label:
+      "I think that I would need the support of a technical person to be able to use this system.",
+  },
+  {
+    id: "sus_05_well_integrated",
+    label:
+      "I found the various functions in this system were well integrated.",
+  },
+  {
+    id: "sus_06_too_much_inconsistency",
+    label: "I thought there was too much inconsistency in this system.",
+  },
+  {
+    id: "sus_07_learn_quickly",
+    label:
+      "I would imagine that most people would learn to use this system very quickly.",
+  },
+  {
+    id: "sus_08_cumbersome",
+    label: "I found the system very cumbersome to use.",
+  },
+  {
+    id: "sus_09_confident",
+    label: "I felt very confident using the system.",
+  },
+  {
+    id: "sus_10_learn_lot_before_use",
+    label:
+      "I needed to learn a lot of things before I could get going with this system.",
   },
 ];
 
@@ -244,6 +262,10 @@ const explorationRows: MatrixRow[] = [
     id: "revise_after_info",
     label:
       "The tool made it easy to revise a build after seeing new information.",
+  },
+  {
+    id: "revision_frequency",
+    label: "I often changed a build because of something I noticed in the visualization.",
   },
   {
     id: "compare_party_options",
@@ -263,7 +285,7 @@ const explorationRows: MatrixRow[] = [
 const reasoningRows: MatrixRow[] = [
   {
     id: "final_party_confidence",
-    label: "I am confident in the final party I created.",
+    label: "I am confident in the quality of the final party I created.",
   },
   {
     id: "could_explain_choice",
@@ -292,6 +314,11 @@ const reasoningRows: MatrixRow[] = [
     label:
       "The tool helped me balance combat performance with other goals such as utility, roleplay, or narrative usefulness.",
   },
+  {
+  id: "decision_autonomy",
+  label:
+    "The tool supported my own decision-making without pushing me to simply follow one “best” number or optimize purely for performance.",
+},
 ];
 
 const visualizationRows: MatrixRow[] = [
@@ -305,18 +332,14 @@ const visualizationRows: MatrixRow[] = [
       "I understood how the visualization related to the choices I made in the build planner.",
   },
   {
-    id: "noticed_weak_areas",
+  id: "noticed_party_patterns",
+  label:
+    "The visualization helped me notice patterns across party members, such as overlap, gaps, or imbalance.",
+},
+    {
+    id: "interactive_explanation",
     label:
-      "The visualization helped me notice missing or weak areas in the party.",
-  },
-  {
-    id: "noticed_overlap",
-    label: "The visualization helped me notice overlap between party members.",
-  },
-  {
-    id: "hover_explanations",
-    label:
-      "The hover explanations helped me understand spells, abilities, or visualized categories.",
+      "The interactivity improved the usability of the tool and my understanding of the build choices.",
   },
   {
     id: "readable",
@@ -324,32 +347,6 @@ const visualizationRows: MatrixRow[] = [
   },
 ];
 
-const autonomyRows: MatrixRow[] = [
-  {
-    id: "own_decision",
-    label:
-      "The tool helped me make my own decision rather than simply follow one “best” number.",
-  },
-  {
-    id: "damage_one_factor",
-    label: "I treated damage information as one factor among several.",
-  },
-  {
-    id: "non_damage_factors",
-    label:
-      "I considered non-damage factors such as support, control, utility, range, roleplay, or narrative strength.",
-  },
-  {
-    id: "could_ignore_tool",
-    label:
-      "I felt able to ignore tool information when it did not match my own build goal.",
-  },
-  {
-    id: "not_pure_optimization",
-    label:
-      "The tool supported exploration without making the task feel like pure optimization.",
-  },
-];
 
 const experienceRows: MatrixRow[] = [
   {
@@ -359,7 +356,7 @@ const experienceRows: MatrixRow[] = [
   { id: "visual_style_fit", label: "The visual style fit the game context." },
   {
     id: "more_interesting",
-    label: "Using the tool made build planning more interesting.",
+    label: "Using the tool made build planning more engaging.",
   },
   {
     id: "decision_space_exploration",
@@ -371,36 +368,12 @@ const experienceRows: MatrixRow[] = [
     label:
       "The tool made the build-planning process feel more creative than usual.",
   },
-  {
-    id: "control",
-    label: "I felt in control of the party-building process.",
-  },
-  {
-    id: "would_use_again",
-    label: "I would consider using a tool like this outside the study.",
-  },
-];
-
-const toolUseRows: MatrixRow[] = [
-  {
-    id: "aggregate_use_frequency",
-    label: "How often did you use the aggregate party view while deciding?",
-  },
-  {
-    id: "description_inspection_frequency",
-    label: "How often did you inspect spell, ability, or feature descriptions?",
-  },
-  {
-    id: "visualization_change_frequency",
-    label:
-      "How often did you change a build because of something you noticed in the visualization?",
-  },
 ];
 
 const featureRows: MatrixRow[] = [
   { id: "character_tab", label: "Character tab and basic build setup" },
   { id: "class_scores", label: "Class and ability score choices" },
-  { id: "spells_abilities", label: "Spells and abilities tab" },
+  { id: "spells_abilities", label: "Actions & Passives tab" },
   { id: "hover_descriptions", label: "Spell and ability hover descriptions" },
   {
     id: "focused_data_circle",
@@ -417,44 +390,24 @@ const featureRows: MatrixRow[] = [
   { id: "new_build_button", label: "Create new build button" },
   { id: "assign_party_controls", label: "Assign-to-party controls" },
   { id: "tutorial", label: "Tutorial/help overlay" },
-  { id: "evaluation", label: "Evaluation/simulator output, if used" },
+  { id: "evaluation", label: "Rotation & DPR Simulator" },
+  { id: "range", label: "Combat range layer in the circle" },
+  { id: "role", label: "Ability role layer in the circle" },
+  { id: "type", label: "Damage type layer in the circle" },
+  { id: "dmg_preview", label: "Damage preview layer in the circle" },
+  { id: "selection", label: "Selection mechanism in the circle" },
 ];
 const openTextRows: MatrixRow[] = [
-  {
-    id: "most_important_tradeoff",
+    {
+    id: "exploration_support_or_block",
     label:
-      "What trade-offs, if any, did you consider while building the party?",
+      "What part of the tool most helped, and which part most blocked exploration, creativity, comparison, or iteration?",
   },
-  {
-    id: "exploration_supporting_features",
-    label:
-      "Which parts of the tool, if any, helped you explore different party or build options?",
-  },
-  {
-    id: "exploration_blocking_features",
-    label:
-      "Which parts of the tool, if any, made it harder to explore, compare, or decide between options?",
-  },
-  {
-    id: "visualization_changed_understanding",
-    label:
-      "Did the visualization affect how you understood the party or your build choices? Please describe your answer.",
-  },
-  {
-    id: "metric_influence",
-    label:
-      "How, if at all, did the performance or damage-related information affect your decisions?",
-  },
-  {
-    id: "creativity_and_decision_space",
-    label:
-      "How, if at all, did the tool affect the range or creativity of the build options you considered?",
-  },
-  {
-    id: "missing_information",
-    label:
-      "Was there any information you wanted during the task that was missing, difficult to find, or difficult to understand?",
-  },
+{
+  id: "information_influence",
+  label:
+    "How did the different types of information shown by the tool affect your decisions? For example, did damage/performance information influence you differently than utility, roleplay, or narrative information?",
+},
   {
     id: "changed_normal_planning",
     label:
@@ -463,7 +416,7 @@ const openTextRows: MatrixRow[] = [
   {
     id: "first_change",
     label:
-      "What, if anything, would you change, add or remove to improve the tool?",
+      "What, if anything, would you change, add or remove to improve the tool and the data visualistion?",
   },
   {
     id: "any_further_comments",
@@ -474,29 +427,19 @@ const openTextRows: MatrixRow[] = [
 
 const optionalPostCommentRows: MatrixRow[] = [
   {
-    id: "task_ease_comments",
-    label:
-      "Optional: any further comments about task ease? For example, was there anything that made the task especially easy or difficult?",
-  },
-  {
     id: "workload_comments",
     label:
-      "Optional: any further comments about workload? For example, was there anything that affected effort, frustration, or mental demand?",
+      "Optional: any further comments about workload?",
   },
   {
     id: "usability_comments",
     label:
-      "Optional: any further comments about usability and usefulness? For example, was there anything that felt clear, unclear, helpful, or unnecessary?",
-  },
-  {
-    id: "exploration_comments",
-    label:
-      "Optional: any further comments about exploration and iteration? For example, was there anything that helped or prevented you from trying different ideas?",
+      "Optional: any further comments about usability and usefulness?",
   },
   {
     id: "reasoning_comments",
     label:
-      "Optional: any further comments about decision reasoning? For example, was there anything that helped or made it harder to justify your final party?",
+      "Optional: any further comments about decision reasoning?",
   },
   {
     id: "visualization_comments",
@@ -504,39 +447,9 @@ const optionalPostCommentRows: MatrixRow[] = [
       "Optional: any further comments about visualization interpretation? For example, was there anything in the visualization that was helpful, unclear, or misleading?",
   },
   {
-    id: "autonomy_comments",
-    label:
-      "Optional: any further comments about metric focus and decision autonomy? For example, did the tool support your own goals or push you toward a certain kind of choice?",
-  },
-  {
     id: "experience_comments",
     label:
       "Optional: any further comments about game-context fit, engagement, creativity, or exploration?",
-  },
-  {
-    id: "party_iteration_comments",
-    label:
-      "Optional: any further comments about party concepts or revisions? For example, was there anything that made you revise, save, abandon, or return to an idea?",
-  },
-  {
-    id: "tool_use_frequency_comments",
-    label:
-      "Optional: any further comments about how you used the tool? For example, were there parts you relied on more or less than expected?",
-  },
-  {
-    id: "final_party_main_factor_comments",
-    label:
-      "Optional: any further comments about what shaped your final party?",
-  },
-  {
-    id: "stop_reason_comments",
-    label:
-      "Optional: any further comments about why you stopped?",
-  },
-  {
-    id: "feature_usefulness_comments",
-    label:
-      "Optional: any further comments about feature usefulness? For example, were any features more or less useful than your ratings suggest?",
   },
 ];
 
@@ -610,17 +523,12 @@ function getCompletionStatus(
   }
 
   return (
-    hasSingleAnswer(answers, "task_ease") &&
     hasMatrixAnswers(answers, "workload", workloadRows) &&
     hasMatrixAnswers(answers, "usability", usabilityRows) &&
     hasMatrixAnswers(answers, "exploration", explorationRows) &&
     hasMatrixAnswers(answers, "reasoning", reasoningRows) &&
     hasMatrixAnswers(answers, "visualization", visualizationRows) &&
-    hasMatrixAnswers(answers, "autonomy", autonomyRows) &&
     hasMatrixAnswers(answers, "experience", experienceRows) &&
-    hasSingleAnswer(answers, "party_concepts_considered") &&
-    hasSingleAnswer(answers, "revised_party_members") &&
-    hasMatrixAnswers(answers, "tool_use_frequency", toolUseRows) &&
     hasMultiAnswer(answers, "final_party_main_factor") &&
     hasMultiAnswer(answers, "stop_reason") &&
     hasMatrixAnswers(answers, "feature_usefulness", featureRows)
@@ -1008,7 +916,7 @@ export default function StudySurveyModal({
                 <p>
                   You are invited to take part in a study about a Baldur’s Gate 3
                   party-building tool. During the study, you will use the tool to
-                  create a party of four characters and answer short survey questions.
+                  create a party of four characters (one must be a level 12 wizard) and answer short survey questions.
                   The tool records interaction logs during the task, including clicks,
                   hovers, tab changes, saved builds, party assignments, visualization
                   interactions, and exported session data. These logs are used to
@@ -1105,20 +1013,6 @@ export default function StudySurveyModal({
             </>
           ) : (
             <>
-              <SingleChoiceBlock
-                title="Overall, how easy was it to complete the party-building task?"
-                questionId="task_ease"
-                scale={taskEaseScale}
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
-              <OptionalCommentBlock
-                questionId="task_ease_comments"
-                title="Optional: any further comments about task ease? For example, was there anything that made the task especially easy or difficult?"
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
 
               <MatrixBlock
                 title="Workload"
@@ -1131,7 +1025,7 @@ export default function StudySurveyModal({
 
               <OptionalCommentBlock
                 questionId="workload_comments"
-                title="Optional: any further comments about workload? For example, was there anything that affected effort, frustration, or mental demand?"
+                title="Optional: any further comments about workload?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
@@ -1147,7 +1041,7 @@ export default function StudySurveyModal({
 
               <OptionalCommentBlock
                 questionId="usability_comments"
-                title="Optional: any further comments about usability and usefulness? For example, was there anything that felt clear, unclear, helpful, or unnecessary?"
+                title="Optional: any further comments about usability and usefulness?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
@@ -1161,13 +1055,6 @@ export default function StudySurveyModal({
                 onChange={setMatrixAnswer}
               />
 
-              <OptionalCommentBlock
-                questionId="exploration_comments"
-                title="Optional: any further comments about exploration and iteration? For example, was there anything that helped or prevented you from trying different ideas?"
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
               <MatrixBlock
                 title="Decision reasoning"
                 questionId="reasoning"
@@ -1179,7 +1066,7 @@ export default function StudySurveyModal({
 
               <OptionalCommentBlock
                 questionId="reasoning_comments"
-                title="Optional: any further comments about decision reasoning? For example, was there anything that helped or made it harder to justify your final party?"
+                title="Optional: any further comments about decision reasoning?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
@@ -1195,27 +1082,10 @@ export default function StudySurveyModal({
 
               <OptionalCommentBlock
                 questionId="visualization_comments"
-                title="Optional: any further comments about visualization interpretation? For example, was there anything in the visualization that was helpful, unclear, or misleading?"
+                title="Optional: any further comments about visualization interpretation?"
                 answers={answers}
                 onChange={setSingleAnswer}
               />
-
-              <MatrixBlock
-                title="Metric focus and decision autonomy"
-                questionId="autonomy"
-                rows={autonomyRows}
-                scale={agreementScale}
-                answers={answers}
-                onChange={setMatrixAnswer}
-              />
-
-              <OptionalCommentBlock
-                questionId="autonomy_comments"
-                title="Optional: any further comments about metric focus and decision autonomy? For example, did the tool support your own goals or push you toward a certain kind of choice?"
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
               <MatrixBlock
                 title="Game-context fit and engagement"
                 questionId="experience"
@@ -1231,46 +1101,6 @@ export default function StudySurveyModal({
                 answers={answers}
                 onChange={setSingleAnswer}
               />
-
-              <SingleChoiceBlock
-                title="How many substantially different party concepts did you seriously consider?"
-                questionId="party_concepts_considered"
-                scale={conceptCountOptions}
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
-              <SingleChoiceBlock
-                title="How many party members did you substantially revise after first creating them?"
-                questionId="revised_party_members"
-                scale={revisedMembersOptions}
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
-              <OptionalCommentBlock
-                questionId="party_iteration_comments"
-                title="Optional: any further comments about party concepts or revisions? For example, was there anything that made you revise, save, abandon, or return to an idea?"
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
-              <MatrixBlock
-                title="Tool use during the task"
-                questionId="tool_use_frequency"
-                rows={toolUseRows}
-                scale={frequencyScale}
-                answers={answers}
-                onChange={setMatrixAnswer}
-              />
-
-              <OptionalCommentBlock
-                questionId="tool_use_frequency_comments"
-                title="Optional: any further comments about how you used the tool? For example, were there parts you relied on more or less than expected?"
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
               <MultiChoiceBlock
                 title="What factors shaped your final party?"
                 description="Select all that apply."
@@ -1281,13 +1111,6 @@ export default function StudySurveyModal({
                 otherLabel="If you selected Other, please describe the other factor."
                 onToggle={setMultiChoiceAnswer}
                 onTextChange={setSingleAnswer}
-              />
-
-              <OptionalCommentBlock
-                questionId="final_party_main_factor_comments"
-                title="Optional: any further comments about what shaped your final party?"
-                answers={answers}
-                onChange={setSingleAnswer}
               />
 
               <MultiChoiceBlock
@@ -1302,13 +1125,6 @@ export default function StudySurveyModal({
                 onTextChange={setSingleAnswer}
               />
 
-              <OptionalCommentBlock
-                questionId="stop_reason_comments"
-                title="Optional: any further comments about why you stopped?"
-                answers={answers}
-                onChange={setSingleAnswer}
-              />
-
               <MatrixBlock
                 title="Feature usefulness"
                 description="How useful was each part of the tool for your party-building decisions?"
@@ -1317,13 +1133,6 @@ export default function StudySurveyModal({
                 scale={usefulnessScale}
                 answers={answers}
                 onChange={setMatrixAnswer}
-              />
-
-              <OptionalCommentBlock
-                questionId="feature_usefulness_comments"
-                title="Optional: any further comments about feature usefulness? For example, were any features more or less useful than your ratings suggest?"
-                answers={answers}
-                onChange={setSingleAnswer}
               />
 
               <TextQuestionsBlock

@@ -79,7 +79,7 @@ const tutorialSteps: TutorialStep[] = [
     does:
       "The tabs split character creation into three parts.",
     action:
-      "Use Character first, then Class & Scores, then Spells & Abilities.",
+      "Use Character first, then Class & Scores, then the Actions & Passives tab.",
     note: "You can return to any tab later.",
   },
   {
@@ -104,21 +104,21 @@ const tutorialSteps: TutorialStep[] = [
     does:
       "This tab sets level, subclass, ability scores, feats, and class-specific choices.",
     action:
-      "Use it to shape the character before selecting spells or abilities.",
+      "Use it to shape the character before selecting spells or actions.",
     note: "Level 12 exposes the largest option set.",
   },
   {
-    title: "Spells & Abilities tab",
+    title: "Actions & Passives tab",
     targetSelector: '[data-study-region="spells-abilities-tab"]',
     secondaryTargetSelector: '[data-study-id="planner-tab-spellsAbilities"]',
     placementHint: "left",
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
     does:
-      "This tab contains selectable spells, actions, toggles, and features.",
+      "This tab contains passives and selectable spells, actions, toggles, and features.",
     action:
       "Click icons to select or activate them. Hover icons to read details.",
-    note: "Selected and active abilities are used in the Data Circle.",
+    note: "Selected and active actions are used in the Data Circle.",
   },
   {
     title: "Simulate Build",

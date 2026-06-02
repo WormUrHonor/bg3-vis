@@ -338,12 +338,12 @@ function getSpellsAbilitiesTabLabel(
   if (selectedClass === "Bard") return "Spells & Inspiration";
   if (selectedClass === "Cleric") return "Spells & Divinity";
   if (selectedClass === "Druid") return "Spells & Wild Shape";
-  if (selectedClass === "Paladin") return "Spells & Smites";
+  if (selectedClass === "Paladin") return "Spells & Features";
   if (selectedClass === "Ranger") return "Spells & Ranger";
   if (selectedClass === "Sorcerer") return "Spells & Metamagic";
-  if (selectedClass === "Wizard") return "Spells & Wizard";
+  if (selectedClass === "Wizard") return "Spells & Features";
 
-  return "Spells & Abilities";
+  return "Actions & Passives";
 }
 
 function getSavedBuildTitle(savedBuild: SavedBuild | null | undefined) {
@@ -505,7 +505,7 @@ function BuildPlanner() {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "character", label: "Character" },
-    { id: "classScores", label: "Class & Scores" },
+    { id: "classScores", label: "(Sub)Class & Scores" },
     {
       id: "spellsAbilities",
       label: getSpellsAbilitiesTabLabel(selectedClass, selectedSubclass),
@@ -2520,7 +2520,7 @@ partySnapshotHash: partySnapshotSummary.partySnapshotHash,
       ? "Running Simulator..."
       : hasEvaluatedBuild
         ? "Re-simulate Build"
-        : "Simulate Build"}
+        : "Simulate Rotation & DPR"}
   </button>
 </div>
             </header>

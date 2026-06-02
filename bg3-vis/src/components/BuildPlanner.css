@@ -641,10 +641,10 @@ select {
 .spell-concentration-badge,
 .spell-ritual-badge {
   position: absolute;
-  top: 2px;
-  left: 3px;
-  width: 15px;
-  height: 15px;
+  top: 0px;
+  left: 0px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -657,8 +657,8 @@ select {
 
 .spell-concentration-badge img,
 .spell-ritual-badge img {
-  width: 13px;
-  height: 13px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   display: block;
 }
