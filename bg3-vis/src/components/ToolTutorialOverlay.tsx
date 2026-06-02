@@ -138,7 +138,7 @@ const tutorialSteps: TutorialStep[] = [
     placementHint: "left",
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
-    does: "The large Data Circle summarises the focused build profile.",
+    does: "The large Data Circle (Focus Circle) summarises the focused build profile.",
 action:
   "",
 layerLegend: [

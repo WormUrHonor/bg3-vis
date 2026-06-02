@@ -9,7 +9,6 @@ import type {
   RangerFavouredEnemy,
   RangerNaturalExplorer,
   Skill,
-  WarlockInvocation,
 } from "../types/buildPlannerTypes";
 import {
   abilityScores,
@@ -19,7 +18,6 @@ import {
   rangerNaturalExplorers,
   skills,
   subclassesByClass,
-  warlockInvocations,
 } from "../data/bg3CharacterData";
 import {
   battleMasterManoeuvres,
@@ -52,7 +50,6 @@ type ClassScoresTabProps = {
   knowledgeClericExpertise: Skill[];
   rangerFavouredEnemy: RangerFavouredEnemy | "";
   rangerNaturalExplorer: RangerNaturalExplorer | "";
-  selectedWarlockInvocations: WarlockInvocation[];
   baseAbilityScores: Record<AbilityScore, number>;
   bonusPlusTwo: AbilityScore | "";
   bonusPlusOne: AbilityScore | "";
@@ -67,7 +64,6 @@ type ClassScoresTabProps = {
   setKnowledgeClericExpertise: Dispatch<SetStateAction<Skill[]>>;
   setRangerFavouredEnemy: (value: RangerFavouredEnemy | "") => void;
   setRangerNaturalExplorer: (value: RangerNaturalExplorer | "") => void;
-  setSelectedWarlockInvocations: Dispatch<SetStateAction<WarlockInvocation[]>>;
   setBaseAbilityScores: Dispatch<SetStateAction<Record<AbilityScore, number>>>;
   setBonusPlusTwo: (value: AbilityScore | "") => void;
   setBonusPlusOne: (value: AbilityScore | "") => void;
@@ -95,7 +91,6 @@ function ClassScoresTab({
   knowledgeClericExpertise,
   rangerFavouredEnemy,
   rangerNaturalExplorer,
-  selectedWarlockInvocations,
   baseAbilityScores,
   bonusPlusTwo,
   bonusPlusOne,
@@ -110,7 +105,6 @@ function ClassScoresTab({
   setKnowledgeClericExpertise,
   setRangerFavouredEnemy,
   setRangerNaturalExplorer,
-  setSelectedWarlockInvocations,
   setBaseAbilityScores,
   setBonusPlusTwo,
   setBonusPlusOne,
@@ -396,25 +390,6 @@ function ClassScoresTab({
       }
 
       return [...current, skill];
-    });
-  }
-
-  function toggleInvocation(invocation: WarlockInvocation) {
-    setSelectedWarlockInvocations((current) => {
-      const isSelected = current.includes(invocation);
-
-      logIntent("warlock_invocation_toggled", {
-        invocation,
-        action: isSelected ? "remove" : "add",
-        selectedCountBefore: current.length,
-        selectedCountAfter: isSelected ? current.length - 1 : current.length + 1,
-      });
-
-      if (isSelected) {
-        return current.filter((item) => item !== invocation);
-      }
-
-      return [...current, invocation];
     });
   }
 
@@ -1245,33 +1220,6 @@ function ClassScoresTab({
                 ))}
               </select>
             </label>
-          </div>
-        </div>
-      )}
-
-      {selectedClass === "Warlock" && (
-        <div className="section-block" data-study-region="warlock-invocations-section">
-          <h3>Eldritch Invocations</h3>
-          <p className="panel-intro">
-            Beguiling Influence grants Deception and Persuasion proficiency.
-          </p>
-
-          <div className="chip-grid" data-study-region="warlock-invocation-grid">
-            {warlockInvocations.map((invocation) => {
-              const isSelected = selectedWarlockInvocations.includes(invocation);
-
-              return (
-                <button
-                  key={invocation}
-                  type="button"
-                  className={["choice-chip", isSelected ? "selected" : ""].join(" ")}
-                  onClick={() => toggleInvocation(invocation)}
-                  data-study-id={`warlock-invocation-${invocation}`}
-                >
-                  {invocation}
-                </button>
-              );
-            })}
           </div>
         </div>
       )}

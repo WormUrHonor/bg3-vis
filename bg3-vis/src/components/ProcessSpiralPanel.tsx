@@ -1123,7 +1123,7 @@ export default function ProcessSpiralPanel({
             ) : null}
           </div>
 
-          {selectedEntry ? (
+          {isExpanded && selectedEntry ? (
             <article
               className="process-spiral-selection"
               data-study-region="process-spiral-selection"

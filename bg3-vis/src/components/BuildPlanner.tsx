@@ -736,7 +736,6 @@ function BuildPlanner() {
       knowledgeClericExpertise,
       rangerFavouredEnemy,
       rangerNaturalExplorer,
-      selectedWarlockInvocations,
       selectedSpellIds,
       selectedClassFeatureIds,
       activeClassFeatureIds,
@@ -2703,19 +2702,6 @@ aria-disabled={!slot || isAggregateFocused}
                     </p>
                   )}
                 </section>
-
-                <ProcessSpiralPanel
-                  buildHistory={buildHistory}
-                  onExpand={() => setIsProcessSpiralExpanded(true)}
-                  onLoadHistoryEntry={handleLoadHistoryEntry}
-                  onLoadHistoryEntryIntoPartySlot={
-                    handleLoadHistoryEntryIntoPartySlot
-                  }
-                  onRestoreHistoryEntryAsSavedBuild={
-                    handleRestoreHistoryEntryAsSavedBuild
-                  }
-                />
-
 <SavedBuildsPanel
   currentSnapshot={currentEditorSnapshot}
   savedBuilds={savedBuilds}
@@ -2737,6 +2723,17 @@ aria-disabled={!slot || isAggregateFocused}
   partySnapshotHash={partySnapshotSummary.partySnapshotHash}
 />
 
+<ProcessSpiralPanel
+  buildHistory={buildHistory}
+  onExpand={() => setIsProcessSpiralExpanded(true)}
+  onLoadHistoryEntry={handleLoadHistoryEntry}
+  onLoadHistoryEntryIntoPartySlot={
+    handleLoadHistoryEntryIntoPartySlot
+  }
+  onRestoreHistoryEntryAsSavedBuild={
+    handleRestoreHistoryEntryAsSavedBuild
+  }
+/>
                 <StudyLoggingPanel
                   isPartyComplete={finalPartyReady}
                   getFinalPayload={() => {
@@ -2849,7 +2846,6 @@ aria-disabled={!slot || isAggregateFocused}
                     knowledgeClericExpertise={knowledgeClericExpertise}
                     rangerFavouredEnemy={rangerFavouredEnemy}
                     rangerNaturalExplorer={rangerNaturalExplorer}
-                    selectedWarlockInvocations={selectedWarlockInvocations}
                     baseAbilityScores={baseAbilityScores}
                     bonusPlusTwo={bonusPlusTwo}
                     bonusPlusOne={bonusPlusOne}
@@ -2895,11 +2891,6 @@ aria-disabled={!slot || isAggregateFocused}
                       "rangerNaturalExplorer",
                       rangerNaturalExplorer,
                       setRangerNaturalExplorer
-                    )}
-                    setSelectedWarlockInvocations={createLoggedSetter(
-                      "selectedWarlockInvocations",
-                      selectedWarlockInvocations,
-                      setSelectedWarlockInvocations
                     )}
                     setBaseAbilityScores={createLoggedSetter(
                       "baseAbilityScores",
