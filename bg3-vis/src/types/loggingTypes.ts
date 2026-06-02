@@ -95,6 +95,8 @@ export type StudyEventType =
   | "rapid_toggle_sequence"
   | "undo_or_revert"
   | "reset_section"
+  | "data_circle_damage_preview_updated"
+| "data_circle_simulator_dpr_replaced_damage_preview"
   | (string & {});
 
 export type HeatmapPointerEventType =

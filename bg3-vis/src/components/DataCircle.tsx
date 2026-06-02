@@ -333,9 +333,10 @@ export default function DataCircle({
   const [isSelectionReviewActive, setIsSelectionReviewActive] = useState(false);
   const [dprBarMode, setDprBarMode] = useState<DprBarMode>("stacked");
 
-  const hoverFocusRef = useRef<DataCircleFocus>(null);
-  const selectedFocusesRef = useRef<DataCircleFocusItem[]>([]);
-  const setLinkedFocusRef = useRef(setLinkedFocus);
+const hoverFocusRef = useRef<DataCircleFocus>(null);
+const selectedFocusesRef = useRef<DataCircleFocusItem[]>([]);
+const setLinkedFocusRef = useRef(setLinkedFocus);
+const previousDamagePreviewLogKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setLinkedFocusRef.current = setLinkedFocus;
@@ -502,6 +503,8 @@ const shouldShowDprControls =
   showDprLayer &&
   (hasDprData || dprStatus === "loading" || dprStatus === "error");
 
+
+  
   const shouldShowCompactDprNumber = isCompact && hasDprData;
 
   const rangeCounts = useMemo(
@@ -563,7 +566,131 @@ const shouldShowDprControls =
       partySnapshotHash,
     };
   }
+function getDamagePreviewLoggingPayload() {
+  const totalAverageDamage = spellDamagePreviewItems.reduce(
+    (sum, item) => sum + item.average,
+    0
+  );
+useEffect(() => {
+  if (!shouldShowSpellDamagePreview) {
+    previousDamagePreviewLogKeyRef.current = null;
+    return;
+  }
 
+  const logKey = stableStringify({
+    buildLabel,
+    characterLabel,
+    selectedClass,
+    selectedSubclass,
+    selectedLevel,
+    itemIds: spellDamagePreviewItems.map((item) => item.id),
+    averages: spellDamagePreviewItems.map((item) => item.average),
+    ranges: spellDamagePreviewItems.map((item) => [item.min, item.max]),
+  });
+
+  if (previousDamagePreviewLogKeyRef.current === logKey) return;
+
+  previousDamagePreviewLogKeyRef.current = logKey;
+
+  logStudyEvent({
+    eventCategory: "visualization",
+    eventType: "data_circle_damage_preview_updated",
+    activeView: `data-circle-${variant}`,
+    activeBuildLabel: buildLabel,
+    activePartyMemberIndex,
+    activePartyMemberLabel,
+    partySnapshotHash,
+    payload: getDamagePreviewLoggingPayload(),
+  });
+}, [
+  shouldShowSpellDamagePreview,
+  buildLabel,
+  characterLabel,
+  selectedClass,
+  selectedSubclass,
+  selectedLevel,
+  spellDamagePreviewItems,
+  variant,
+  activePartyMemberIndex,
+  activePartyMemberLabel,
+  partySnapshotHash,
+  dprStatus,
+  hasDprData,
+]);
+useEffect(() => {
+  if (!shouldShowDprByRoundLayer) return;
+
+  logStudyEvent({
+    eventCategory: "visualization",
+    eventType: "data_circle_simulator_dpr_replaced_damage_preview",
+    activeView: `data-circle-${variant}`,
+    activeBuildLabel: buildLabel,
+    activePartyMemberIndex,
+    activePartyMemberLabel,
+    partySnapshotHash,
+    payload: {
+      layer: "dpr-by-round",
+      previousFallbackLayer: "damage-preview",
+      simulatorStatus: dprStatus,
+      roundCount: resolvedDprRounds.length,
+      averageDpr: resolvedAverageDpr,
+      totalDamage,
+      barMode: dprBarMode,
+    },
+  });
+}, [
+  shouldShowDprByRoundLayer,
+  variant,
+  buildLabel,
+  activePartyMemberIndex,
+  activePartyMemberLabel,
+  partySnapshotHash,
+  dprStatus,
+  resolvedDprRounds.length,
+  resolvedAverageDpr,
+  totalDamage,
+  dprBarMode,
+]);
+  const totalMaxDamage = spellDamagePreviewItems.reduce(
+    (sum, item) => sum + item.max,
+    0
+  );
+
+  const highestAverageItem = spellDamagePreviewItems[0] ?? null;
+
+  return {
+    layer: "damage-preview",
+    reason: "local_damage_forecast_fallback",
+    replacesSimulatorDpr: !hasDprData,
+    simulatorStatus: dprStatus,
+    itemCount: spellDamagePreviewItems.length,
+    totalAverageDamage,
+    totalMaxDamage,
+    highestAverageItem: highestAverageItem
+      ? {
+          id: highestAverageItem.id,
+          name: highestAverageItem.name,
+          average: highestAverageItem.average,
+          min: highestAverageItem.min,
+          max: highestAverageItem.max,
+          rollText: highestAverageItem.rollText,
+          damageTypes: highestAverageItem.damageTypes,
+        }
+      : null,
+    items: spellDamagePreviewItems.map((item, index) => ({
+      rank: index + 1,
+      id: item.id,
+      name: item.name,
+      average: item.average,
+      min: item.min,
+      max: item.max,
+      rollText: item.rollText,
+      damageTypes: item.damageTypes,
+      saveLabel: item.saveLabel,
+      deliveryLabel: item.deliveryLabel,
+    })),
+  };
+}
   const setHoverFocusWithLogging: Dispatch<SetStateAction<DataCircleFocus>> = (
     nextFocusOrUpdater
   ) => {

@@ -572,9 +572,15 @@ export function SpellDamagePreviewLayer({
   );
 
   return (
-    <g
-      className="data-circle-spell-damage-preview-layer"
-      opacity={focus ? 0.98 : 0.9}
+<g
+  className="data-circle-spell-damage-preview-layer"
+  data-study-region="data-circle-damage-preview-layer"
+  data-study-element="damage-preview-layer"
+  data-study-id="data-circle-damage-preview-layer"
+  data-layer-kind="local-damage-forecast"
+  data-uncertainty-encoding="full-range-middle-80-middle-50"
+  data-item-count={safeItems.length}
+  opacity={focus ? 0.98 : 0.9}
       style={{
         filter: focus
           ? "saturate(1.06) brightness(0.98)"
