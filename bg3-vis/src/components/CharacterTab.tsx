@@ -45,6 +45,21 @@ type CharacterTabProps = {
   partySnapshotHash?: string | null;
 };
 
+type SkillChoiceState = {
+  isSelected: boolean;
+  isUnavailableFromOtherSource: boolean;
+  outsideClassOptions: boolean;
+  currentOutsideClassCount: number;
+  humanOutsideLimitReached: boolean;
+  nonHumanOutsideClass: boolean;
+  maxReached: boolean;
+  blockedReason: string | null;
+  isBlocked: boolean;
+  isHumanExtraOption: boolean;
+  isSelectedHumanExtraOption: boolean;
+  humanExtraAlreadyChosen: boolean;
+};
+
 function CharacterTab({
   buildName,
   setBuildName,
@@ -82,6 +97,104 @@ function CharacterTab({
     selectedRace === "Human" && classRule
       ? unique([...classRule.options, ...skills])
       : classRule?.options ?? [];
+
+  function getSkillChoiceState(
+    skill: Skill,
+    currentSkills: Skill[] = selectedClassSkills
+  ): SkillChoiceState {
+    const isSelected = currentSkills.includes(skill);
+
+    const isUnavailableFromOtherSource =
+      unavailableClassSkillProficiencies.includes(skill) && !isSelected;
+
+    const outsideClassOptions = classRule
+      ? !classRule.options.includes(skill)
+      : false;
+
+    const currentOutsideClassCount = classRule
+      ? currentSkills.filter((item) => !classRule.options.includes(item)).length
+      : 0;
+
+    const isHumanExtraOption = selectedRace === "Human" && outsideClassOptions;
+    const isSelectedHumanExtraOption = isHumanExtraOption && isSelected;
+    const humanExtraAlreadyChosen =
+      selectedRace === "Human" && currentOutsideClassCount >= 1;
+
+    const humanOutsideLimitReached =
+      isHumanExtraOption &&
+      humanExtraAlreadyChosen &&
+      !isSelected;
+
+    const nonHumanOutsideClass = selectedRace !== "Human" && outsideClassOptions;
+
+    const maxReached = currentSkills.length >= maxClassSkills && !isSelected;
+
+    const blockedReason = isUnavailableFromOtherSource
+      ? "skill_already_granted_by_other_source"
+      : humanOutsideLimitReached
+        ? "human_extra_skill_limit_reached"
+        : nonHumanOutsideClass
+          ? "skill_outside_class_options_for_non_human"
+          : maxReached
+            ? "class_skill_limit_reached"
+            : null;
+
+    return {
+      isSelected,
+      isUnavailableFromOtherSource,
+      outsideClassOptions,
+      currentOutsideClassCount,
+      humanOutsideLimitReached,
+      nonHumanOutsideClass,
+      maxReached,
+      blockedReason,
+      isBlocked: Boolean(blockedReason),
+      isHumanExtraOption,
+      isSelectedHumanExtraOption,
+      humanExtraAlreadyChosen,
+    };
+  }
+
+  function getSkillChoiceTitle(skill: Skill, state: SkillChoiceState): string {
+    if (state.isUnavailableFromOtherSource) {
+      return "Already granted by another source.";
+    }
+
+    if (state.humanOutsideLimitReached) {
+      return "Human can only select one skill from outside the class list. Remove the selected Human extra skill first.";
+    }
+
+    if (state.nonHumanOutsideClass) {
+      return "This skill is outside the selected class skill list.";
+    }
+
+    if (state.maxReached) {
+      return "Class skill limit reached.";
+    }
+
+    if (state.isSelectedHumanExtraOption) {
+      return "Remove this Human extra skill proficiency.";
+    }
+
+    if (state.isSelected) {
+      return "Remove skill proficiency.";
+    }
+
+    if (state.isHumanExtraOption) {
+      return "Add this as the Human extra skill proficiency.";
+    }
+
+    return "Add skill proficiency.";
+  }
+
+  function getHumanSkillBadgeText(state: SkillChoiceState): string | null {
+    if (!state.isHumanExtraOption) return null;
+
+    if (state.isSelectedHumanExtraOption) return "Human selected";
+    if (state.humanOutsideLimitReached) return "Human used";
+
+    return "Human extra";
+  }
 
   function getLoggingContext() {
     return {
@@ -242,66 +355,44 @@ function CharacterTab({
     }
 
     setSelectedClassSkills((current) => {
-      const isSelected = current.includes(skill);
-      const isUnavailableFromOtherSource =
-        unavailableClassSkillProficiencies.includes(skill) && !isSelected;
-
-      const outsideClassOptions = !classRule.options.includes(skill);
-      const currentOutsideClassCount = current.filter(
-        (item) => !classRule.options.includes(item)
-      ).length;
-
-      const humanOutsideLimitReached =
-        selectedRace === "Human" &&
-        outsideClassOptions &&
-        currentOutsideClassCount >= 1 &&
-        !isSelected;
-
-      const nonHumanOutsideClass =
-        selectedRace !== "Human" && outsideClassOptions;
-
-      const maxReached = current.length >= maxClassSkills && !isSelected;
-
-      const blockedReason = isUnavailableFromOtherSource
-        ? "skill_already_granted_by_other_source"
-        : humanOutsideLimitReached
-          ? "human_extra_skill_limit_reached"
-          : nonHumanOutsideClass
-            ? "skill_outside_class_options_for_non_human"
-            : maxReached
-              ? "class_skill_limit_reached"
-              : null;
+      const state = getSkillChoiceState(skill, current);
 
       logSkillToggleAttempt({
         skill,
-        action: isSelected ? "remove_skill" : "add_skill",
-        wasSelected: isSelected,
-        wouldBeBlocked: Boolean(blockedReason),
-        blockedReason,
-        outsideClassOptions,
-        currentOutsideClassCount,
+        action: state.isSelected ? "remove_skill" : "add_skill",
+        wasSelected: state.isSelected,
+        wouldBeBlocked: state.isBlocked,
+        blockedReason: state.blockedReason,
+        outsideClassOptions: state.outsideClassOptions,
+        isHumanExtraOption: state.isHumanExtraOption,
+        isSelectedHumanExtraOption: state.isSelectedHumanExtraOption,
+        humanExtraAlreadyChosen: state.humanExtraAlreadyChosen,
+        currentOutsideClassCount: state.currentOutsideClassCount,
         selectedSkillCountBefore: current.length,
-        selectedSkillCountAfter: blockedReason
+        selectedSkillCountAfter: state.isBlocked
           ? current.length
-          : isSelected
+          : state.isSelected
             ? current.length - 1
             : current.length + 1,
       });
 
-      if (blockedReason) {
-        logBlockedSkillChoice(skill, blockedReason, {
-          outsideClassOptions,
-          currentOutsideClassCount,
-          isUnavailableFromOtherSource,
-          humanOutsideLimitReached,
-          nonHumanOutsideClass,
-          maxReached,
+      if (state.blockedReason) {
+        logBlockedSkillChoice(skill, state.blockedReason, {
+          outsideClassOptions: state.outsideClassOptions,
+          isHumanExtraOption: state.isHumanExtraOption,
+          isSelectedHumanExtraOption: state.isSelectedHumanExtraOption,
+          humanExtraAlreadyChosen: state.humanExtraAlreadyChosen,
+          currentOutsideClassCount: state.currentOutsideClassCount,
+          isUnavailableFromOtherSource: state.isUnavailableFromOtherSource,
+          humanOutsideLimitReached: state.humanOutsideLimitReached,
+          nonHumanOutsideClass: state.nonHumanOutsideClass,
+          maxReached: state.maxReached,
         });
 
         return current;
       }
 
-      if (isSelected) {
+      if (state.isSelected) {
         return current.filter((item) => item !== skill);
       }
 
@@ -481,75 +572,59 @@ function CharacterTab({
 
         {selectedRace === "Human" && classRule && (
           <p className="panel-intro" data-study-id="human-extra-skill-note">
-            Human adds one extra free skill proficiency. One selected skill may
-            come from outside the class skill list.
+            Human adds one extra free skill proficiency. Purple-tinted skills are
+            Human extra options from outside the class skill list. Only one can
+            be selected.
           </p>
         )}
 
         <div className="skill-grid" data-study-region="class-skill-grid">
           {skillOptions.map((skill) => {
-            const isSelected = selectedClassSkills.includes(skill);
-            const isUnavailableFromOtherSource =
-              unavailableClassSkillProficiencies.includes(skill) && !isSelected;
-
-            const outsideClassOptions = classRule
-              ? !classRule.options.includes(skill)
-              : false;
-
-            const currentOutsideClassCount = classRule
-              ? selectedClassSkills.filter(
-                  (item) => !classRule.options.includes(item)
-                ).length
-              : 0;
-
-            const humanOutsideLimitReached =
-              selectedRace === "Human" &&
-              outsideClassOptions &&
-              currentOutsideClassCount >= 1 &&
-              !isSelected;
-
-            const nonHumanOutsideClass =
-              selectedRace !== "Human" && outsideClassOptions;
-
-            const maxReached =
-              selectedClassSkills.length >= maxClassSkills && !isSelected;
-
-            const isBlocked =
-              isUnavailableFromOtherSource ||
-              maxReached ||
-              humanOutsideLimitReached ||
-              nonHumanOutsideClass;
+            const state = getSkillChoiceState(skill);
+            const humanBadge = getHumanSkillBadgeText(state);
 
             return (
               <button
                 key={skill}
                 type="button"
-                aria-disabled={isBlocked}
+                aria-disabled={state.isBlocked}
                 className={[
                   "choice-chip",
-                  isSelected ? "selected" : "",
-                  isUnavailableFromOtherSource ? "locked" : "",
-                  outsideClassOptions ? "outside-class-skill" : "",
-                  isBlocked ? "choice-chip--blocked" : "",
-                ].join(" ")}
+                  state.isSelected ? "selected" : "",
+                  state.isUnavailableFromOtherSource ? "locked" : "",
+                  state.isHumanExtraOption ? "choice-chip--human-extra" : "",
+                  state.isSelectedHumanExtraOption
+                    ? "choice-chip--human-extra-selected"
+                    : "",
+                  state.humanOutsideLimitReached
+                    ? "choice-chip--human-extra-unavailable"
+                    : "",
+                  state.isBlocked ? "choice-chip--blocked" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onClick={() => toggleClassSkill(skill)}
                 data-study-element="class-skill-button"
                 data-study-id={`class-skill-${skill}`}
-                title={
-                  isUnavailableFromOtherSource
-                    ? "Already granted by another source."
-                    : humanOutsideLimitReached
-                      ? "Human can only select one skill from outside the class list."
-                      : nonHumanOutsideClass
-                        ? "This skill is outside the selected class skill list."
-                        : maxReached
-                          ? "Class skill limit reached."
-                          : isSelected
-                            ? "Remove skill proficiency."
-                            : "Add skill proficiency."
+                data-skill-source={
+                  state.isHumanExtraOption ? "human-extra" : "class"
                 }
+                data-human-extra-status={
+                  state.isSelectedHumanExtraOption
+                    ? "selected"
+                    : state.humanOutsideLimitReached
+                      ? "unavailable-limit-used"
+                      : state.isHumanExtraOption
+                        ? "available"
+                        : "not-human-extra"
+                }
+                title={getSkillChoiceTitle(skill, state)}
               >
-                {skill}
+                <span>{skill}</span>
+
+                {humanBadge ? (
+                  <span className="choice-chip-note">{humanBadge}</span>
+                ) : null}
               </button>
             );
           })}

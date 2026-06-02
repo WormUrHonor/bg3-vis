@@ -4004,3 +4004,11 @@ select {
     radial-gradient(circle at 12% 20%, rgba(216, 178, 104, 0.14), transparent 42%),
     rgba(34, 25, 19, 0.72);
 }
+.choice-chip-note {
+  margin-left: 6px;
+  opacity: 0.68;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
