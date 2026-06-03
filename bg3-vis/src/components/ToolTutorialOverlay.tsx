@@ -33,7 +33,6 @@ type TutorialStep = {
     | "center"
     | "safeTopRight";
   requestedTab?: TutorialRequestedTab;
-
   requestEditableFocus?: boolean;
   scrollTarget?: boolean;
   does: string;
@@ -48,26 +47,29 @@ type TutorialStep = {
 };
 
 const tutorialSteps: TutorialStep[] = [
-    {
+  {
     title: "How to participate in the study",
     targetSelector: '[data-study-region="workspace-page"]',
     placementHint: "center",
-    does: 
-    "Read the tutorial carefully. For this study you must create a party of 4 charachters, one MUST be a level 12 wizard. The study takes approximately 30-45 minutes, there is no time limit.",
-       action:
-      "Complete the tutorial -> click start at the bottom of the current build window -> complete pre-task survey -> create a party of four -> assign party members to the bottom three slots and keep the fourth in the large focus circle -> click end & export -> complete the post task survey -> send the downloaded ZIP file to the researcher.",
-   
-    note: "If you have any questions about the study, please contact the researcher at +31644437745 or via email at sinkovichana@gmail.com I will respond immedietly and am happy to help! :)",
+    does: "For this study, create a party of 4 characters.",
+    action:
+      "After this tutorial, build your party of 4, fill the three small party slots, keep the fourth character in the large focus circle, then click End & export.",
+    note:
+      "If you have questions, contact the researcher at sinkovichana@gmail.com.",
+    requiredMessage: "Required: click End & Export at the end of the study.",
+    requiredAcknowledgementLabel:
+      "I understand that my final party must have 4 characters: 3 assigned builds plus 1 focus build.",
   },
   {
     title: "Build a party of four",
     targetSelector: '[data-study-region="workspace-page"]',
     placementHint: "center",
     does:
-      "The party has four characters: the current editable build plus three saved builds assigned to slots.",
+      "Your party is made from four characters: three assigned party slots plus the current editable focus build.",
     action:
-      "Create a build, save it, assign it to a slot, then start another build.",
-    note: "The editable build is always included as one party member.",
+      "Create characters, save finished builds when needed, assign three saved builds to the small party slots, and keep the fourth character as the current editable build.",
+    note:
+      "The editable build shown in the large focus circle counts as one party member.",
   },
   {
     title: "Use the editor tabs",
@@ -76,11 +78,9 @@ const tutorialSteps: TutorialStep[] = [
     placementHint: "bottom",
     requestedTab: "character",
     requestEditableFocus: true,
-    does:
-      "The tabs split character creation into three parts.",
+    does: "The editor tabs split character creation into three parts.",
     action:
-      "Use Character first, then Class & Scores, then the Actions & Passives tab.",
-    note: "You can return to any tab later.",
+      "Use Character first, then Class & Scores, then Actions & Passives. You can return to earlier tabs at any time.",
   },
   {
     title: "Character tab",
@@ -90,9 +90,9 @@ const tutorialSteps: TutorialStep[] = [
     requestedTab: "character",
     requestEditableFocus: true,
     does:
-      "This tab sets build name, race, background, class, and skills.",
-    action: "Choose a class and give the build a clear name.",
-    note: "The class controls which later options appear.",
+      "This tab sets the character name, race, background, class, and skills.",
+    action:
+      "Choose a class and give the character a clear name so you can recognize it later.",
   },
   {
     title: "Class & Scores tab",
@@ -104,8 +104,7 @@ const tutorialSteps: TutorialStep[] = [
     does:
       "This tab sets level, subclass, ability scores, feats, and class-specific choices.",
     action:
-      "Use it to shape the character before selecting spells or actions.",
-    note: "Level 12 exposes the largest option set.",
+      "Use it to shape the character before selecting spells, actions, or passives.",
   },
   {
     title: "Actions & Passives tab",
@@ -115,7 +114,7 @@ const tutorialSteps: TutorialStep[] = [
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
     does:
-      "This tab contains passives and selectable spells, actions, toggles, and features.",
+      "This tab contains selectable spells, actions, passives, toggles, and features.",
     action:
       "Click icons to select or activate them. Hover icons to read details.",
     note: "Selected and active actions are used in the Data Circle.",
@@ -128,8 +127,9 @@ const tutorialSteps: TutorialStep[] = [
     does:
       "Simulate Build runs an external simulator for the current editable build.",
     action:
-      "Use it when you want estimated damage-per-round information.",
-    note: "This is optional. The tool still works without simulation.",
+      "Use it when you want the optimal rotation and estimated damage-per-round information.",
+    note:
+      "This is optional. The rest of the tool still works without simulation.",
   },
   {
     title: "Read the Data Circle",
@@ -138,42 +138,44 @@ const tutorialSteps: TutorialStep[] = [
     placementHint: "left",
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
-    does: "The large Data Circle (Focus Circle) summarises the focused build profile.",
-action:
-  "",
-layerLegend: [
-  {
-    label: "Combat Range Profile",
-    description:
-      "Shows whether abilities are self, melee, mid-range, or long-range.",
-  },
-  {
-    label: "Ability Role Distribution",
-    description:
-      "Shows what the build can do: damage, control, support, defence, healing, or mobility.",
-  },
-  {
-    label: "Damage Type Profile",
-    description:
-      "Shows which damage types the build can access, such as fire, force, radiant, or weapon damage.",
-  },
-    {
-    label: "Damage Preview",
-    description:
-      "Shows the possible damage of each ability. The average and the minimum-to-maximum range",
-  },
-  {
-    label: "Rotation and DPR Simulation",
-    description:
-      "After simulation, the outermost circle shows the optimal rotation and the damage-per-round.",
-  },
-    {
-    label: "Icons",
-    description:
-      "Icons mark the individual spells, actions, and features represented in the circle.",
-  },
-
-],
+    does:
+      "The large Data Circle, or focus circle, summarizes the focused build or selected party view.",
+    action:
+      "Use it to inspect range, role distribution, damage types, damage preview, and possible party gaps or overlap.",
+    note:
+      "When three party slots are filled, the current editable build in this large focus circle is the fourth party member.",
+    layerLegend: [
+      {
+        label: "Combat Range Profile",
+        description:
+          "Shows whether abilities are self, melee, mid-range, or long-range.",
+      },
+      {
+        label: "Ability Role Distribution",
+        description:
+          "Shows what the build can do, such as damage, control, support, defence, healing, or mobility.",
+      },
+      {
+        label: "Damage Type Profile",
+        description:
+          "Shows which damage types the build can access, such as fire, force, radiant, or weapon damage.",
+      },
+      {
+        label: "Damage Preview",
+        description:
+          "Shows possible damage values for abilities when available.",
+      },
+      {
+        label: "Rotation and DPR Simulation",
+        description:
+          "After simulation, the outer layer can show the suggested rotation and damage-per-round.",
+      },
+      {
+        label: "Icons",
+        description:
+          "Icons mark the individual spells, actions, and features represented in the circle.",
+      },
+    ],
   },
   {
     title: "Inspect circle segments",
@@ -182,33 +184,33 @@ layerLegend: [
     placementHint: "left",
     requestedTab: "spellsAbilities",
     requestEditableFocus: true,
-    does:
-      "Hovering previews a segment. Clicking keeps it selected.",
+    does: "Hovering previews a segment. Clicking keeps it selected.",
     action:
       "Click a role, range band, damage type, or ability to keep it highlighted.",
     note: "Related abilities in the editor can become highlighted.",
   },
   {
-    title: "Start a new build",
+    title: "Start another character",
     targetSelector: '[data-study-id="new-blank-build-button"]',
     placementHint: "bottom",
     requestEditableFocus: true,
-    does: "New blank build clears only the current editor.",
+    does:
+      "New blank build clears only the current editor so you can make another character.",
     action:
-      "Use it after saving a character when you want to create another one.",
-    note: "Saved builds, assigned slots, and logs are kept.",
+      "Use it after saving or assigning a character when you want to create the next one.",
+    note: "Saved builds, assigned party slots, and study logs are kept.",
   },
   {
-    title: "Save builds",
+    title: "Saved builds",
     targetSelector: '[data-study-region="saved-builds-panel"]',
     placementHint: "right",
     scrollTarget: true,
     does:
-      "Saved Builds stores characters after you click Save current build.",
+      "Saved Builds stores characters so they can be reused, restored, or assigned to the party.",
     action:
-      "Create a character, save it, and it will appear as a saved-build card.",
+      "When a character is finished, save it so it appears as a saved-build card.",
     note:
-      "Saving stores the build, but does not automatically assign it to the party.",
+      "Saving stores the build, but assigning it to the party is a separate step.",
   },
   {
     title: "Assign saved builds to slots",
@@ -217,11 +219,11 @@ layerLegend: [
     placementHint: "right",
     scrollTarget: true,
     does:
-      "Each saved-build card has Send to Party buttons labelled 1, 2, and 3.",
+      "Saved-build cards can be sent to the three small party slots.",
     action:
-      "Click 1, 2, or 3 to send that saved build to party Slot 1, Slot 2, or Slot 3.",
+      "Click Send to Party 1, 2, or 3 to fill Slot 1, Slot 2, and Slot 3.",
     note:
-      "If you do not see these buttons yet, save a build first. The numbered buttons are how the three party slots are filled.",
+      "Your final party is Slot 1 + Slot 2 + Slot 3 + the current focus build = 4 characters.",
   },
   {
     title: "Use build history",
@@ -231,7 +233,7 @@ layerLegend: [
     does: "Build Process shows saved and updated versions.",
     action:
       "Load, restore, or assign earlier versions if you want to return to them.",
-    note: "This is useful when trying several build directions.",
+    note: "This can help when trying several build directions.",
   },
   {
     title: "Switch focus",
@@ -242,7 +244,7 @@ layerLegend: [
       "The focus selector changes what the large Data Circle displays.",
     action:
       "Use Editable for the current build, Aggregate for the combined party, or Slot buttons for assigned members.",
-    note: "Aggregate is the overall combined party view.",
+    note: "Aggregate is the combined party view.",
   },
   {
     title: "Review the party",
@@ -250,27 +252,25 @@ layerLegend: [
     placementHint: "safeTopRight",
     scrollTarget: false,
     requestEditableFocus: true,
-    does:
-      "The party dock shows the aggregate party and each party member.",
+    does: "The party dock shows the aggregate party and each party member.",
     action:
-      "Use it to compare members and inspect the full party composition.",
-    note: "Empty slots need saved builds assigned to them.",
+      "Before finishing, check that all three small party slots are filled and that the current focus build is the fourth character.",
+    note: "The final party must have 4 characters total.",
   },
   {
-    title: "Required: start and export the study log",
+    title: "Required: End & export",
     targetSelector: '[data-study-region="study-logging-panel"]',
     placementHint: "safeTopRight",
     scrollTarget: true,
-    does:
-      "The study log only records the party-building task correctly if it is started before the participant begins building.",
+    does: "End & export is the required final step.",
     action:
-      "Before starting the task, enter the participant ID and click Start. When the party is finished, click End & export and send the downloaded ZIP file to the researcher.",
+      "When the 4-character party is finished, click End & export. Then complete the post-task survey and send the downloaded ZIP file to the researcher.",
     note:
-      "Thank very much for paricipating in the study! :) <3",
+      "The study is not finished until the ZIP file has been exported and sent.",
     requiredMessage:
-      "Do not begin building before clicking Start. When finished, click End & export and send the downloaded JSONL file to the researcher.",
+      "Before finishing: make sure you created 4 characters, assigned 3 saved builds to the small party circles, kept the 4th character in the large focus circle, and clicked End & export.",
     requiredAcknowledgementLabel:
-      "I understand that I must click Start before beginning the task, and click End & export when I finish.",
+      "I understand that I must click End & export and send the downloaded ZIP file via Dropbox.",
   },
 ];
 
@@ -511,10 +511,7 @@ export default function ToolTutorialOverlay({
   onRequestTab,
   onRequestEditableFocus,
 }: ToolTutorialOverlayProps) {
-  const [isOpen, setIsOpen] = useState(() => {
-    return window.localStorage.getItem("bg3-tool-tutorial-seen") !== "true";
-  });
-
+  const [isOpen, setIsOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
   const [highlightRects, setHighlightRects] = useState<HighlightRect[]>([]);
@@ -607,6 +604,32 @@ export default function ToolTutorialOverlay({
   }
 
   useEffect(() => {
+    function handlePreTaskSurveyCompleted() {
+      window.localStorage.removeItem("bg3-tool-tutorial-seen");
+      setStepIndex(0);
+      setIsTransitioning(false);
+      setHasAcknowledgedStudyLogging(false);
+      setIsOpen(true);
+
+      logTutorialEvent("tutorial_opened", {
+        openedFrom: "pre_task_survey_completed",
+      });
+    }
+
+    window.addEventListener(
+      "bg3-pre-task-survey-completed",
+      handlePreTaskSurveyCompleted
+    );
+
+    return () => {
+      window.removeEventListener(
+        "bg3-pre-task-survey-completed",
+        handlePreTaskSurveyCompleted
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isOpen) return;
 
     if (currentStep.requestedTab) {
@@ -666,33 +689,33 @@ export default function ToolTutorialOverlay({
     });
   }
 
-function closeTutorial(reason: "finished" | "dismissed") {
-  if (reason === "finished" && isRequiredStep && !hasAcknowledgedStudyLogging) {
-    logTutorialEvent("tutorial_required_acknowledgement_missing", {
-      attemptedCloseReason: reason,
+  function closeTutorial(reason: "finished" | "dismissed") {
+    if (reason === "finished" && isRequiredStep && !hasAcknowledgedStudyLogging) {
+      logTutorialEvent("tutorial_required_acknowledgement_missing", {
+        attemptedCloseReason: reason,
+      });
+      return;
+    }
+
+    window.localStorage.setItem("bg3-tool-tutorial-seen", "true");
+
+    if (reason === "finished") {
+      onRequestEditableFocus?.();
+      onRequestTab?.("character");
+    }
+
+    setIsOpen(false);
+    setHighlightRects([]);
+    setTargetElement(null);
+    setIsTransitioning(false);
+
+    logTutorialEvent("tutorial_closed", {
+      closeReason: reason,
+      completedTutorial: reason === "finished",
+      acknowledgedStudyLogging: hasAcknowledgedStudyLogging,
+      finalRequestedTab: reason === "finished" ? "character" : null,
     });
-    return;
   }
-
-  window.localStorage.setItem("bg3-tool-tutorial-seen", "true");
-
-  if (reason === "finished") {
-    onRequestEditableFocus?.();
-    onRequestTab?.("character");
-  }
-
-  setIsOpen(false);
-  setHighlightRects([]);
-  setTargetElement(null);
-  setIsTransitioning(false);
-
-  logTutorialEvent("tutorial_closed", {
-    closeReason: reason,
-    completedTutorial: reason === "finished",
-    acknowledgedStudyLogging: hasAcknowledgedStudyLogging,
-    finalRequestedTab: reason === "finished" ? "character" : null,
-  });
-}
 
   function goNext() {
     if (isLastStep) {

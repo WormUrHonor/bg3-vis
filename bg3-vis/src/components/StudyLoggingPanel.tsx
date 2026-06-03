@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   clearStudyLogs,
   endStudySession,
@@ -23,6 +23,7 @@ type StudyLoggingPanelProps = {
   finalPartyGaps?: unknown;
   finalRedundancyScore?: number | null;
   className?: string;
+  onPreTaskSurveyComplete?: () => void;
 
   [key: string]: unknown;
 };
@@ -43,6 +44,7 @@ type LastZipExport = {
 
 const STUDY_SURVEY_CACHE_PREFIX = "bg3-study-survey-cache-v1";
 const STUDY_UPLOAD_URL = "https://www.dropbox.com/request/guzuiiqjn65qw4kflmfd";
+const AUTO_PARTICIPANT_ID_KEY = "bg3-study-auto-participant-id";
 
 function hasWindow(): boolean {
   return typeof window !== "undefined";
@@ -50,6 +52,42 @@ function hasWindow(): boolean {
 
 function safeFilenamePart(value: string): string {
   return value.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "unknown-participant";
+}
+
+function createAutoParticipantId(): string {
+  const randomPart =
+    hasWindow() && window.crypto
+      ? Array.from(window.crypto.getRandomValues(new Uint8Array(3)))
+          .map((value) => value.toString(16).padStart(2, "0"))
+          .join("")
+      : Math.random().toString(16).slice(2, 8);
+
+  return `participant-${Date.now().toString(36)}-${randomPart}`;
+}
+
+function getOrCreateAutoParticipantId(): string {
+  if (!hasWindow()) return createAutoParticipantId();
+
+  const existing = window.localStorage.getItem(AUTO_PARTICIPANT_ID_KEY);
+
+  if (existing?.trim()) {
+    return existing;
+  }
+
+  const nextId = createAutoParticipantId();
+  window.localStorage.setItem(AUTO_PARTICIPANT_ID_KEY, nextId);
+
+  return nextId;
+}
+
+function resetAutoParticipantId(): string {
+  const nextId = createAutoParticipantId();
+
+  if (hasWindow()) {
+    window.localStorage.setItem(AUTO_PARTICIPANT_ID_KEY, nextId);
+  }
+
+  return nextId;
 }
 
 function getSurveyCacheKey(participantId: string): string {
@@ -232,13 +270,18 @@ export default function StudyLoggingPanel({
   finalPartyGaps,
   finalRedundancyScore,
   className = "",
+  onPreTaskSurveyComplete,
 }: StudyLoggingPanelProps) {
+  const hasAutoInitialized = useRef(false);
+
   const [session, setSession] = useState<StudySession | null>(() =>
     loadStudySession()
   );
-  const [participantId, setParticipantId] = useState(
-    session?.participantId ?? ""
-  );
+  const [participantId, setParticipantId] = useState(() => {
+    const existingSession = loadStudySession();
+
+    return existingSession?.participantId ?? getOrCreateAutoParticipantId();
+  });
   const [error, setError] = useState<string | null>(null);
   const [showPreTaskSurvey, setShowPreTaskSurvey] = useState(false);
   const [showPostTaskSurvey, setShowPostTaskSurvey] = useState(false);
@@ -253,13 +296,15 @@ export default function StudyLoggingPanel({
   const isRunning = session?.status === "running" || isStudySessionActive();
   const trimmedParticipantId = participantId.trim();
 
-  const canStart = useMemo(() => {
-    return trimmedParticipantId.length > 0 && !isRunning;
-  }, [trimmedParticipantId, isRunning]);
-
   const readinessText = isPartyComplete
     ? "Party complete. Ending opens the post-task survey, then exports the survey and study log together as a ZIP."
     : "Party incomplete. Ending still works, but the final party will be marked incomplete in the interaction log.";
+
+  const statusText = isRunning ? "Running" : "Not running";
+
+  const endButtonText = useMemo(() => {
+    return isPartyComplete ? "End & export" : "End & export anyway";
+  }, [isPartyComplete]);
 
   function buildFinalPayload(): StudyLoggerEndPayload {
     const customPayload =
@@ -275,33 +320,111 @@ export default function StudyLoggingPanel({
     };
   }
 
-  function handleStart(): void {
+  function openTutorialAfterPreSurvey(): void {
+    onPreTaskSurveyComplete?.();
+
+    if (hasWindow()) {
+      window.dispatchEvent(
+        new CustomEvent("bg3-pre-task-survey-completed", {
+          detail: {
+            participantId: trimmedParticipantId,
+          },
+        })
+      );
+    }
+  }
+
+  function initializeAutomaticStudySession(options?: {
+    forceNewParticipantId?: boolean;
+  }): void {
     setError(null);
 
-    if (!trimmedParticipantId) {
-      setError("Participant ID is required before starting the study.");
-      return;
-    }
+    try {
+      const nextParticipantId = options?.forceNewParticipantId
+        ? resetAutoParticipantId()
+        : getOrCreateAutoParticipantId();
 
-    setShowPreTaskSurvey(true);
+      const existingSession = loadStudySession();
+
+      if (existingSession?.status === "running") {
+        setSession(existingSession);
+        setParticipantId(existingSession.participantId);
+
+        const cache = loadSurveyCache(existingSession.participantId);
+        const hasPreTaskSurvey = Boolean(cache?.preTaskSurvey);
+
+        if (!hasPreTaskSurvey) {
+          setShowPreTaskSurvey(true);
+        }
+
+        return;
+      }
+
+      const nextSession = startStudySession(nextParticipantId, {
+        clearExistingLogs: true,
+      });
+
+      saveSurveyCache({
+        participantId: nextSession.participantId,
+        sessionId: nextSession.sessionId,
+        preTaskSurvey: null,
+        postTaskSurvey: null,
+        lastZipFilename: null,
+        updatedAt: new Date().toISOString(),
+      });
+
+      logStudyEvent({
+        eventCategory: "study",
+        eventType: "study_session_auto_started",
+        taskPhase: "initial_planning",
+        activeView: "study-logging-panel",
+        payload: {
+          participantId: nextSession.participantId,
+          sessionId: nextSession.sessionId,
+        },
+      });
+
+      setSession(nextSession);
+      setParticipantId(nextSession.participantId);
+      setShowPreTaskSurvey(true);
+      setShowPostTaskSurvey(false);
+      setLastZipExport(null);
+      setHasAcknowledgedManualUpload(false);
+      setShowManualUploadCloseCheck(false);
+    } catch (startError) {
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : "Could not automatically start the study."
+      );
+    }
   }
+
+  useEffect(() => {
+    if (hasAutoInitialized.current) return;
+
+    hasAutoInitialized.current = true;
+    initializeAutomaticStudySession();
+  }, []);
 
   function handlePreTaskSurveySubmit(submission: StudySurveySubmission): void {
     setError(null);
 
     try {
-      const nextSession = startStudySession(trimmedParticipantId, {
-        clearExistingLogs: true,
-      });
+      const activeSession = loadStudySession();
+
+      if (!activeSession || activeSession.status !== "running") {
+        throw new Error("Study logging is not running.");
+      }
 
       const normalizedSubmission: StudySurveySubmission = {
         ...submission,
-        participantId: nextSession.participantId,
+        participantId: activeSession.participantId,
       };
 
       saveSurveyCache({
-        participantId: nextSession.participantId,
-        sessionId: nextSession.sessionId,
+        participantId: activeSession.participantId,
+        sessionId: activeSession.sessionId,
         preTaskSurvey: normalizedSubmission,
         postTaskSurvey: null,
         lastZipFilename: null,
@@ -315,24 +438,26 @@ export default function StudyLoggingPanel({
         activeView: "study-survey-modal",
         payload: {
           surveySchemaVersion: normalizedSubmission.surveySchemaVersion,
-          participantId: nextSession.participantId,
+          participantId: activeSession.participantId,
           submittedAt: normalizedSubmission.submittedAt,
           consent: normalizedSubmission.consent,
           answers: normalizedSubmission.answers,
         },
       });
 
-      setSession(nextSession);
-      setParticipantId(nextSession.participantId);
+      setSession(activeSession);
+      setParticipantId(activeSession.participantId);
       setShowPreTaskSurvey(false);
       setLastZipExport(null);
       setHasAcknowledgedManualUpload(false);
       setShowManualUploadCloseCheck(false);
-    } catch (startError) {
+
+      window.setTimeout(openTutorialAfterPreSurvey, 120);
+    } catch (submitError) {
       setError(
-        startError instanceof Error
-          ? startError.message
-          : "Could not start the study."
+        submitError instanceof Error
+          ? submitError.message
+          : "Could not submit the pre-task survey."
       );
     }
   }
@@ -466,7 +591,7 @@ export default function StudyLoggingPanel({
 
   function handleRestartStudy(): void {
     const confirmed = window.confirm(
-      "Restart the study session? This clears the current study logs, survey cache, and export reminder, then returns the logging panel to the state before Start was clicked."
+      "Restart the study session? This clears the current study logs, survey cache, and export reminder, then immediately starts a new study session and opens the pre-task survey again."
     );
 
     if (!confirmed) return;
@@ -480,14 +605,21 @@ export default function StudyLoggingPanel({
       removeSurveyCache(currentParticipantId);
     }
 
+    const newParticipantId = resetAutoParticipantId();
+    removeSurveyCache(newParticipantId);
+
     setSession(null);
-    setParticipantId("");
+    setParticipantId(newParticipantId);
     setError(null);
     setShowPreTaskSurvey(false);
     setShowPostTaskSurvey(false);
     setLastZipExport(null);
     setHasAcknowledgedManualUpload(false);
     setShowManualUploadCloseCheck(false);
+
+    window.setTimeout(() => {
+      initializeAutomaticStudySession({ forceNewParticipantId: false });
+    }, 0);
   }
 
   function handleRequestExportClose(): void {
@@ -521,7 +653,7 @@ export default function StudyLoggingPanel({
                 : "study-logging-status"
             }
           >
-            {isRunning ? "Running" : "Not running"}
+            {statusText}
           </span>
         </div>
 
@@ -529,9 +661,9 @@ export default function StudyLoggingPanel({
           <span>Participant ID</span>
           <input
             value={participantId}
-            disabled={isRunning}
-            onChange={(event) => setParticipantId(event.target.value)}
-            placeholder="Unique fantasy name"
+            disabled
+            readOnly
+            placeholder="Auto-generated participant ID"
             data-study-element="participant-id-input"
           />
         </label>
@@ -552,22 +684,12 @@ export default function StudyLoggingPanel({
         <div className="study-logging-actions">
           <button
             type="button"
-            className="study-logging-button study-logging-button--primary"
-            onClick={handleStart}
-            disabled={!canStart}
-            data-study-element="start-study-button"
-          >
-            Start
-          </button>
-
-          <button
-            type="button"
             className="study-logging-button study-logging-button--export"
             onClick={handleEndClick}
             disabled={!isRunning}
             data-study-element="end-study-export-button"
           >
-            End & export
+            {endButtonText}
           </button>
 
           <button
@@ -584,9 +706,9 @@ export default function StudyLoggingPanel({
       {showPreTaskSurvey ? (
         <StudySurveyModal
           mode="pre"
-          participantId={trimmedParticipantId}
+          participantId={session?.participantId ?? trimmedParticipantId}
           onSubmit={handlePreTaskSurveySubmit}
-          onCancel={() => setShowPreTaskSurvey(false)}
+          onCancel={() => setShowPreTaskSurvey(true)}
         />
       ) : null}
 
@@ -620,15 +742,7 @@ export default function StudyLoggingPanel({
               </div>
 
               <p>
-                The tool runs entirely in your browser, so the researcher does
-                not receive your study data automatically. Please upload the
-                downloaded ZIP file manually using the Dropbox upload page.
-              </p>
-
-              <p>
-                If Dropbox asks for a name, please enter only your participant
-                ID. Any name or email requested by Dropbox is part of the Dropbox
-                upload process and will not be used as study data.
+                Upload the downloaded ZIP file manually using the Dropbox upload page.
               </p>
 
               <label className="study-export-required-check">
@@ -703,8 +817,9 @@ export default function StudyLoggingPanel({
 
             <p>
               Please make sure you have uploaded the downloaded ZIP file through
-              Dropbox, or sent it by email (sinkovichana@gmail.com) if Dropbox did not work. Without that
-              file, the study data cannot be received. Thank you for your understanding!
+              Dropbox, or sent it by email to sinkovichana@gmail.com if Dropbox
+              did not work. Without that file, the study data cannot be
+              received. Thank you for your understanding.
             </p>
 
             <div className="study-export-close-check-actions">
