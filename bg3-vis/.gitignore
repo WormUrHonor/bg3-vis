@@ -22,11 +22,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-# Raw participant data
-bg3-vis/analysis/data/raw_exports/
-bg3-vis/analysis/data/unusedZIP/
-bg3-vis/analysis/data/raw_jsonl/
-bg3-vis/analysis/data/raw_surveys/
+# Keep analysis folders
+
+bg3-vis/analysis/data/processed/*
+!bg3-vis/analysis/data/processed/.gitkeep
+
+bg3-vis/analysis/data/raw_exports/*
+!bg3-vis/analysis/data/raw_exports/.gitkeep
+
+bg3-vis/analysis/data/raw_jsonl/*
+!bg3-vis/analysis/data/raw_jsonl/.gitkeep
+
+bg3-vis/analysis/data/raw_surveys/*
+!bg3-vis/analysis/data/raw_surveys/.gitkeep
+
+bg3-vis/analysis/data/results/*
+!bg3-vis/analysis/data/results/.gitkeep
 
 # Large
 bg3-vis/analysis/data/processed/clean_events_flat.csv
