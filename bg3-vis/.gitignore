@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Raw participant data
+bg3-vis/analysis/data/raw_exports/
+bg3-vis/analysis/data/unusedZIP/
+bg3-vis/analysis/data/raw_jsonl/
+bg3-vis/analysis/data/raw_surveys/
+
+# Large
+bg3-vis/analysis/data/processed/clean_events_flat.csv
