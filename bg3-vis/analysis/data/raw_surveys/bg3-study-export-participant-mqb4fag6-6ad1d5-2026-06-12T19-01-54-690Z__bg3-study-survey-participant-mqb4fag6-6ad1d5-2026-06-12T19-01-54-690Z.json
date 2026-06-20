@@ -1,0 +1,83 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-12T19:01:54.690Z",
+  "exportedAtMs": 1781290914690,
+  "participantId": "participant-mqb4fag6-6ad1d5",
+  "sessionId": "participant-mqb4fag6-6ad1d5",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-12T16:08:30.772Z",
+  "sessionEndedAt": "2026-06-12T19:01:54.690Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mqb4fag6-6ad1d5",
+    "submittedAt": "2026-06-12T16:10:44.983Z",
+    "submittedAtMs": 1781280644983,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "build_planning": "3",
+        "charts_visual_summaries": "2",
+        "bg3": "1",
+        "dnd_or_rpg_systems": "2"
+      },
+      "external_resources_frequency": "5",
+      "build_priorities": {
+        "ease_of_use": "true",
+        "versatility": "true",
+        "damage_combat_performance": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mqb4fag6-6ad1d5",
+    "submittedAt": "2026-06-12T19:01:54.688Z",
+    "submittedAtMs": 1781290914688,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "5"
+      },
+      "reasoning": {
+        "reasoning_tradeoffs_party_overall": "4",
+        "balanced_autonomous_decision": "5",
+        "final_party_confidence": "3"
+      },
+      "visualization": {
+        "understood_visualization": "5",
+        "readable": "5",
+        "noticed_party_patterns": "5",
+        "interactive_explanation": "5"
+      },
+      "experience": {
+        "appropriate_for_bg3": "3",
+        "visual_style_fit": "5",
+        "engaging_creative_exploration": "5"
+      },
+      "final_party_main_factor": {
+        "survivability": "true",
+        "roleplay_fantasy": "true",
+        "experimentation": "true",
+        "versatility": "true",
+        "ease_of_use": "true"
+      },
+      "supported_exploration": "Its easy visualization of strenghts, skills, and damage elements in graphic form. This helps the player test team synergy, and lets them see to see what skills belong to what class and experiment, creating different teams. The freedom to give a name to your character and build made it feel more personal and fun. Players will more easily remember the parties they want to build in game with this tool.",
+      "changed_normal_planning": "I usually look up character builds on YouTube or ask my friends on how to build characters. If the tool was designed for the games I play i would use it all the time to visualize party synergy, see what i am missing in my team, check what certain enemies do to different characters and vice versa, and the damage I would be doing. ",
+      "blocked_exploration": "I don't have experience with dnd or Baldur's gate 3 so im not familiar with luck based combat, manipulating with creatures or anything like that so I couldn't understand how what im doing exactly affects my gameplay but that is not the tool's fault. :)",
+      "first_change": "No, I think everything is great! :)",
+      "optional_comments": "",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

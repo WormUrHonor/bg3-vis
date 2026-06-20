@@ -1,0 +1,84 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-10T22:39:00.540Z",
+  "exportedAtMs": 1781131140540,
+  "participantId": "participant-mq000vqm-dbf8fe",
+  "sessionId": "participant-mq000vqm-dbf8fe",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-10T21:16:47.595Z",
+  "sessionEndedAt": "2026-06-10T22:39:00.540Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mq000vqm-dbf8fe",
+    "submittedAt": "2026-06-10T21:52:19.610Z",
+    "submittedAtMs": 1781128339610,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "2",
+        "charts_visual_summaries": "2"
+      },
+      "external_resources_frequency": "3",
+      "build_priorities": {
+        "survivability": "true",
+        "roleplay_fantasy": "true",
+        "narrative_strength": "true",
+        "versatility": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mq000vqm-dbf8fe",
+    "submittedAt": "2026-06-10T22:39:00.538Z",
+    "submittedAtMs": 1781131140538,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "3",
+        "reasoning_tradeoffs_party_overall": "4",
+        "balanced_autonomous_decision": "4"
+      },
+      "visualization": {
+        "noticed_party_patterns": "4",
+        "understood_visualization": "3",
+        "readable": "4",
+        "interactive_explanation": "4"
+      },
+      "experience": {
+        "appropriate_for_bg3": "4",
+        "visual_style_fit": "3",
+        "engaging_creative_exploration": "3"
+      },
+      "final_party_main_factor": {
+        "roleplay_fantasy": "true",
+        "versatility": "true",
+        "prior_bg3_knowledge": "false",
+        "narrative_strength": "false",
+        "party_balance": "true"
+      },
+      "blocked_exploration": "There's a bit of a learning curve",
+      "changed_normal_planning": "not much, I used it for fun and I usually don't optimise builds",
+      "first_change": "Maybe warnings on significant overlap?",
+      "supported_exploration": "Ease of use",
+      "optional_comments": "",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

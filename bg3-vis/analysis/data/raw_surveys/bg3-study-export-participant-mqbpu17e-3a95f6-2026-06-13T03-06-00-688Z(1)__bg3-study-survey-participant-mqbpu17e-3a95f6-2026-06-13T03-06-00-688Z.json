@@ -1,0 +1,86 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-13T03:06:00.688Z",
+  "exportedAtMs": 1781319960688,
+  "participantId": "participant-mqbpu17e-3a95f6",
+  "sessionId": "participant-mqbpu17e-3a95f6",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-13T02:07:50.463Z",
+  "sessionEndedAt": "2026-06-13T03:06:00.688Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mqbpu17e-3a95f6",
+    "submittedAt": "2026-06-13T02:08:55.578Z",
+    "submittedAtMs": 1781316535578,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "charts_visual_summaries": "3",
+        "build_planning": "3"
+      },
+      "external_resources_frequency": "4",
+      "build_priorities": {
+        "damage_combat_performance": "true",
+        "narrative_strength": "true",
+        "roleplay_fantasy": "true",
+        "experimentation": "true",
+        "clear_party_roles": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mqbpu17e-3a95f6",
+    "submittedAt": "2026-06-13T03:06:00.685Z",
+    "submittedAtMs": 1781319960685,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "5"
+      },
+      "reasoning": {
+        "final_party_confidence": "4",
+        "reasoning_tradeoffs_party_overall": "5",
+        "balanced_autonomous_decision": "5"
+      },
+      "visualization": {
+        "understood_visualization": "4",
+        "noticed_party_patterns": "5",
+        "interactive_explanation": "5",
+        "readable": "4"
+      },
+      "experience": {
+        "visual_style_fit": "4",
+        "appropriate_for_bg3": "5",
+        "engaging_creative_exploration": "5"
+      },
+      "final_party_main_factor": {
+        "narrative_strength": "true",
+        "roleplay_fantasy": "true",
+        "clear_party_roles": "true",
+        "damage_combat_performance": "true",
+        "experimentation": "true",
+        "prior_bg3_knowledge": "true"
+      },
+      "blocked_exploration": "Nothing specific to the tool inhibited exploration. Existing knowledge of the game made me avoid certain skills, spells and similar if I knew them to be bad or ineffective to such a degree that picking them made the build weaker without contributing much in terms of fun, diversity or roleplay opportunities ( e.g. no amount of exploration and tinkering will make true strike worth picking).",
+      "supported_exploration": "The ease of use and how quickly you can change the character made the exploration enjoyable and thus encouraged me to try different combinations (since it provides quick and direct feedback on the impacts through the wheel). ",
+      "changed_normal_planning": "Usually I would make the characters directly within the game using knowledge from the wiki or my own knowledge, and keep remaking them until I am satisfied. That is much slower (done level by level instead of directly all at once) and provides no direct feedback on the effects of my choices until they are put into practice actually playing the game. ",
+      "optional_comments": "",
+      "first_change": "There are no superfluous features (and none that make the process more difficult), so nothing should be removed. In this case I did not find myself using the build history feature as much, but I can imagine it being useful in some cases and it is non intrusive so I would keep it.",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

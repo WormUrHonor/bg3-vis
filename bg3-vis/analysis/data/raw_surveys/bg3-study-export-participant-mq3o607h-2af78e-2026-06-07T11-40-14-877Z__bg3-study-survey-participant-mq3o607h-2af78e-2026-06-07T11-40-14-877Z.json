@@ -1,0 +1,81 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-07T11:40:14.877Z",
+  "exportedAtMs": 1780832414877,
+  "participantId": "participant-mq3o607h-2af78e",
+  "sessionId": "participant-mq3o607h-2af78e",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-07T10:59:00.461Z",
+  "sessionEndedAt": "2026-06-07T11:40:14.877Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mq3o607h-2af78e",
+    "submittedAt": "2026-06-07T11:00:22.346Z",
+    "submittedAtMs": 1780830022346,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "1",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "2",
+        "charts_visual_summaries": "3"
+      },
+      "external_resources_frequency": "4",
+      "build_priorities": {
+        "damage_combat_performance": "true",
+        "narrative_strength": "true",
+        "experimentation": "true",
+        "ease_of_use": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mq3o607h-2af78e",
+    "submittedAt": "2026-06-07T11:40:14.875Z",
+    "submittedAtMs": 1780832414875,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "4",
+        "reasoning_tradeoffs_party_overall": "4",
+        "balanced_autonomous_decision": "5"
+      },
+      "visualization": {
+        "understood_visualization": "5",
+        "noticed_party_patterns": "5",
+        "interactive_explanation": "5",
+        "readable": "4"
+      },
+      "experience": {
+        "engaging_creative_exploration": "4",
+        "appropriate_for_bg3": "4",
+        "visual_style_fit": "4"
+      },
+      "final_party_main_factor": {
+        "party_balance": "true",
+        "experimentation": "true"
+      },
+      "supported_exploration": "the focus rings",
+      "blocked_exploration": "none",
+      "changed_normal_planning": "not",
+      "first_change": "not",
+      "optional_comments": "",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

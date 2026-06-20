@@ -1,0 +1,450 @@
+﻿participant_id,session_id,field_category,field,count
+Uriel_Septim_VII,Uriel_Septim_VII,Ability scores,baseAbilityScores,132
+Uriel_Septim_VII,Uriel_Septim_VII,Spells,selectedSpellIds,104
+Uriel_Septim_VII,Uriel_Septim_VII,Identity/background,buildName,92
+Uriel_Septim_VII,Uriel_Septim_VII,Identity/background,characterName,79
+Uriel_Septim_VII,Uriel_Septim_VII,Feats,featSelections,69
+Uriel_Septim_VII,Uriel_Septim_VII,Class/level,selectedClassSkills,29
+Uriel_Septim_VII,Uriel_Septim_VII,Class/level,selectedClassFeatureIds,19
+Uriel_Septim_VII,Uriel_Septim_VII,Other,selectedWarlockInvocations,14
+Uriel_Septim_VII,Uriel_Septim_VII,Identity/background,selectedRace,13
+Uriel_Septim_VII,Uriel_Septim_VII,Identity/background,selectedSubrace,9
+Uriel_Septim_VII,Uriel_Septim_VII,Other,rogueExpertise,8
+Uriel_Septim_VII,Uriel_Septim_VII,Ability scores,bonusPlusOne,5
+Uriel_Septim_VII,Uriel_Septim_VII,Identity/background,selectedBackground,5
+Uriel_Septim_VII,Uriel_Septim_VII,Ability scores,bonusPlusTwo,4
+Uriel_Septim_VII,Uriel_Septim_VII,Class/level,selectedClass,4
+Uriel_Septim_VII,Uriel_Septim_VII,Class/level,selectedSubclass,4
+Yoloman,Yoloman,Ability scores,baseAbilityScores,101
+Yoloman,Yoloman,Identity/background,buildName,81
+Yoloman,Yoloman,Identity/background,characterName,51
+Yoloman,Yoloman,Class/level,selectedLevel,19
+Yoloman,Yoloman,Feats,featSelections,15
+Yoloman,Yoloman,Class/level,selectedClassSkills,8
+Yoloman,Yoloman,Ability scores,bonusPlusOne,5
+Yoloman,Yoloman,Ability scores,bonusPlusTwo,5
+Yoloman,Yoloman,Identity/background,selectedBackground,5
+Yoloman,Yoloman,Class/level,selectedClass,4
+Yoloman,Yoloman,Class/level,selectedSubclass,4
+Yoloman,Yoloman,Identity/background,selectedRace,4
+Yoloman,Yoloman,Other,rogueExpertise,4
+Yoloman,Yoloman,Identity/background,selectedSubrace,3
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Identity/background,buildName,103
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Ability scores,baseAbilityScores,94
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Spells,selectedSpellIds,77
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Feats,featSelections,31
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Class/level,selectedClassSkills,15
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Identity/background,characterName,12
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Skills,loreBardSkills,9
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Identity/background,selectedBackground,7
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Identity/background,selectedRace,6
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Ability scores,bonusPlusTwo,5
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Class/level,selectedClass,5
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Class/level,selectedClassFeatureIds,5
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Identity/background,selectedSubrace,5
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Ability scores,bonusPlusOne,4
+participant-mpya2p1q-46ef0b,participant-mpya2p1q-46ef0b,Class/level,selectedSubclass,4
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Ability scores,baseAbilityScores,130
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Spells,selectedSpellIds,99
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Identity/background,buildName,64
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Identity/background,characterName,28
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Feats,featSelections,26
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Class/level,selectedLevel,18
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Class/level,selectedClassFeatureIds,15
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Class/level,selectedClassSkills,12
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Other,bardExpertise,12
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Class/level,selectedSubclass,9
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Identity/background,selectedBackground,8
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Class/level,selectedClass,7
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Identity/background,selectedRace,6
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Ability scores,bonusPlusOne,5
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Ability scores,bonusPlusTwo,4
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Identity/background,selectedSubrace,4
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Skills,loreBardSkills,3
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Other,rangerFavouredEnemy,1
+participant-mpzu7yfi-18b55e,participant-mpzu7yfi-18b55e,Other,rangerNaturalExplorer,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Identity/background,buildName,31
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Ability scores,baseAbilityScores,11
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Identity/background,characterName,4
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Feats,featSelections,3
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Class/level,selectedClass,2
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Class/level,selectedClassFeatureIds,2
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Class/level,selectedClassSkills,2
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Ability scores,bonusPlusOne,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Ability scores,bonusPlusTwo,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Class/level,selectedSubclass,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Identity/background,selectedBackground,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Identity/background,selectedRace,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Identity/background,selectedSubrace,1
+participant-mpzuqjdb-edb342,participant-mpzuqjdb-edb342,Spells,selectedSpellIds,1
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Identity/background,buildName,206
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Spells,selectedSpellIds,115
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Ability scores,baseAbilityScores,114
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Feats,featSelections,65
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Class/level,selectedSubclass,56
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Identity/background,characterName,38
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Identity/background,selectedBackground,34
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Class/level,selectedLevel,30
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Class/level,selectedClass,24
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Identity/background,selectedSubrace,23
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Identity/background,selectedRace,14
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Class/level,selectedClassSkills,13
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Class/level,selectedClassFeatureIds,12
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Ability scores,bonusPlusTwo,6
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Ability scores,bonusPlusOne,5
+participant-mpzxp2jz-c463ae,participant-mpzxp2jz-c463ae,Other,rogueExpertise,4
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Ability scores,baseAbilityScores,138
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Spells,selectedSpellIds,67
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Identity/background,buildName,59
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Feats,featSelections,27
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Identity/background,characterName,23
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Class/level,selectedClassSkills,17
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Class/level,selectedClassFeatureIds,10
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Ability scores,bonusPlusOne,6
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Ability scores,bonusPlusTwo,6
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Identity/background,selectedSubrace,5
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Class/level,selectedClass,4
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Identity/background,selectedBackground,4
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Identity/background,selectedRace,4
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Class/level,selectedSubclass,3
+participant-mq000vqm-dbf8fe,participant-mq000vqm-dbf8fe,Class/level,selectedLevel,2
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Ability scores,baseAbilityScores,94
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Identity/background,buildName,67
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Spells,selectedSpellIds,48
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Feats,featSelections,39
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Identity/background,characterName,35
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Class/level,selectedClassSkills,13
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Other,rogueExpertise,6
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Ability scores,bonusPlusOne,5
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Ability scores,bonusPlusTwo,4
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Class/level,selectedClass,4
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Class/level,selectedSubclass,4
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Identity/background,selectedBackground,4
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Identity/background,selectedRace,4
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Identity/background,selectedSubrace,4
+participant-mq005qw8-a6ac91,participant-mq005qw8-a6ac91,Class/level,selectedClassFeatureIds,3
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Ability scores,baseAbilityScores,143
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Spells,selectedSpellIds,90
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Identity/background,buildName,56
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Identity/background,characterName,54
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Feats,featSelections,42
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Class/level,selectedClassSkills,21
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Class/level,selectedClassFeatureIds,20
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Class/level,selectedSubclass,7
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Class/level,selectedClass,6
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Identity/background,selectedBackground,6
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Identity/background,selectedRace,6
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Ability scores,bonusPlusOne,5
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Ability scores,bonusPlusTwo,5
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Other,rogueExpertise,4
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Class/level,selectedLevel,2
+participant-mq0uvjt0-011c95,participant-mq0uvjt0-011c95,Identity/background,selectedSubrace,1
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Ability scores,baseAbilityScores,110
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Identity/background,buildName,98
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Spells,selectedSpellIds,67
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Feats,featSelections,30
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Class/level,selectedClassFeatureIds,16
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Identity/background,characterName,14
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Class/level,selectedClassSkills,9
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Ability scores,bonusPlusOne,5
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Class/level,selectedSubclass,5
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Ability scores,bonusPlusTwo,4
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Class/level,selectedClass,4
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Identity/background,selectedBackground,4
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Identity/background,selectedRace,4
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Identity/background,selectedSubrace,4
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Other,bardExpertise,3
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Skills,loreBardSkills,3
+participant-mq0zhvzs-7029a5,participant-mq0zhvzs-7029a5,Class/level,selectedLevel,2
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Ability scores,baseAbilityScores,97
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Spells,selectedSpellIds,78
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Identity/background,characterName,64
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Identity/background,buildName,51
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Feats,featSelections,40
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Class/level,selectedLevel,24
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Class/level,selectedSubclass,24
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Class/level,selectedClass,21
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Class/level,selectedClassSkills,16
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Identity/background,selectedBackground,14
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Identity/background,selectedSubrace,12
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Class/level,selectedClassFeatureIds,11
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Identity/background,selectedRace,6
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Ability scores,bonusPlusOne,5
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Ability scores,bonusPlusTwo,4
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Class/level,activeClassFeatureIds,1
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Other,rangerFavouredEnemy,1
+participant-mq2ql73p-7cf181,participant-mq2ql73p-7cf181,Other,rangerNaturalExplorer,1
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Ability scores,baseAbilityScores,116
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Identity/background,buildName,101
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Spells,selectedSpellIds,62
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Class/level,selectedLevel,27
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Identity/background,characterName,21
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Class/level,selectedClassSkills,18
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Feats,featSelections,17
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Class/level,selectedClassFeatureIds,16
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Class/level,selectedClass,7
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Ability scores,bonusPlusTwo,6
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Ability scores,bonusPlusOne,5
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Class/level,selectedSubclass,5
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Identity/background,selectedBackground,5
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Identity/background,selectedRace,5
+participant-mq3eh42s-fb2cf2,participant-mq3eh42s-fb2cf2,Identity/background,selectedSubrace,4
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Ability scores,baseAbilityScores,134
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Spells,selectedSpellIds,55
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Feats,featSelections,39
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Identity/background,buildName,31
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Class/level,selectedClassSkills,12
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Class/level,selectedSubclass,6
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Identity/background,selectedBackground,6
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Identity/background,selectedRace,6
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Ability scores,bonusPlusOne,5
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Ability scores,bonusPlusTwo,5
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Class/level,selectedClass,5
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Identity/background,characterName,4
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Other,rogueExpertise,4
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Identity/background,selectedSubrace,3
+participant-mq3o607h-2af78e,participant-mq3o607h-2af78e,Class/level,selectedClassFeatureIds,1
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Ability scores,baseAbilityScores,192
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Spells,selectedSpellIds,100
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Feats,featSelections,53
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Identity/background,characterName,44
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Identity/background,buildName,34
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Identity/background,selectedBackground,29
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Other,bardExpertise,22
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Class/level,selectedClassSkills,19
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Skills,loreBardSkills,12
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Ability scores,bonusPlusOne,8
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Ability scores,bonusPlusTwo,8
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Class/level,selectedClass,6
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Identity/background,selectedRace,6
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Class/level,selectedSubclass,5
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Identity/background,selectedSubrace,5
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Class/level,selectedClassFeatureIds,4
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Class/level,selectedLevel,2
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Other,rangerFavouredEnemy,2
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Class/level,activeClassFeatureIds,1
+participant-mq5aoq7u-493cb0,participant-mq5aoq7u-493cb0,Other,rangerNaturalExplorer,1
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Ability scores,baseAbilityScores,105
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Identity/background,buildName,75
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Spells,selectedSpellIds,56
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Identity/background,characterName,34
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Feats,featSelections,24
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Class/level,selectedClassFeatureIds,10
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Identity/background,selectedBackground,7
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Class/level,selectedClassSkills,6
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Ability scores,bonusPlusOne,4
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Ability scores,bonusPlusTwo,4
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Class/level,selectedClass,4
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Class/level,selectedSubclass,4
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Identity/background,selectedRace,4
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Class/level,activeClassFeatureIds,3
+participant-mq6h4za4-3dd8ed,participant-mq6h4za4-3dd8ed,Identity/background,selectedSubrace,3
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Identity/background,characterName,100
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Ability scores,baseAbilityScores,98
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Identity/background,buildName,66
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Feats,featSelections,62
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Spells,selectedSpellIds,37
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Identity/background,selectedBackground,34
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Class/level,selectedSubclass,19
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Class/level,selectedClass,17
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Class/level,selectedClassSkills,17
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Class/level,selectedClassFeatureIds,13
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Identity/background,selectedRace,12
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Identity/background,selectedSubrace,12
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Ability scores,bonusPlusOne,4
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Ability scores,bonusPlusTwo,4
+participant-mq6wl4tc-aa847e,participant-mq6wl4tc-aa847e,Class/level,selectedLevel,2
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Ability scores,baseAbilityScores,112
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Identity/background,buildName,41
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Identity/background,characterName,33
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Spells,selectedSpellIds,32
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Class/level,selectedLevel,27
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Class/level,selectedClassSkills,15
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Class/level,selectedClassFeatureIds,5
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Feats,featSelections,5
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Identity/background,selectedRace,5
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Ability scores,bonusPlusOne,4
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Ability scores,bonusPlusTwo,4
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Class/level,selectedClass,4
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Class/level,selectedSubclass,4
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Identity/background,selectedBackground,4
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Other,rogueExpertise,4
+participant-mq70m2z5-437293,participant-mq70m2z5-437293,Identity/background,selectedSubrace,3
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Ability scores,baseAbilityScores,126
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Spells,selectedSpellIds,67
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Identity/background,buildName,31
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Feats,featSelections,26
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Class/level,selectedLevel,18
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Class/level,selectedClassSkills,14
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Identity/background,characterName,11
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Identity/background,selectedBackground,7
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Identity/background,selectedSubrace,6
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Ability scores,bonusPlusOne,5
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Skills,loreBardSkills,5
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Ability scores,bonusPlusTwo,4
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Class/level,selectedClass,4
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Class/level,selectedSubclass,4
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Identity/background,selectedRace,4
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Class/level,selectedClassFeatureIds,3
+participant-mq748vre-54ccf6,participant-mq748vre-54ccf6,Other,bardExpertise,2
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Ability scores,baseAbilityScores,117
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Identity/background,buildName,76
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Spells,selectedSpellIds,75
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Feats,featSelections,34
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Identity/background,characterName,23
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Class/level,selectedClassSkills,10
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Ability scores,bonusPlusOne,6
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Class/level,selectedLevel,6
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Identity/background,selectedSubrace,6
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Other,bardExpertise,6
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Ability scores,bonusPlusTwo,5
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Class/level,selectedClass,4
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Class/level,selectedClassFeatureIds,4
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Class/level,selectedSubclass,4
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Identity/background,selectedBackground,4
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Identity/background,selectedRace,4
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Skills,loreBardSkills,3
+participant-mq74r16t-8b9959,participant-mq74r16t-8b9959,Class/level,activeClassFeatureIds,2
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Ability scores,baseAbilityScores,137
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Identity/background,buildName,83
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Spells,selectedSpellIds,56
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Feats,featSelections,34
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Identity/background,characterName,32
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Class/level,selectedClassSkills,21
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Class/level,selectedClassFeatureIds,16
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Ability scores,bonusPlusTwo,5
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Class/level,selectedClass,5
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Identity/background,selectedBackground,5
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Ability scores,bonusPlusOne,4
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Class/level,selectedLevel,4
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Class/level,selectedSubclass,4
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Identity/background,selectedRace,4
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Class/level,activeClassFeatureIds,3
+participant-mq86r5q8-62d0e9,participant-mq86r5q8-62d0e9,Identity/background,selectedSubrace,2
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Ability scores,baseAbilityScores,106
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Identity/background,buildName,56
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Identity/background,characterName,33
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Feats,featSelections,32
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Spells,selectedSpellIds,24
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Class/level,selectedClassSkills,10
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Class/level,selectedClassFeatureIds,9
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Ability scores,bonusPlusOne,4
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Ability scores,bonusPlusTwo,4
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Class/level,selectedClass,4
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Class/level,selectedSubclass,4
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Identity/background,selectedBackground,4
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Identity/background,selectedRace,4
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Identity/background,selectedSubrace,3
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Class/level,selectedLevel,2
+participant-mq89l4pr-50d828,participant-mq89l4pr-50d828,Class/level,activeClassFeatureIds,1
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Identity/background,buildName,165
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Ability scores,baseAbilityScores,142
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Identity/background,characterName,58
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Spells,selectedSpellIds,33
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Feats,featSelections,29
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Class/level,selectedLevel,21
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Class/level,selectedClassSkills,12
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Other,rogueExpertise,8
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Ability scores,bonusPlusOne,6
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Class/level,selectedClass,6
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Ability scores,bonusPlusTwo,5
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Class/level,activeClassFeatureIds,5
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Class/level,selectedSubclass,5
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Identity/background,selectedBackground,5
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Identity/background,selectedRace,5
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Identity/background,selectedSubrace,5
+participant-mq9rrhhc-33dea0,participant-mq9rrhhc-33dea0,Class/level,selectedClassFeatureIds,3
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Spells,selectedSpellIds,215
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Ability scores,baseAbilityScores,199
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Identity/background,buildName,101
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Class/level,selectedLevel,54
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Feats,featSelections,40
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Identity/background,characterName,34
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Class/level,selectedClassSkills,32
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Class/level,selectedClass,23
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Class/level,selectedSubclass,20
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Identity/background,selectedSubrace,14
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Class/level,selectedClassFeatureIds,10
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Identity/background,selectedBackground,9
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Ability scores,bonusPlusOne,7
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Ability scores,bonusPlusTwo,7
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Identity/background,selectedRace,6
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Other,bardExpertise,4
+participant-mqb4fag6-6ad1d5,participant-mqb4fag6-6ad1d5,Other,rangerNaturalExplorer,1
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Ability scores,baseAbilityScores,122
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Identity/background,buildName,113
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Spells,selectedSpellIds,101
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Identity/background,characterName,67
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Feats,featSelections,38
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Class/level,selectedClassSkills,19
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Class/level,selectedClassFeatureIds,15
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Class/level,selectedSubclass,7
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Identity/background,selectedRace,5
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Ability scores,bonusPlusOne,4
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Ability scores,bonusPlusTwo,4
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Class/level,selectedClass,4
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Identity/background,selectedBackground,3
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Skills,loreBardSkills,3
+participant-mqbpu17e-3a95f6,participant-mqbpu17e-3a95f6,Identity/background,selectedSubrace,1
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Ability scores,baseAbilityScores,102
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Spells,selectedSpellIds,91
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Identity/background,buildName,63
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Identity/background,characterName,56
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Feats,featSelections,27
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Class/level,selectedClassFeatureIds,24
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Class/level,selectedSubclass,18
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Class/level,selectedClassSkills,9
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Ability scores,bonusPlusOne,5
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Ability scores,bonusPlusTwo,4
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Class/level,selectedClass,4
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Identity/background,selectedBackground,4
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Identity/background,selectedRace,4
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Identity/background,selectedSubrace,3
+participant-mqbpu8zh-63581d,participant-mqbpu8zh-63581d,Class/level,activeClassFeatureIds,1
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Ability scores,baseAbilityScores,100
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Spells,selectedSpellIds,95
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Identity/background,characterName,64
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Identity/background,buildName,59
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Feats,featSelections,23
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Class/level,selectedClassSkills,16
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Identity/background,selectedRace,8
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Other,bardExpertise,8
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Identity/background,selectedBackground,7
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Other,rogueExpertise,6
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Class/level,selectedClass,5
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Class/level,selectedSubclass,5
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Ability scores,bonusPlusOne,4
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Ability scores,bonusPlusTwo,4
+participant-mqbro0lo-88d5a7,participant-mqbro0lo-88d5a7,Identity/background,selectedSubrace,4
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Identity/background,buildName,95
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Ability scores,baseAbilityScores,85
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Identity/background,characterName,64
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Feats,featSelections,33
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Spells,selectedSpellIds,23
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Class/level,selectedClassSkills,13
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Class/level,activeClassFeatureIds,5
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Ability scores,bonusPlusOne,4
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Identity/background,selectedBackground,4
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Identity/background,selectedSubrace,4
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Ability scores,bonusPlusTwo,3
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Class/level,selectedClass,3
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Class/level,selectedSubclass,3
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Identity/background,selectedRace,3
+participant-mqbsmuwn-832271,participant-mqbsmuwn-832271,Class/level,selectedClassFeatureIds,2
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Ability scores,baseAbilityScores,126
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Identity/background,buildName,74
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Spells,selectedSpellIds,55
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Feats,featSelections,23
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Class/level,selectedClassSkills,15
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Class/level,selectedClassFeatureIds,12
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Class/level,selectedSubclass,6
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Ability scores,bonusPlusOne,5
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Class/level,selectedClass,5
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Ability scores,bonusPlusTwo,4
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Identity/background,characterName,4
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Identity/background,selectedBackground,4
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Identity/background,selectedRace,4
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Identity/background,selectedSubrace,4
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Class/level,activeClassFeatureIds,2
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Other,rangerFavouredEnemy,1
+participant-mqbtnitc-2035a0,participant-mqbtnitc-2035a0,Other,rangerNaturalExplorer,1

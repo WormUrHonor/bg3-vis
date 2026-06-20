@@ -1,0 +1,88 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-03T18:20:52.897Z",
+  "exportedAtMs": 1780510852897,
+  "participantId": "participant-mpya2p1q-46ef0b",
+  "sessionId": "participant-mpya2p1q-46ef0b",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-03T16:25:40.485Z",
+  "sessionEndedAt": "2026-06-03T18:20:52.897Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mpya2p1q-46ef0b",
+    "submittedAt": "2026-06-03T16:27:25.618Z",
+    "submittedAtMs": 1780504045618,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "3",
+        "charts_visual_summaries": "3"
+      },
+      "external_resources_frequency": "3",
+      "build_priorities": {
+        "damage_combat_performance": "true",
+        "survivability": "true",
+        "party_balance": "true",
+        "narrative_strength": "true",
+        "experimentation": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mpya2p1q-46ef0b",
+    "submittedAt": "2026-06-03T18:20:52.896Z",
+    "submittedAtMs": 1780510852896,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "5",
+        "reasoning_tradeoffs_party_overall": "5",
+        "balanced_autonomous_decision": "4"
+      },
+      "visualization": {
+        "understood_visualization": "4",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "4",
+        "readable": "4"
+      },
+      "experience": {
+        "appropriate_for_bg3": "4",
+        "visual_style_fit": "4",
+        "engaging_creative_exploration": "4"
+      },
+      "final_party_main_factor": {
+        "damage_combat_performance": "true",
+        "clear_party_roles": "true",
+        "versatility": "true",
+        "prior_bg3_knowledge": "true",
+        "narrative_strength": "true",
+        "party_balance": "true",
+        "ease_of_use": "true",
+        "survivability": "true"
+      },
+      "supported_exploration": "The part that was most helpful for me was the visualization and the ability to interact with it. It allowed me to easily follow the results, identify where my party was unbalanced, and fix it right away. ",
+      "blocked_exploration": "I think the drop-down menus slightly blocked the exploration process, because someone new to the game might not be familiar with the classes, backgrounds, subclasses, and other options.\n\nThey would need to search online to better understand the options and choose their characters’ traits wisely.\n\nI believe the ability improvement feature was a very good example of how a short explanation can help clarify the outcome of these choices.",
+      "changed_normal_planning": "I just follow guides if I'm trying to Min-Max a build. \n\nHowever, If I want to experiment and make my own build, I would use this tool to do so and to see where the build is rough around the edges.",
+      "first_change": "As I mentioned before, adding a short explanation to each drop-down menu option would be helpful for new users to follow. It would also serve as a useful reminder for experienced users, helping them understand how the differences between options could affect the final outcome and choose the traits that best suit their vision for the characters.",
+      "optional_comments": "I really liked the accessibility of the tool and the ability to easily see and change all of my trait choices in one place.\n\nI also liked that the tool matched the theme of the game, which made it feel more connected to the overall experience. It really looked like it was part of the game, rather than something detached from it.\n",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

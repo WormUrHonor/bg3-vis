@@ -1,0 +1,12 @@
+﻿factor,label,count_selected,n,proportion_selected
+party_balance,Party balance,16,28,0.5714285714285714
+damage_combat_performance,Damage / combat performance,15,28,0.5357142857142857
+survivability,Survivability,15,28,0.5357142857142857
+versatility,Versatility,15,28,0.5357142857142857
+experimentation,Experimentation,11,28,0.39285714285714285
+prior_bg3_knowledge,Prior BG3 knowledge,10,28,0.35714285714285715
+clear_party_roles,Clear party roles,8,28,0.2857142857142857
+narrative_strength,Narrative fit,8,28,0.2857142857142857
+ease_of_use,Ease of use,4,28,0.14285714285714285
+visualization_observation,What the visualization showed,2,28,0.07142857142857142
+roleplay_character_fantasy,Roleplay / fantasy,1,28,0.03571428571428571

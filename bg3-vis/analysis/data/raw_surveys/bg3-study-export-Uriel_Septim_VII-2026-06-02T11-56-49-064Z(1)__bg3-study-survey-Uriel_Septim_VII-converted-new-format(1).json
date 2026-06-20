@@ -1,0 +1,95 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-02T11:56:49.064Z",
+  "exportedAtMs": 1780401409064,
+  "participantId": "Uriel_Septim_VII",
+  "sessionId": "Uriel_Septim_VII",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-02T10:19:52.953Z",
+  "sessionEndedAt": "2026-06-02T11:56:49.064Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "Uriel_Septim_VII",
+    "submittedAt": "2026-06-02T10:19:52.953Z",
+    "submittedAtMs": 1780395592953,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "charts_visual_summaries": "3",
+        "build_planning": "3"
+      },
+      "external_resources_frequency": "4",
+      "build_priorities": {
+        "damage_combat_performance": "true",
+        "survivability": "false",
+        "party_balance": "false",
+        "clear_party_roles": "true",
+        "roleplay_character_fantasy": "true",
+        "narrative_strength": "true",
+        "experimentation": "true",
+        "ease_of_use": "false",
+        "versatility": "false"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "Uriel_Septim_VII",
+    "submittedAt": "2026-06-02T11:56:49.062Z",
+    "submittedAtMs": 1780401409062,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "3",
+        "reasoning_tradeoffs_party_overall": "4",
+        "balanced_autonomous_decision": "5"
+      },
+      "visualization": {
+        "understood_visualization": "4",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "5",
+        "readable": "4"
+      },
+      "experience": {
+        "appropriate_for_bg3": "4",
+        "visual_style_fit": "4",
+        "engaging_creative_exploration": "5"
+      },
+      "final_party_main_factor": {
+        "damage_combat_performance": "true",
+        "survivability": "true",
+        "party_balance": "false",
+        "clear_party_roles": "true",
+        "roleplay_character_fantasy": "true",
+        "narrative_strength": "true",
+        "experimentation": "true",
+        "ease_of_use": "false",
+        "versatility": "true",
+        "visualization_observation": "true",
+        "prior_bg3_knowledge": "false"
+      },
+      "supported_exploration": "Being able to quickly see how changing subclasses affects a high level character (rather than checking level by level like in the game, or seeing the info seperately on a wiki) encouraged me to experiment and led me to change most of the characters quite a bit.\n\nThe tool made it helpful to see the different damage types and made me not focus too much on a single type (e.g. making a necro warlock makes you want to pick those spells, but after seeing that the character had little variety made me diversify the spells)\n\nThe main usefulness was in seeing the spread of damage types, ranges and utility vs damage.\n\nBeing able to see changes quickly (e.g. changing races, subraces, subclasses) and how it affects the character made me look at more choices than I usually would sinc eit so quick.",
+      "blocked_exploration": "A minor downside of planning a fully leveled character is failing to see exactly which choices one will make at each level so as to have a clear progression during gameplay, but I feel that is easy to figure out during gameplay as you can see the choices available upon level up.",
+      "changed_normal_planning": "Since I usually do not use third party tools but wikis instead, this made the information much easier to access (everything is in one place), and you can see how the different choices affect each other.",
+      "optional_comments": "Exploration/history comment: Regarding the tool helping me check previous version, I put 'neither' as I did not use the feature. When making single characters it would probably be less useful since the complexity of any one character is not very high. It would probably be more useful when making in depth experimentation of a full party, which I did not do here.\n\nAutonomy and optimization comment: Regarding the task not feeling like optimisation: I agree with the statement and the tool does not inherently push towards maximising damage (no rankings, showing which options do more damage etc.), though having direct feedback when making a choice (seeing the number go up and also the circle getting bigger) makes it more likely to keep damaging spells instead of support spells. Still those are useful features that are worth having despite this.\n\nFeature usefulness comment: I did not find myself using the small party member circles to check on the other members much, but I think that is because I just made them now rather than having characters I made a while ago, as I remembered all the choices I made with them. \n\nFor the build history, as I focused more on the individual characters rather than making many party iterations I also did not use this feature much,\n\nDid not use the simulator.\n\nMissing information comment: None that I could think of (as in I never yearned for information and could not find it).",
+      "first_change": "Improve readability\n\nSome of the text in the wheel is too small so a bit harder to read than I would like. \n\nAbout understanding the visualization, I did fully understand (I think) the visualization, but only after playing with it for some time and not immediately.",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": "Seeing the spread of different damage ranges and damage types made me diversify the characters more (or focus them in case of ranged only characters where I did not care for non ranged options, though in those cases it reminded me to select utility spells for escaping back into desired range)"
+    }
+  }
+}

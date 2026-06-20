@@ -1,0 +1,86 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-11T18:21:37.464Z",
+  "exportedAtMs": 1781202097464,
+  "participantId": "participant-mq9rrhhc-33dea0",
+  "sessionId": "participant-mq9rrhhc-33dea0",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-11T17:26:18.714Z",
+  "sessionEndedAt": "2026-06-11T18:21:37.464Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mq9rrhhc-33dea0",
+    "submittedAt": "2026-06-11T17:28:32.255Z",
+    "submittedAtMs": 1781198912255,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "3",
+        "charts_visual_summaries": "2"
+      },
+      "external_resources_frequency": "3",
+      "build_priorities": {
+        "party_balance": "true",
+        "clear_party_roles": "false",
+        "roleplay_fantasy": "true",
+        "damage_combat_performance": "true",
+        "versatility": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mq9rrhhc-33dea0",
+    "submittedAt": "2026-06-11T18:21:37.459Z",
+    "submittedAtMs": 1781202097459,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "4",
+        "balanced_autonomous_decision": "5",
+        "reasoning_tradeoffs_party_overall": "4"
+      },
+      "visualization": {
+        "understood_visualization": "4",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "5",
+        "readable": "4"
+      },
+      "experience": {
+        "appropriate_for_bg3": "4",
+        "visual_style_fit": "5",
+        "engaging_creative_exploration": "4"
+      },
+      "final_party_main_factor": {
+        "party_balance": "true",
+        "roleplay_fantasy": "true",
+        "survivability": "true",
+        "damage_combat_performance": "false",
+        "experimentation": "false",
+        "prior_bg3_knowledge": "true"
+      },
+      "changed_normal_planning": "As opposed to bg3, it helped me get a more clear picture of what my characters could do far more quickly then switching between characters in bg3",
+      "supported_exploration": "I really do like the color coding with the circle on the right to get a pretty good idea of what any character is capable of, which I could immediately compare to the rest of the party.",
+      "blocked_exploration": "I myself was a bit overwhelmed with the explanation on how to use this tool. Because of that, this tool felt far more complicated than it actually is, at least at the start.",
+      "first_change": "For me, the 16-step tutorial felt a bit overwhelming. I'd probably try to make it a toggle-able function where after pressing it, you could hover with your cursor over the distinct parts of this tool to then get information on how to use it.",
+      "optional_comments": "With that all being said, this tool is amazing. I don't think I have ever seen something this polished and visually distinct for bg3 party builders.",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

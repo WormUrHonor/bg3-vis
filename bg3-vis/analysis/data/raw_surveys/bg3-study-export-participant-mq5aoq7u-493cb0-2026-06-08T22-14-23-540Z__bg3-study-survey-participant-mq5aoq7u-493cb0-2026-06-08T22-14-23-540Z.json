@@ -1,0 +1,85 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-08T22:14:23.540Z",
+  "exportedAtMs": 1780956863540,
+  "participantId": "participant-mq5aoq7u-493cb0",
+  "sessionId": "participant-mq5aoq7u-493cb0",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-08T20:58:54.877Z",
+  "sessionEndedAt": "2026-06-08T22:14:23.540Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mq5aoq7u-493cb0",
+    "submittedAt": "2026-06-08T21:01:01.817Z",
+    "submittedAtMs": 1780952461817,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "2",
+        "charts_visual_summaries": "2"
+      },
+      "external_resources_frequency": "3",
+      "build_priorities": {
+        "roleplay_fantasy": "true",
+        "narrative_strength": "true",
+        "versatility": "true",
+        "survivability": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mq5aoq7u-493cb0",
+    "submittedAt": "2026-06-08T22:14:23.538Z",
+    "submittedAtMs": 1780956863538,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "4",
+        "reasoning_tradeoffs_party_overall": "4",
+        "balanced_autonomous_decision": "4"
+      },
+      "visualization": {
+        "understood_visualization": "3",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "3",
+        "readable": "4"
+      },
+      "experience": {
+        "appropriate_for_bg3": "5",
+        "visual_style_fit": "5",
+        "engaging_creative_exploration": "5"
+      },
+      "final_party_main_factor": {
+        "survivability": "true",
+        "party_balance": "true",
+        "roleplay_fantasy": "true",
+        "versatility": "true",
+        "prior_bg3_knowledge": "true",
+        "experimentation": "false"
+      },
+      "supported_exploration": "Explaining each choice and ability in a pop up helps returning players remember quickly what each option is and allows new players to flip though all available options.",
+      "blocked_exploration": "The visualization was a bit overwhelming but not overall discouraging.",
+      "changed_normal_planning": "It helped keep everything contained. Having every option, ability etc available at a moments notice is very helpful and being able to switch between them is great, Personally, I mostly go with trial and error. I start with a more roleplay focused team and fix my team's weaknesses as I play the game, respecing what need respecing and changing subclasses to fit my needs.",
+      "first_change": "I think it's a very neat tool. I don't have much to add, maybe just a better, in depth explanation of the visualization system but otherwise nothing. I like it.",
+      "optional_comments": "",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-13T02:55:33.880Z",
+  "exportedAtMs": 1781319333880,
+  "participantId": "participant-mqbpu8zh-63581d",
+  "sessionId": "participant-mqbpu8zh-63581d",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-13T02:08:00.560Z",
+  "sessionEndedAt": "2026-06-13T02:55:33.880Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mqbpu8zh-63581d",
+    "submittedAt": "2026-06-13T02:09:08.379Z",
+    "submittedAtMs": 1781316548379,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "3",
+        "charts_visual_summaries": "3"
+      },
+      "external_resources_frequency": "5",
+      "build_priorities": {
+        "narrative_strength": "true",
+        "roleplay_fantasy": "true",
+        "experimentation": "true"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mqbpu8zh-63581d",
+    "submittedAt": "2026-06-13T02:55:33.878Z",
+    "submittedAtMs": 1781319333878,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "5"
+      },
+      "reasoning": {
+        "final_party_confidence": "4",
+        "reasoning_tradeoffs_party_overall": "5",
+        "balanced_autonomous_decision": "5"
+      },
+      "visualization": {
+        "understood_visualization": "5",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "5",
+        "readable": "5"
+      },
+      "experience": {
+        "appropriate_for_bg3": "5",
+        "visual_style_fit": "5",
+        "engaging_creative_exploration": "4"
+      },
+      "final_party_main_factor": {
+        "roleplay_fantasy": "true",
+        "party_balance": "true"
+      },
+      "supported_exploration": "I really loved the connection between selecting things such as the damage type and then being able to see in a more detailed way the spells that had it. For example i was trying to copy a character from another game, and i felt it was easier to do so because i could more easily see which spells were psychic necrotic etc. ",
+      "blocked_exploration": "I wish items in the build planner had more detailed descriptions. also maybe a list of all damage types or something, because i had to first find the first of the damage type, and only then i could select it to highlight. ",
+      "changed_normal_planning": "I really like roleplaying, and i felt it was way easier now to select and filter stuff that i found necessary to the character i was trying to build.",
+      "first_change": "Id really like if terms that are more abstract were added to descriptions. like i was trying to build a gothic lovecraftian mad scholar, i wish arms of hadar had  a tag \"eldritch\" or something so that i could quickly find stuff that was relevant to that type of character flavor.",
+      "optional_comments": "",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

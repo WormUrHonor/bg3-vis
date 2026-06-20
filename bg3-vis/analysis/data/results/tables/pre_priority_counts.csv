@@ -1,0 +1,10 @@
+﻿factor,label,count_selected,n,proportion_selected
+damage_combat_performance,Damage / combat performance,18,28,0.6428571428571429
+versatility,Versatility,15,28,0.5357142857142857
+experimentation,Experimentation,13,28,0.4642857142857143
+narrative_strength,Narrative fit,12,28,0.42857142857142855
+survivability,Survivability,11,28,0.39285714285714285
+party_balance,Party balance,9,28,0.32142857142857145
+ease_of_use,Ease of use,7,28,0.25
+clear_party_roles,Clear party roles,6,28,0.21428571428571427
+roleplay_character_fantasy,Roleplay / fantasy,1,28,0.03571428571428571

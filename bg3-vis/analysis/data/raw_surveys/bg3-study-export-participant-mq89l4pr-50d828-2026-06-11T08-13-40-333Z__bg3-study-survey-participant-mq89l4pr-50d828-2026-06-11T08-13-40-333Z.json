@@ -1,0 +1,83 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-11T08:13:40.333Z",
+  "exportedAtMs": 1781165620333,
+  "participantId": "participant-mq89l4pr-50d828",
+  "sessionId": "participant-mq89l4pr-50d828",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-11T06:14:40.693Z",
+  "sessionEndedAt": "2026-06-11T08:13:40.333Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mq89l4pr-50d828",
+    "submittedAt": "2026-06-11T06:18:33.378Z",
+    "submittedAtMs": 1781158713378,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": true
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "3",
+        "dnd_or_rpg_systems": "3",
+        "build_planning": "2",
+        "charts_visual_summaries": "2"
+      },
+      "external_resources_frequency": "3",
+      "build_priorities": {
+        "damage_combat_performance": "true",
+        "roleplay_fantasy": "true",
+        "experimentation": "true",
+        "versatility": "false"
+      },
+      "build_priorities_other": ""
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mq89l4pr-50d828",
+    "submittedAt": "2026-06-11T08:13:40.331Z",
+    "submittedAtMs": 1781165620331,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "4"
+      },
+      "reasoning": {
+        "final_party_confidence": "4",
+        "reasoning_tradeoffs_party_overall": "4",
+        "balanced_autonomous_decision": "3"
+      },
+      "visualization": {
+        "understood_visualization": "4",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "3",
+        "readable": "5"
+      },
+      "experience": {
+        "appropriate_for_bg3": "4",
+        "visual_style_fit": "5",
+        "engaging_creative_exploration": "3"
+      },
+      "final_party_main_factor": {
+        "damage_combat_performance": "true",
+        "roleplay_fantasy": "true",
+        "experimentation": "true",
+        "prior_bg3_knowledge": "true"
+      },
+      "supported_exploration": "The aggregation circle is the most helpful one for me. It was really nice to see all the abilities in one place and be able to hover over them and compare them.",
+      "blocked_exploration": "One thing that threw me off is the damage calculation. I am not sure it's done correctly. For example, for the Rogue, when I hover over the sneak attack, both melee and ranged show an average of 3.5 (which correlates to a dice roll between 1-6). But the sneak attack dice should be a 6d6, which I would also expect to give a higher than average damage output because I chose the savage attacker feat in the end (as the description of the feat is: \"When making melee weapon attacks, you roll your damage dice twice and use the highest result\").  I haven't checked the other damage calculations, but comparison becomes difficult if they are not calculated correctly. ",
+      "changed_normal_planning": "I don't think it made things that much more different for me. I generally enjoy having martial or melee classes. I can make an alright sorcerer or warlock build if I want to, but they just don't hit the same ;) ",
+      "first_change": "Well, the only thing that threw me off was the damage calculation. I really enjoy the way that the abilities are displayed and the proximity circles are really cleverly made in my opinion (so the self / melee / range). It kind of makes me wonder if I can make a party that only has actions/attacks in the melee range, but I'm a bit short on time. \nI think it would be cool to also be able to see somewhere the average initiative rolls for the party. I think high initiative is quite important in BG3 so I usually try to have at least one or two party members with the alert feat. ",
+      "optional_comments": "It's a bit late to implement, but every time I wanted to double check something about my build or the tool I had to close the survey and my answers wouldn't be saved. It made it a bit difficult to give extensive feedback, but I hope it's still helpful.",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}

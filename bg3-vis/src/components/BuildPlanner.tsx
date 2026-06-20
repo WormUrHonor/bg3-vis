@@ -1657,7 +1657,7 @@ const simulatorBuildName = usingLocalMockBuildJson
 
     if (!rounds.some((round) => round.damage > 0)) {
       throw new Error(
-        "The simulator returned a response, but no round damage could be extracted yet. Check the raw response in the console."
+        "The simulator returned a response, but I could not extract any damage data. ."
       );
     }
 

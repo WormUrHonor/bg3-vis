@@ -1,0 +1,87 @@
+{
+  "exportType": "bg3-build-planner-survey-answers",
+  "exportSchemaVersion": "bg3-build-planner-survey-export-v2",
+  "exportedAt": "2026-06-06T21:22:33.946Z",
+  "exportedAtMs": 1780780953946,
+  "participantId": "participant-mq2ql73p-7cf181",
+  "sessionId": "participant-mq2ql73p-7cf181",
+  "studyDesign": "single_condition_single_task_party_building",
+  "prototypeVersion": "bg3-party-planner-study",
+  "appVersion": "local",
+  "dataModelVersion": "local",
+  "sessionStartedAt": "2026-06-06T19:19:02.233Z",
+  "sessionEndedAt": "2026-06-06T21:22:33.946Z",
+  "preTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "pre",
+    "participantId": "participant-mq2ql73p-7cf181",
+    "submittedAt": "2026-06-06T19:25:30.271Z",
+    "submittedAtMs": 1780773930271,
+    "consent": {
+      "requiredConsent": true,
+      "anonymizedQuotesConsent": true,
+      "dataReuseConsent": false
+    },
+    "answers": {
+      "pre_familiarity": {
+        "bg3": "1",
+        "dnd_or_rpg_systems": "1",
+        "build_planning": "3",
+        "charts_visual_summaries": "3"
+      },
+      "external_resources_frequency": "1",
+      "build_priorities": {
+        "damage_combat_performance": "true",
+        "survivability": "true",
+        "versatility": "true",
+        "other": "true"
+      },
+      "build_priorities_other": "Fun to play (most important)."
+    }
+  },
+  "postTaskSurvey": {
+    "surveySchemaVersion": "bg3-build-planner-survey-v1",
+    "mode": "post",
+    "participantId": "participant-mq2ql73p-7cf181",
+    "submittedAt": "2026-06-06T21:22:33.945Z",
+    "submittedAtMs": 1780780953945,
+    "answers": {
+      "exploration": {
+        "exploration_iteration_overall": "5"
+      },
+      "reasoning": {
+        "final_party_confidence": "5",
+        "reasoning_tradeoffs_party_overall": "5",
+        "balanced_autonomous_decision": "5"
+      },
+      "visualization": {
+        "understood_visualization": "2",
+        "noticed_party_patterns": "4",
+        "interactive_explanation": "3",
+        "readable": "4"
+      },
+      "experience": {
+        "appropriate_for_bg3": "3",
+        "visual_style_fit": "3",
+        "engaging_creative_exploration": "5"
+      },
+      "final_party_main_factor": {
+        "damage_combat_performance": "true",
+        "survivability": "true",
+        "clear_party_roles": "true",
+        "roleplay_fantasy": "true",
+        "other": "false",
+        "prior_bg3_knowledge": "false",
+        "experimentation": "false",
+        "versatility": "true"
+      },
+      "supported_exploration": "As someone who has never played BG3 or a DND campaign, the tooltips for skills, abilities and other unknowns were a great help.  ",
+      "blocked_exploration": "Tooltips again. They were a good resource to fill my lack of understanding, but I also felt that some things weren't explained (such as the class choice on ranger like preferred enemy). ",
+      "changed_normal_planning": "I can only offer perspective as someone who used planners for other games. As such I used my usual approach to build planning when using this tool. ",
+      "first_change": "I don't feel knowledgeable enough about BG to comment.",
+      "optional_comments": "I couldn't use the optional feature to test my build :( hopefully it works later.",
+      "final_party_main_factor_other": "",
+      "final_party_main_factor_visualization_observation": ""
+    }
+  }
+}
